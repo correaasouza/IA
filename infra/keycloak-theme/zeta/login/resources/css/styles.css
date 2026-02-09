@@ -1,0 +1,58 @@
+:root {
+  --zeta-blue: #0b3d91;
+  --zeta-blue-2: #0a2f6b;
+  --zeta-bg: #f2f4f8;
+}
+
+body {
+  background: radial-gradient(900px 520px at 10% -10%, #e7eef9, transparent), var(--zeta-bg) !important;
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif !important;
+}
+
+* {
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif !important;
+}
+
+.zeta-brand {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.zeta-brand img {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 8px 24px rgba(11, 61, 145, 0.12);
+}
+
+.zeta-title {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--zeta-blue);
+}
+
+.zeta-sub {
+  font-size: 12px;
+  color: #6a7789;
+}
+
+#kc-page-title {
+  color: var(--zeta-blue);
+}
+
+.kc-button-primary,
+.kc-button-primary:focus {
+  background: linear-gradient(90deg, var(--zeta-blue), var(--zeta-blue-2));
+  border: none;
+}
+
+.card-pf {
+  border-radius: 14px;
+  border: 1px solid #dbe1ea;
+  box-shadow: 0 12px 30px rgba(8, 16, 28, 0.08);
+}

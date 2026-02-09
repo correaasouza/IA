@@ -1,0 +1,73 @@
+﻿services:
+  postgres:
+    image: postgres:16
+    container_name: ia-postgres
+    environment:
+      POSTGRES_USER: ia
+      POSTGRES_PASSWORD: ia
+      POSTGRES_DB: ia
+    ports:
+      - "0.0.0.0:5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./infra/db-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.6
+    container_name: ia-keycloak
+    depends_on:
+      - postgres
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ia
+      KC_DB_PASSWORD: ia
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+    command:
+      - start-dev
+      - --import-realm
+    ports:
+      - "0.0.0.0:8081:8080"
+    volumes:
+      - ./infra/realm-import.json:/opt/keycloak/data/import/realm-import.json:ro
+
+  backend:
+    build:
+      context: ./backend
+    container_name: ia-backend
+    depends_on:
+      - postgres
+      - keycloak
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/ia
+      DB_USER: ia
+      DB_PASSWORD: ia
+      KEYCLOAK_ISSUER_URI: http://192.168.0.243:8081/realms/ia
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/ia/protocol/openid-connect/certs
+      KEYCLOAK_ADMIN_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ia
+      KEYCLOAK_TARGET_REALM: ia
+      KEYCLOAK_ADMIN_REALM: master
+      KEYCLOAK_ADMIN_CLIENT_ID: admin-cli
+      KEYCLOAK_ADMIN_USERNAME: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      TENANT_SEED_ADMIN_ENABLED: "true"
+      TENANT_SEED_ADMIN_USERNAME: "admin-{tenantId}"
+      TENANT_SEED_ADMIN_EMAIL: "admin{tenantId}@local"
+      TENANT_SEED_ADMIN_PASSWORD: "admin123"
+    ports:
+      - "0.0.0.0:8082:8082"
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: ia-frontend
+    depends_on:
+      - backend
+      - keycloak
+    ports:
+      - "0.0.0.0:8080:80"
+
+volumes:
+  pg_data:

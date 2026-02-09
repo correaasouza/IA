@@ -1,0 +1,1 @@
+﻿# Use simple regexp. Not full regex for CPF/CNPJ, but basic format check

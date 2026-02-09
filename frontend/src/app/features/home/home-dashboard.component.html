@@ -1,0 +1,33 @@
+﻿<div class="dash">
+  <header class="dash-header">
+    <div>
+      <div class="title">Bem-vindo</div>
+      <div class="subtitle">Acesse rapidamente as funções do sistema.</div>
+    </div>
+    <button mat-stroked-button routerLink="/entities">
+      <mat-icon>arrow_forward</mat-icon>
+      Ir para entidades
+    </button>
+  </header>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Atalhos</div>
+      <div class="panel-meta">Fixe atalhos no menu lateral</div>
+    </div>
+
+    <div class="shortcuts" *ngIf="shortcuts.length > 0; else empty">
+      <a class="shortcut" *ngFor="let s of shortcuts" [routerLink]="s.route">
+        <div class="icon"><mat-icon>{{ s.icon }}</mat-icon></div>
+        <div class="label">{{ s.label }}</div>
+        <mat-icon class="chevron">chevron_right</mat-icon>
+      </a>
+    </div>
+
+    <ng-template #empty>
+      <div class="empty">
+        Nenhum atalho configurado. Use a estrela no menu para adicionar.
+      </div>
+    </ng-template>
+  </section>
+</div>

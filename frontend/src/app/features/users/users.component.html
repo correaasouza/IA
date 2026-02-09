@@ -1,0 +1,143 @@
+﻿<div class="page">
+  <header class="page-header">
+    <div class="title-block">
+      <h1>Usuários</h1>
+      <p>Controle de acesso e perfis do locatário</p>
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button type="button" (click)="load()">
+        <mat-icon>refresh</mat-icon>
+        Atualizar
+      </button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Novo usuário</div>
+      <div class="panel-meta">Crie e atribua roles iniciais</div>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="create()" class="form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Username</mat-label>
+        <input matInput formControlName="username" placeholder="login ou usuário" aria-describedby="user-username-err" />
+        <mat-error id="user-username-err" *ngIf="form.get('username')?.hasError('required')">Informe o username.</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Email</mat-label>
+        <input matInput formControlName="email" placeholder="email@dominio.com" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" formControlName="password" placeholder="senha temporária" aria-describedby="user-password-err" />
+        <mat-error id="user-password-err" *ngIf="form.get('password')?.hasError('required')">Informe a senha.</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Roles (vírgula)</mat-label>
+        <input matInput formControlName="roles" placeholder="USER, TENANT_ADMIN" aria-describedby="user-roles-hint" />
+        <mat-hint id="user-roles-hint">Ex: USER, TENANT_ADMIN, CONFIG_EDITOR</mat-hint>
+      </mat-form-field>
+
+      <div class="helper">Papéis do tenant são configurados pela ação “Papéis”.</div>
+
+      <div class="actions">
+        <button mat-flat-button color="primary" type="submit">
+          <mat-icon>person_add</mat-icon>
+          Criar usuário
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Usuários cadastrados</div>
+      <div class="panel-meta">{{ usuarios.length }} usuário(s)</div>
+    </div>
+
+    <div class="panel-loader" *ngIf="loading">
+      <app-inline-loader label="Carregando usuários"></app-inline-loader>
+    </div>
+
+    <div class="table-wrap" *ngIf="usuarios.length > 0">
+      <table mat-table [dataSource]="usuarios" class="table-dense">
+        <ng-container matColumnDef="username">
+          <th mat-header-cell *matHeaderCellDef>Username</th>
+          <td mat-cell *matCellDef="let row">{{ row.username }}</td>
+        </ng-container>
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef>Email</th>
+          <td mat-cell *matCellDef="let row">{{ row.email || '-' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="ativo">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="status" [class.off]="!row.ativo">{{ row.ativo ? 'Ativo' : 'Inativo' }}</span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="papeis">
+          <th mat-header-cell *matHeaderCellDef>Papéis</th>
+          <td mat-cell *matCellDef="let row">
+            <div class="roles">
+              <span class="role" *ngFor="let p of (row.papeis || [])">{{ p }}</span>
+            </div>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef>Ações</th>
+          <td mat-cell *matCellDef="let row" class="actions">
+            <button mat-stroked-button (click)="editPapeis(row)" [attr.aria-label]="'Editar papéis de ' + row.username">
+              <mat-icon>badge</mat-icon>
+              Papéis
+            </button>
+            <button mat-stroked-button (click)="disable(row)" [attr.aria-label]="'Desativar ' + row.username">
+              <mat-icon>block</mat-icon>
+              Desativar
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </div>
+
+    <div class="cards" *ngIf="usuarios.length > 0">
+      <article class="card-row" *ngFor="let row of usuarios">
+        <div class="card-row-header">
+          <div>
+            <div class="card-row-title">{{ row.username }}</div>
+            <div class="card-row-subtitle">{{ row.email || 'Sem email' }}</div>
+          </div>
+          <span class="status" [class.off]="!row.ativo">{{ row.ativo ? 'Ativo' : 'Inativo' }}</span>
+        </div>
+        <div class="roles">
+          <span class="role" *ngFor="let p of (row.papeis || [])">{{ p }}</span>
+        </div>
+        <div class="card-row-actions">
+          <button mat-stroked-button (click)="editPapeis(row)" [attr.aria-label]="'Editar papéis de ' + row.username">
+            <mat-icon>badge</mat-icon>
+            Papéis
+          </button>
+          <button mat-stroked-button (click)="disable(row)" [attr.aria-label]="'Desativar ' + row.username">
+            <mat-icon>block</mat-icon>
+            Desativar
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <section class="empty-state" *ngIf="usuarios.length === 0" role="status" aria-live="polite">
+      <app-inline-loader *ngIf="loading" label="Carregando usuários"></app-inline-loader>
+      <mat-icon>group_off</mat-icon>
+      <div>
+        <div class="empty-title">Nenhum usuário cadastrado</div>
+        <div class="empty-subtitle">Crie um novo usuário ou ajuste filtros.</div>
+      </div>
+    </section>
+  </section>
+</div>

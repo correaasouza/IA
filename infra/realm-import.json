@@ -1,0 +1,65 @@
+﻿{
+  "realm": "ia",
+  "enabled": true,
+  "displayName": "IA",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "roles": {
+    "realm": [
+      {"name": "MASTER_ADMIN"},
+      {"name": "TENANT_ADMIN"},
+      {"name": "USER"},
+      {"name": "CONFIG_EDITOR"}
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "frontend",
+      "name": "frontend",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost:4200/*",
+        "http://192.168.0.243:4200/*",
+        "http://192.168.0.243:8080/*",
+        "http://localhost:8080/*"
+      ],
+      "webOrigins": [
+        "http://localhost:4200",
+        "http://192.168.0.243:4200",
+        "http://192.168.0.243:8080",
+        "http://localhost:8080"
+      ]
+    },
+    {
+      "clientId": "backend",
+      "name": "backend",
+      "bearerOnly": true
+    }
+  ],
+  "users": [
+    {
+      "username": "master",
+      "enabled": true,
+      "email": "master@local",
+      "emailVerified": true,
+      "credentials": [
+        {"type": "password", "value": "master123", "temporary": false}
+      ],
+      "realmRoles": ["MASTER_ADMIN", "CONFIG_EDITOR"]
+    },
+    {
+      "username": "tenantadmin",
+      "enabled": true,
+      "email": "tenantadmin@local",
+      "emailVerified": true,
+      "credentials": [
+        {"type": "password", "value": "tenant123", "temporary": false}
+      ],
+      "realmRoles": ["TENANT_ADMIN"]
+    }
+  ]
+}

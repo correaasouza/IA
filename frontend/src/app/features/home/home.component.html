@@ -1,0 +1,43 @@
+﻿<div class="tenant-shell">
+  <div class="hero">
+    <div class="brand">
+      <span class="badge">
+        <img src="assets/logo-zeta.png" alt="Zeta Informática" />
+      </span>
+      <div>
+        <div class="title">Selecione o locatário</div>
+        <div class="subtitle">Acesso rápido e seguro aos seus dados.</div>
+      </div>
+    </div>
+
+    <section class="hero-card">
+      <div class="section-title">Seu acesso</div>
+      <div class="section-subtitle">Escolha o locatário e continue.</div>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Locatário</mat-label>
+      <mat-select [(ngModel)]="tenantId" aria-label="Selecionar locatário">
+        <mat-option *ngFor="let t of allowedTenants" [value]="t.id">
+          {{ t.nome }} (ID {{ t.id }})
+        </mat-option>
+      </mat-select>
+    </mat-form-field>
+
+      <div class="actions">
+      <button mat-flat-button color="primary" (click)="saveTenant()" [disabled]="!tenantId" aria-label="Entrar no locatário selecionado">
+        <mat-icon>login</mat-icon>
+        Entrar
+      </button>
+      <button mat-stroked-button (click)="refreshTenants()" aria-label="Atualizar lista de locatários">
+        <mat-icon>refresh</mat-icon>
+        Atualizar lista
+      </button>
+      </div>
+
+      <div class="info" *ngIf="me?.username">
+        <mat-icon>person</mat-icon>
+        <span>Logado como {{ me.username }}</span>
+      </div>
+    </section>
+  </div>
+</div>

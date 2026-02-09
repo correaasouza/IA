@@ -1,0 +1,144 @@
+﻿<div class="grid">
+  <mat-card class="card">
+    <mat-card-title>Cadastros</mat-card-title>
+    <mat-card-content>
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo</mat-label>
+        <mat-select [(ngModel)]="selectedDefId" (selectionChange)="changeDef()" aria-label="Tipo de entidade">
+          <mat-option *ngFor="let d of definicoes" [value]="d.id">{{ d.nome }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <form [formGroup]="form" (ngSubmit)="save()" class="form">
+        <mat-form-field appearance="outline" *ngIf="visible.nome">
+          <mat-label>{{ labels.nome }}</mat-label>
+          <input matInput formControlName="nome" [readonly]="!editable.nome" aria-describedby="ent-nome-err" />
+          <mat-error id="ent-nome-err" *ngIf="form.get('nome')?.hasError('required')">Informe o nome.</mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline" *ngIf="visible.apelido">
+          <mat-label>{{ labels.apelido }}</mat-label>
+          <input matInput formControlName="apelido" [readonly]="!editable.apelido" />
+        </mat-form-field>
+        <mat-form-field appearance="outline" *ngIf="visible.cpfCnpj">
+          <mat-label>{{ labels.cpfCnpj }}</mat-label>
+          <input matInput formControlName="cpfCnpj" [readonly]="!editable.cpfCnpj" appCpfCnpjMask aria-describedby="legacy-cpf-err" />
+          <mat-error id="legacy-cpf-err" *ngIf="form.get('cpfCnpj')?.hasError('cpfCnpj')">CPF/CNPJ inválido</mat-error>
+        </mat-form-field>
+        <mat-slide-toggle formControlName="ativo" aria-label="Ativo">Ativo</mat-slide-toggle>
+        <button mat-flat-button color="primary" type="submit" aria-label="Salvar cadastro">Salvar</button>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="card">
+    <mat-card-title>Tipos e permissões</mat-card-title>
+    <mat-card-content>
+      <table mat-table [dataSource]="definicoes" class="table-dense">
+        <ng-container matColumnDef="nome">
+          <th mat-header-cell *matHeaderCellDef>Nome</th>
+          <td mat-cell *matCellDef="let row">{{ row.nome }}</td>
+        </ng-container>
+        <ng-container matColumnDef="role">
+          <th mat-header-cell *matHeaderCellDef>Role requerida</th>
+          <td mat-cell *matCellDef="let row">
+            <input matInput [value]="row.roleRequired" (input)="row.roleRequired = $any($event.target).value" aria-label="Role requerida" />
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="ativo">
+          <th mat-header-cell *matHeaderCellDef>Ativo</th>
+          <td mat-cell *matCellDef="let row">
+            <mat-slide-toggle [(ngModel)]="row.ativo" aria-label="Ativo"></mat-slide-toggle>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="save">
+          <th mat-header-cell *matHeaderCellDef>Ação</th>
+          <td mat-cell *matCellDef="let row">
+            <button mat-stroked-button (click)="saveDef(row)" [attr.aria-label]="'Salvar ' + row.nome">Salvar</button>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="defColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: defColumns;"></tr>
+      </table>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="card">
+    <mat-card-title>Registros</mat-card-title>
+    <mat-card-content>
+      <form [formGroup]="filters" class="filters" role="search">
+        <mat-form-field appearance="outline">
+          <mat-label>Nome</mat-label>
+          <input matInput formControlName="nome" aria-label="Filtrar por nome" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>CPF/CNPJ</mat-label>
+          <input matInput formControlName="cpfCnpj" aria-label="Filtrar por CPF ou CNPJ" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Status</mat-label>
+          <mat-select formControlName="ativo" aria-label="Filtrar por status">
+            <mat-option value="">Todos</mat-option>
+            <mat-option value="true">Ativo</mat-option>
+            <mat-option value="false">Inativo</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <button mat-stroked-button type="button" (click)="applyFilters()" aria-label="Aplicar filtros">Filtrar</button>
+      </form>
+
+      <table mat-table [dataSource]="registros" class="table-dense">
+        <ng-container matColumnDef="nome">
+          <th mat-header-cell *matHeaderCellDef>{{ labels.nome }}</th>
+          <td mat-cell *matCellDef="let row">
+            <ng-container *ngIf="editingRowId === row.id; else nomeView">
+              <input matInput [(ngModel)]="editingRow.nome" aria-label="Nome" />
+            </ng-container>
+            <ng-template #nomeView>{{ row.nome }}</ng-template>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="apelido" *ngIf="visible.apelido">
+          <th mat-header-cell *matHeaderCellDef>{{ labels.apelido }}</th>
+          <td mat-cell *matCellDef="let row">
+            <ng-container *ngIf="editingRowId === row.id; else apelidoView">
+              <input matInput [(ngModel)]="editingRow.apelido" aria-label="Apelido" />
+            </ng-container>
+            <ng-template #apelidoView>{{ row.apelido }}</ng-template>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="cpfCnpj">
+          <th mat-header-cell *matHeaderCellDef>{{ labels.cpfCnpj }}</th>
+          <td mat-cell *matCellDef="let row">
+            <ng-container *ngIf="editingRowId === row.id; else cpfView">
+              <input matInput [(ngModel)]="editingRow.cpfCnpj" appCpfCnpjMask aria-label="CPF/CNPJ" />
+            </ng-container>
+            <ng-template #cpfView>{{ row.cpfCnpj }}</ng-template>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="ativo">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let row">
+            <ng-container *ngIf="editingRowId === row.id; else ativoView">
+              <mat-slide-toggle [(ngModel)]="editingRow.ativo" aria-label="Ativo"></mat-slide-toggle>
+            </ng-container>
+            <ng-template #ativoView>{{ row.ativo ? 'Ativo' : 'Inativo' }}</ng-template>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef>Ações</th>
+          <td mat-cell *matCellDef="let row">
+            <button mat-stroked-button *ngIf="editingRowId !== row.id" (click)="editRow(row)" [attr.aria-label]="'Editar ' + row.nome">Editar</button>
+            <button mat-stroked-button *ngIf="editingRowId === row.id" (click)="saveRow()" aria-label="Salvar edição">Salvar</button>
+            <button mat-button *ngIf="editingRowId === row.id" (click)="cancelEdit()" aria-label="Cancelar edição">Cancelar</button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns;" (click)="selectRegistro(row)" tabindex="0" (keydown.enter)="selectRegistro(row)"></tr>
+      </table>
+      <mat-paginator [length]="totalElements" [pageSize]="pageSize" [pageIndex]="pageIndex"
+        [pageSizeOptions]="[10,25,50]" (page)="pageChange($event)"></mat-paginator>
+    </mat-card-content>
+  </mat-card>
+
+  <app-contato-tipos></app-contato-tipos>
+  <app-contato-tipos-por-entidade [entidadeDefinicaoId]="selectedDefId"></app-contato-tipos-por-entidade>
+  <app-contatos [entidadeRegistroId]="selectedRegistroId"></app-contatos>
+</div>

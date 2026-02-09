@@ -1,0 +1,68 @@
+﻿<div class="app-shell dense">
+  <mat-toolbar class="app-toolbar" role="banner">
+    <button mat-icon-button class="nav-toggle" *ngIf="hasTenant" (click)="toggleSidebar()" aria-label="Alternar menu lateral">
+      <mat-icon>menu</mat-icon>
+    </button>
+
+    <div class="brand" aria-label="Zeta Web ERP">
+      <span class="brand-mark">
+        <img src="assets/logo-zeta.png" alt="Zeta Informática" class="brand-logo" onerror="this.style.display='none';" />
+        <span class="brand-fallback">Z</span>
+      </span>
+      <div class="brand-text">
+        <span class="brand-title">Zeta Web ERP</span>
+        <span class="brand-subtitle" *ngIf="hasTenant">Ambiente do locatário</span>
+      </div>
+    </div>
+
+    <span class="spacer"></span>
+
+    <div class="quick-actions" *ngIf="hasTenant">
+      <ng-container *ngFor="let s of atalhosTop">
+        <button mat-button class="quick-link" [routerLink]="s.route" [class.active]="isActiveRoute(s.route)">
+          <mat-icon>{{ s.icon }}</mat-icon>
+          <span>{{ s.label }}</span>
+        </button>
+      </ng-container>
+      <button mat-icon-button class="quick-reorder" (click)="openOrdenar()" aria-label="Ordenar atalhos rápidos">
+        <mat-icon>reorder</mat-icon>
+      </button>
+    </div>
+
+    <div class="session-actions">
+      <button mat-stroked-button class="session-btn" (click)="login()">Login</button>
+      <button mat-flat-button color="primary" class="session-btn" (click)="logout()">Logout</button>
+    </div>
+  </mat-toolbar>
+
+  <mat-sidenav-container class="layout">
+    <mat-sidenav #sidenav mode="side" [opened]="sidebarOpen" *ngIf="hasTenant" class="sidebar" role="navigation">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Navegação</span>
+        <span class="sidebar-hint">Favoritos e módulos</span>
+      </div>
+      <mat-nav-list class="menu-list">
+        <a mat-list-item *ngFor="let item of menu" [routerLink]="item.route" [class.active]="isActiveRoute(item.route)">
+          <mat-icon>{{ item.icon }}</mat-icon>
+          <span>{{ item.label }}</span>
+          <button
+            mat-icon-button
+            class="pin-button"
+            (click)="toggleShortcut(item); $event.preventDefault(); $event.stopPropagation();"
+            [attr.aria-pressed]="isShortcut(item.id) || isActiveRoute(item.route)"
+            aria-label="Fixar ou desfazer atalho">
+            <mat-icon [class.active-star]="isShortcut(item.id) || isActiveRoute(item.route)">
+              {{ isShortcut(item.id) || isActiveRoute(item.route) ? 'star' : 'star_border' }}
+            </mat-icon>
+          </button>
+        </a>
+      </mat-nav-list>
+    </mat-sidenav>
+
+    <mat-sidenav-content class="content-area">
+      <div class="content">
+        <router-outlet></router-outlet>
+      </div>
+    </mat-sidenav-content>
+  </mat-sidenav-container>
+</div>

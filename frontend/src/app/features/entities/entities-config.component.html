@@ -1,0 +1,91 @@
+﻿<div class="page">
+  <header class="page-header">
+    <div class="title-block">
+      <h1>Configurações de entidades</h1>
+      <p>Controle permissões por tipo e relacionamentos de contato</p>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Tipos e permissões</div>
+      <div class="panel-meta">Defina roles e status dos tipos</div>
+    </div>
+
+    <div class="panel-loader" *ngIf="loading">
+      <app-inline-loader label="Carregando tipos"></app-inline-loader>
+    </div>
+
+    <div class="table-wrap" *ngIf="definicoes.length > 0">
+      <table mat-table [dataSource]="definicoes" class="table-dense">
+        <ng-container matColumnDef="nome">
+          <th mat-header-cell *matHeaderCellDef>Nome</th>
+          <td mat-cell *matCellDef="let row">{{ row.nome }}</td>
+        </ng-container>
+        <ng-container matColumnDef="role">
+          <th mat-header-cell *matHeaderCellDef>Role requerida</th>
+          <td mat-cell *matCellDef="let row">
+            <input matInput [value]="row.roleRequired" (input)="row.roleRequired = $any($event.target).value" aria-label="Role requerida" />
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="ativo">
+          <th mat-header-cell *matHeaderCellDef>Ativo</th>
+          <td mat-cell *matCellDef="let row">
+            <mat-slide-toggle [(ngModel)]="row.ativo" aria-label="Ativo"></mat-slide-toggle>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="save">
+          <th mat-header-cell *matHeaderCellDef>Ação</th>
+          <td mat-cell *matCellDef="let row" class="actions">
+            <button mat-stroked-button (click)="saveDef(row)" [disabled]="savingIds.has(row.id)">
+              <mat-icon>save</mat-icon>
+              Salvar
+            </button>
+            <span class="feedback ok" *ngIf="savedIds.has(row.id)">
+              <mat-icon>check_circle</mat-icon>
+              Salvo
+            </span>
+            <span class="feedback error" *ngIf="errorIds.has(row.id)">
+              <mat-icon>error</mat-icon>
+              Erro
+            </span>
+          </td>
+        </ng-container>
+        <tr mat-header-row *matHeaderRowDef="defColumns; sticky: true"></tr>
+        <tr mat-row *matRowDef="let row; columns: defColumns;"></tr>
+      </table>
+    </div>
+
+    <section class="empty-state" *ngIf="definicoes.length === 0">
+      <mat-icon>category</mat-icon>
+      <div>
+        <div class="empty-title">Nenhum tipo encontrado</div>
+        <div class="empty-subtitle">Cadastre tipos de entidade para configurar permissões.</div>
+      </div>
+    </section>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Configurar tipos de contato</div>
+      <div class="panel-meta">Gerencie opções e máscaras</div>
+    </div>
+    <app-contato-tipos></app-contato-tipos>
+  </section>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Tipos por entidade</div>
+      <div class="panel-meta">Vincule contatos obrigatórios</div>
+    </div>
+
+    <mat-form-field appearance="outline" class="type-select">
+      <mat-label>Tipo</mat-label>
+      <mat-select [(ngModel)]="selectedDefId">
+        <mat-option *ngFor="let d of definicoes" [value]="d.id">{{ d.nome }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    <app-contato-tipos-por-entidade [entidadeDefinicaoId]="selectedDefId"></app-contato-tipos-por-entidade>
+  </section>
+</div>

@@ -1,0 +1,81 @@
+﻿<div class="page">
+  <header class="page-header">
+    <div class="title-block">
+      <h1>{{ title }}</h1>
+      <p *ngIf="currentDef">{{ currentDef.nome }}</p>
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button type="button" (click)="back()">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+      <button mat-stroked-button *ngIf="mode === 'view'" type="button" (click)="toEdit()">
+        <mat-icon>edit</mat-icon>
+        Editar
+      </button>
+      <button mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()" [disabled]="saving">
+        <mat-icon>save</mat-icon>
+        Salvar
+      </button>
+      <button mat-button color="warn" *ngIf="mode !== 'new'" type="button" (click)="remove()" [disabled]="deleting">
+        <mat-icon>delete</mat-icon>
+        Excluir
+      </button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Dados principais</div>
+      <div class="panel-meta" *ngIf="mode !== 'new' && currentDef">Tipo: {{ currentDef.nome }}</div>
+    </div>
+
+    <form [formGroup]="form" class="form-grid">
+      <mat-form-field appearance="outline" *ngIf="mode === 'new'">
+        <mat-label>Tipo</mat-label>
+        <mat-select formControlName="entidadeDefinicaoId">
+          <mat-option *ngFor="let d of definicoes" [value]="d.id">{{ d.nome }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" *ngIf="visible.nome">
+        <mat-label>{{ labels.nome }}</mat-label>
+        <input matInput formControlName="nome" [readonly]="!editable.nome" aria-describedby="nome-err" />
+        <mat-error id="nome-err" *ngIf="form.get('nome')?.hasError('required')">Informe o nome.</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" *ngIf="visible.apelido">
+        <mat-label>{{ labels.apelido }}</mat-label>
+        <input matInput formControlName="apelido" [readonly]="!editable.apelido" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" *ngIf="visible.cpfCnpj">
+        <mat-label>{{ labels.cpfCnpj }}</mat-label>
+        <input matInput formControlName="cpfCnpj" [readonly]="!editable.cpfCnpj" appCpfCnpjMask aria-describedby="cpf-hint cpf-err-invalid cpf-err-required" />
+        <mat-hint id="cpf-hint">Use somente números.</mat-hint>
+        <mat-error id="cpf-err-invalid" *ngIf="form.get('cpfCnpj')?.hasError('cpfCnpj')">CPF/CNPJ inválido.</mat-error>
+        <mat-error id="cpf-err-required" *ngIf="form.get('cpfCnpj')?.hasError('required')">Informe o CPF/CNPJ.</mat-error>
+      </mat-form-field>
+
+      <div class="status-toggle">
+        <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
+        <span class="status-hint">Bloqueie para impedir uso imediato.</span>
+      </div>
+
+      <div class="inline-status" *ngIf="saving" role="status" aria-live="polite">
+        <app-inline-loader label="Salvando"></app-inline-loader>
+      </div>
+      <div class="inline-status" *ngIf="deleting" role="status" aria-live="polite">
+        <app-inline-loader label="Excluindo"></app-inline-loader>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel" *ngIf="registroId">
+    <div class="panel-header">
+      <div class="panel-title">Contatos vinculados</div>
+      <div class="panel-meta">Gerencie telefones, e-mails e outros</div>
+    </div>
+    <app-contatos [entidadeRegistroId]="registroId"></app-contatos>
+  </section>
+</div>

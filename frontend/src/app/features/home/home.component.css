@@ -1,0 +1,87 @@
+﻿.tenant-shell {
+  min-height: calc(100vh - 52px);
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+}
+
+.hero {
+  width: min(980px, 100%);
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1.2fr 1fr;
+  align-items: start;
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.badge {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow-xs);
+}
+
+.badge img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.title {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.hero-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: var(--shadow-sm);
+  display: grid;
+  gap: 10px;
+}
+
+.section-title {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.section-subtitle {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.info {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--muted-strong);
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
