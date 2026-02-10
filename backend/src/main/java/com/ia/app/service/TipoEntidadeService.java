@@ -28,16 +28,39 @@ public class TipoEntidadeService {
     Long tenantId = requireTenant();
     TipoEntidade entity = new TipoEntidade();
     entity.setTenantId(tenantId);
+    entity.setCodigo(normalizeCodigo(request.codigo()));
     entity.setNome(request.nome());
+    entity.setAtivo(request.ativo());
     entity.setVersao(1);
     return repository.save(entity);
+  }
+
+  public void seedDefaults(Long tenantId) {
+    seedIfMissing(tenantId, "CLIENTE", "Cliente");
+    seedIfMissing(tenantId, "FORNECEDOR", "Fornecedor");
+    seedIfMissing(tenantId, "FUNCIONARIO", "Funcionário");
+  }
+
+  private void seedIfMissing(Long tenantId, String codigo, String nome) {
+    if (repository.findByTenantIdAndCodigo(tenantId, codigo).isPresent()) {
+      return;
+    }
+    TipoEntidade entity = new TipoEntidade();
+    entity.setTenantId(tenantId);
+    entity.setCodigo(codigo);
+    entity.setNome(nome);
+    entity.setAtivo(true);
+    entity.setVersao(1);
+    repository.save(entity);
   }
 
   public TipoEntidade update(Long id, TipoEntidadeRequest request) {
     Long tenantId = requireTenant();
     TipoEntidade entity = repository.findByIdAndTenantId(id, tenantId)
       .orElseThrow(() -> new EntityNotFoundException("tipo_entidade_not_found"));
+    entity.setCodigo(normalizeCodigo(request.codigo()));
     entity.setNome(request.nome());
+    entity.setAtivo(request.ativo());
     entity.setVersao(entity.getVersao() + 1);
     return repository.save(entity);
   }
@@ -53,5 +76,10 @@ public class TipoEntidadeService {
       throw new IllegalStateException("tenant_required");
     }
     return tenantId;
+  }
+
+  private String normalizeCodigo(String codigo) {
+    if (codigo == null) return null;
+    return codigo.trim().toUpperCase();
   }
 }

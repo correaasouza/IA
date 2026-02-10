@@ -1,0 +1,112 @@
+﻿<div class="page">
+  <section class="panel hero">
+    <div class="hero-title">
+      <mat-icon>support_agent</mat-icon>
+      Central de Ajuda
+    </div>
+    <div class="hero-sub">Guia rápido das funcionalidades e como usar o sistema.</div>
+    <div class="hero-actions">
+      <button mat-flat-button color="primary" routerLink="/" aria-label="Ir para Home">Ir para Home</button>
+      <button mat-stroked-button routerLink="/reports" aria-label="Ir para Relatórios">Relatórios</button>
+    </div>
+  </section>
+
+  <div class="help-grid">
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Fluxo inicial</div>
+      </div>
+      <div class="step">
+        <div class="step-num">1</div>
+        <div>
+          <div class="step-title">Selecione o locatário</div>
+          <div class="step-desc">No login, escolha o locatário permitido. Isso define o contexto do X-Tenant-Id.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div>
+          <div class="step-title">Cadastre tipos de entidade</div>
+          <div class="step-desc">Defina Cliente, Fornecedor, Funcionário e os campos obrigatórios.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div>
+          <div class="step-title">Cadastre registros</div>
+          <div class="step-desc">Use a tela de Cadastros para inserir registros e contatos.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Funções principais</div>
+      </div>
+      <div class="feature">
+        <div class="feature-title"><mat-icon>domain</mat-icon> Locatários</div>
+        <div class="feature-desc">Criar, editar, ativar/desativar, renovar vencimento e acompanhar status.</div>
+        <mat-chip-set>
+          <mat-chip>MASTER_ADMIN</mat-chip>
+        </mat-chip-set>
+      </div>
+      <div class="feature">
+        <div class="feature-title"><mat-icon>group</mat-icon> Usuários</div>
+        <div class="feature-desc">Criar usuários, desativar, resetar senha e vincular papéis.</div>
+        <mat-chip-set>
+          <mat-chip>MASTER_ADMIN</mat-chip>
+          <mat-chip>TENANT_ADMIN</mat-chip>
+        </mat-chip-set>
+      </div>
+      <div class="feature">
+        <div class="feature-title"><mat-icon>security</mat-icon> Papéis e permissões</div>
+        <div class="feature-desc">Definir papéis por locatário, configurar permissões e atribuições.</div>
+        <mat-chip-set>
+          <mat-chip>MASTER_ADMIN</mat-chip>
+          <mat-chip>TENANT_ADMIN</mat-chip>
+        </mat-chip-set>
+      </div>
+      <div class="feature">
+        <div class="feature-title"><mat-icon>assignment</mat-icon> Cadastros</div>
+        <div class="feature-desc">CRUD de registros por tipo de entidade. Suporta contatos e validações.</div>
+        <mat-chip-set>
+          <mat-chip>MASTER_ADMIN</mat-chip>
+          <mat-chip>TENANT_ADMIN</mat-chip>
+          <mat-chip>USER</mat-chip>
+        </mat-chip-set>
+      </div>
+      <div class="feature">
+        <div class="feature-title"><mat-icon>view_list</mat-icon> Metadados</div>
+        <div class="feature-desc">Configurar tipos de entidade, campos e validações.</div>
+        <mat-chip-set>
+          <mat-chip>MASTER_ADMIN</mat-chip>
+          <mat-chip>TENANT_ADMIN</mat-chip>
+        </mat-chip-set>
+      </div>
+      <div class="feature">
+        <div class="feature-title"><mat-icon>settings</mat-icon> Configurações</div>
+        <div class="feature-desc">Ajustar colunas e formulários por usuário, papel e locatário.</div>
+        <mat-chip-set>
+          <mat-chip>CONFIG_EDITOR</mat-chip>
+        </mat-chip-set>
+      </div>
+      <div class="feature">
+        <div class="feature-title"><mat-icon>bar_chart</mat-icon> Relatórios</div>
+        <div class="feature-desc">Visão geral, comparativos, exportação CSV/XLSX.</div>
+        <mat-chip-set>
+          <mat-chip>RELATORIO_VIEW</mat-chip>
+        </mat-chip-set>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Dicas rápidas</div>
+      </div>
+      <div class="tip"><mat-icon>bolt</mat-icon> Use atalhos no topo para acessar telas frequentes.</div>
+      <div class="tip"><mat-icon>filter_alt</mat-icon> Utilize filtros e ordenação nas listagens.</div>
+      <div class="tip"><mat-icon>lock</mat-icon> Se o locatário estiver bloqueado, contate o administrador.</div>
+      <div class="tip"><mat-icon>verified</mat-icon> Campos obrigatórios são validados automaticamente.</div>
+    </section>
+  </div>
+</div>

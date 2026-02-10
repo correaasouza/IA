@@ -1,0 +1,91 @@
+﻿<div class="page">
+  <header class="page-header">
+    <div class="title-block">
+      <h1>{{ title }}</h1>
+      <p *ngIf="locatario">ID {{ locatario.id }} • Vencimento {{ locatario.dataLimiteAcesso | date:'dd/MM/yyyy' }}</p>
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button type="button" (click)="back()">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+      <button mat-stroked-button *ngIf="mode === 'view'" type="button" (click)="toEdit()">
+        <mat-icon>edit</mat-icon>
+        Editar
+      </button>
+      <button mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()" [disabled]="saving">
+        <mat-icon>save</mat-icon>
+        Salvar
+      </button>
+      <button mat-button color="warn" *ngIf="mode !== 'new'" type="button" (click)="remove()" [disabled]="deleting">
+        <mat-icon>delete</mat-icon>
+        Excluir
+      </button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Dados do locatário</div>
+      <div class="panel-meta" *ngIf="locatario">
+        Status
+        <span class="status" [class.off]="!locatario.ativo" [class.warn]="locatario.ativo && locatario.bloqueado">
+          {{ statusLabel() }}
+        </span>
+      </div>
+    </div>
+
+    <form [formGroup]="form" class="form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Nome</mat-label>
+        <input matInput formControlName="nome" aria-describedby="nome-err" />
+        <mat-error id="nome-err" *ngIf="form.get('nome')?.hasError('required')">Informe o nome.</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Data limite de acesso</mat-label>
+        <input matInput formControlName="dataLimiteAcesso" placeholder="DD/MM/AAAA" appDateMask aria-describedby="data-hint data-err" />
+        <mat-hint id="data-hint">Use DD/MM/AAAA.</mat-hint>
+        <mat-error id="data-err" *ngIf="form.get('dataLimiteAcesso')?.hasError('required')">Informe a data limite.</mat-error>
+      </mat-form-field>
+
+      <div class="status-toggle">
+        <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
+        <span class="status-hint">Desative para bloquear acesso imediato.</span>
+      </div>
+
+      <div class="inline-status" *ngIf="loading" role="status" aria-live="polite">
+        <app-inline-loader label="Carregando dados"></app-inline-loader>
+      </div>
+      <div class="inline-status" *ngIf="saving" role="status" aria-live="polite">
+        <app-inline-loader label="Salvando"></app-inline-loader>
+      </div>
+      <div class="inline-status" *ngIf="deleting" role="status" aria-live="polite">
+        <app-inline-loader label="Excluindo"></app-inline-loader>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel" *ngIf="mode !== 'new'">
+    <div class="panel-header">
+      <div class="panel-title">Ações rápidas</div>
+      <div class="panel-meta">Renovação e status</div>
+    </div>
+    <div class="quick-actions">
+      <button mat-stroked-button type="button" (click)="renew()" [disabled]="renewing">
+        <mat-icon>event_repeat</mat-icon>
+        Renovar +30 dias
+      </button>
+      <button mat-stroked-button type="button" (click)="toggleStatus()" [disabled]="toggling">
+        {{ form.value.ativo ? 'Desativar' : 'Ativar' }}
+      </button>
+    </div>
+    <div class="inline-status" *ngIf="renewing" role="status" aria-live="polite">
+      <app-inline-loader label="Renovando acesso"></app-inline-loader>
+    </div>
+    <div class="inline-status" *ngIf="toggling" role="status" aria-live="polite">
+      <app-inline-loader label="Atualizando status"></app-inline-loader>
+    </div>
+  </section>
+</div>
+

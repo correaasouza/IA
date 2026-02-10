@@ -22,12 +22,14 @@ public class LocatarioService {
   private final LocatarioRepository repository;
   private final UsuarioRepository usuarioRepository;
   private final EntidadeDefinicaoService entidadeDefinicaoService;
+  private final TipoEntidadeService tipoEntidadeService;
   private final ContatoTipoService contatoTipoService;
   private final PermissaoCatalogService permissaoCatalogService;
   private final PapelSeedService papelSeedService;
   private final TenantAdminSeedService tenantAdminSeedService;
 
   public LocatarioService(LocatarioRepository repository, EntidadeDefinicaoService entidadeDefinicaoService,
+      TipoEntidadeService tipoEntidadeService,
       ContatoTipoService contatoTipoService,
       PermissaoCatalogService permissaoCatalogService,
       PapelSeedService papelSeedService,
@@ -35,6 +37,7 @@ public class LocatarioService {
       UsuarioRepository usuarioRepository) {
     this.repository = repository;
     this.entidadeDefinicaoService = entidadeDefinicaoService;
+    this.tipoEntidadeService = tipoEntidadeService;
     this.contatoTipoService = contatoTipoService;
     this.permissaoCatalogService = permissaoCatalogService;
     this.papelSeedService = papelSeedService;
@@ -57,6 +60,7 @@ public class LocatarioService {
     locatario.setAtivo(request.ativo());
     Locatario saved = repository.save(locatario);
     entidadeDefinicaoService.seedDefaults(saved.getId());
+    tipoEntidadeService.seedDefaults(saved.getId());
     contatoTipoService.seedDefaults(saved.getId());
     permissaoCatalogService.seedDefaults(saved.getId());
     papelSeedService.seedDefaults(saved.getId());

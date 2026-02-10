@@ -1,0 +1,97 @@
+﻿<div class="page">
+  <header class="page-header">
+    <div class="title-block">
+      <h1>{{ title }}</h1>
+      <p *ngIf="user">ID {{ user.id }} • {{ user.username }}</p>
+    </div>
+    <div class="header-actions">
+      <button mat-stroked-button type="button" (click)="back()">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+      <button mat-stroked-button *ngIf="mode === 'view'" type="button" (click)="toEdit()">
+        <mat-icon>edit</mat-icon>
+        Editar
+      </button>
+      <button mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()" [disabled]="saving">
+        <mat-icon>save</mat-icon>
+        Salvar
+      </button>
+      <button mat-button color="warn" *ngIf="mode !== 'new'" type="button" (click)="remove()" [disabled]="deleting">
+        <mat-icon>delete</mat-icon>
+        Excluir
+      </button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Dados do usuário</div>
+      <div class="panel-meta" *ngIf="mode !== 'new'">
+        Status
+        <span class="status" [class.off]="!form.value.ativo">{{ form.value.ativo ? 'Ativo' : 'Inativo' }}</span>
+      </div>
+    </div>
+
+    <form [formGroup]="form" class="form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Username</mat-label>
+        <input matInput formControlName="username" aria-describedby="username-err" />
+        <mat-error id="username-err" *ngIf="form.get('username')?.hasError('required')">Informe o username.</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Email</mat-label>
+        <input matInput formControlName="email" placeholder="nome@empresa.com" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" *ngIf="mode === 'new'">
+        <mat-label>Password</mat-label>
+        <input matInput type="password" formControlName="password" aria-describedby="password-err" />
+        <mat-error id="password-err" *ngIf="form.get('password')?.hasError('required')">Informe a senha.</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" *ngIf="mode === 'new'">
+        <mat-label>Roles (separadas por vírgula)</mat-label>
+        <input matInput formControlName="roles" placeholder="USER, TENANT_ADMIN" aria-describedby="roles-hint" />
+        <mat-hint id="roles-hint">Use vírgula para múltiplos papéis.</mat-hint>
+      </mat-form-field>
+
+      <div class="status-toggle">
+        <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
+        <span class="status-hint">Desative para bloquear acesso imediato.</span>
+      </div>
+
+      <div class="inline-status" *ngIf="loading" role="status" aria-live="polite">
+        <app-inline-loader label="Carregando dados"></app-inline-loader>
+      </div>
+      <div class="inline-status" *ngIf="saving" role="status" aria-live="polite">
+        <app-inline-loader label="Salvando"></app-inline-loader>
+      </div>
+      <div class="inline-status" *ngIf="deleting" role="status" aria-live="polite">
+        <app-inline-loader label="Excluindo"></app-inline-loader>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel" *ngIf="mode !== 'new'">
+    <div class="panel-header">
+      <div class="panel-title">Segurança</div>
+      <div class="panel-meta">Reset de senha</div>
+    </div>
+    <div class="security-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Nova senha</mat-label>
+        <input matInput type="password" [(ngModel)]="resetPasswordValue" name="resetPasswordValue" />
+      </mat-form-field>
+      <button mat-stroked-button type="button" (click)="resetPassword()" [disabled]="!resetPasswordValue || resetting">
+        <mat-icon>lock_reset</mat-icon>
+        Aplicar nova senha
+      </button>
+    </div>
+    <div class="inline-status" *ngIf="resetting" role="status" aria-live="polite">
+      <app-inline-loader label="Atualizando senha"></app-inline-loader>
+    </div>
+  </section>
+</div>
+

@@ -1,41 +1,27 @@
-import { Component, Inject, OnInit } from '@angular/core';
+﻿import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatDialogModule, MAT_DIALOG_DATA, MatDialogRef } from '@angular/material/dialog';
 import { MatListModule, MatListOption } from '@angular/material/list';
 import { MatButtonModule } from '@angular/material/button';
+import { forkJoin } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 
 import { RolesService, Papel } from '../roles/roles.service';
 import { UsuarioService } from './usuario.service';
+import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 
 @Component({
   selector: 'app-usuario-papeis-dialog',
   standalone: true,
-  imports: [CommonModule, MatDialogModule, MatListModule, MatButtonModule],
-  template: `
-    <h2 mat-dialog-title>Papéis do usuário</h2>
-    <mat-dialog-content>
-      <div class="subtitle">{{ data.username }}</div>
-      <mat-selection-list #papelList (selectionChange)="onChange(papelList.selectedOptions.selected)">
-        <mat-list-option *ngFor="let p of papeis" [value]="p.id" [selected]="selected.has(p.id)">
-          {{ p.nome }}
-        </mat-list-option>
-      </mat-selection-list>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-stroked-button (click)="close()">Cancelar</button>
-      <button mat-flat-button color="primary" (click)="save()">Salvar</button>
-    </mat-dialog-actions>
-  `,
-  styles: [
-    `
-      .subtitle { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-      mat-dialog-content { min-width: 320px; }
-    `
-  ]
+  imports: [CommonModule, MatDialogModule, MatListModule, MatButtonModule, InlineLoaderComponent],
+  templateUrl: './usuario-papeis-dialog.component.html',
+  styleUrls: ['./usuario-papeis-dialog.component.css']
 })
 export class UsuarioPapeisDialogComponent implements OnInit {
   papeis: Papel[] = [];
   selected = new Set<number>();
+  loading = false;
+  saving = false;
 
   constructor(
     private rolesService: RolesService,
@@ -45,10 +31,14 @@ export class UsuarioPapeisDialogComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.rolesService.list().subscribe({ next: data => this.papeis = data || [] });
-    this.usuarioService.getPapeis(this.data.userId).subscribe({
-      next: data => {
-        const ids = data?.papelIds || [];
+    this.loading = true;
+    forkJoin({
+      papeis: this.rolesService.list(),
+      user: this.usuarioService.getPapeis(this.data.userId)
+    }).pipe(finalize(() => this.loading = false)).subscribe({
+      next: ({ papeis, user }) => {
+        this.papeis = papeis || [];
+        const ids = user?.papelIds || [];
         this.selected = new Set<number>(ids);
       }
     });
@@ -60,7 +50,8 @@ export class UsuarioPapeisDialogComponent implements OnInit {
 
   save() {
     const ids = Array.from(this.selected);
-    this.usuarioService.setPapeis(this.data.userId, ids).subscribe({
+    this.saving = true;
+    this.usuarioService.setPapeis(this.data.userId, ids).pipe(finalize(() => this.saving = false)).subscribe({
       next: () => this.dialogRef.close(true)
     });
   }
@@ -69,3 +60,4 @@ export class UsuarioPapeisDialogComponent implements OnInit {
     this.dialogRef.close(false);
   }
 }
+

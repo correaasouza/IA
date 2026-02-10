@@ -21,6 +21,12 @@ public class TipoEntidade extends AuditableEntity {
   @Column(name = "nome", nullable = false, length = 120)
   private String nome;
 
+  @Column(name = "codigo", nullable = false, length = 40)
+  private String codigo;
+
+  @Column(name = "ativo", nullable = false)
+  private boolean ativo = true;
+
   @Column(name = "versao", nullable = false)
   private Integer versao = 1;
 
@@ -42,6 +48,22 @@ public class TipoEntidade extends AuditableEntity {
 
   public void setNome(String nome) {
     this.nome = nome;
+  }
+
+  public String getCodigo() {
+    return codigo;
+  }
+
+  public void setCodigo(String codigo) {
+    this.codigo = codigo;
+  }
+
+  public boolean isAtivo() {
+    return ativo;
+  }
+
+  public void setAtivo(boolean ativo) {
+    this.ativo = ativo;
   }
 
   public Integer getVersao() {

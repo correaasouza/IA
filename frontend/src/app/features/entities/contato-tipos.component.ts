@@ -12,21 +12,32 @@ import { finalize } from 'rxjs/operators';
 
 import { ContatoTipoService, ContatoTipo } from './contato-tipo.service';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
+import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 
 @Component({
   selector: 'app-contato-tipos',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSlideToggleModule, MatIconModule, InlineLoaderComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSlideToggleModule, MatIconModule, InlineLoaderComponent, FieldSearchComponent],
   templateUrl: './contato-tipos.component.html',
   styleUrls: ['./contato-tipos.component.css']
 })
 export class ContatoTiposComponent implements OnInit {
   tipos: ContatoTipo[] = [];
+  filteredTipos: ContatoTipo[] = [];
   columns = ['codigo', 'nome', 'mascara', 'regex', 'ativo', 'obrigatorio', 'principalUnico', 'acoes'];
   loading = false;
   savingIds = new Set<number>();
   savedIds = new Set<number>();
   errorIds = new Set<number>();
+
+  searchOptions: FieldSearchOption[] = [
+    { key: 'codigo', label: 'Código' },
+    { key: 'nome', label: 'Nome' },
+    { key: 'mascara', label: 'Máscara' },
+    { key: 'regex', label: 'Regex' }
+  ];
+  searchTerm = '';
+  searchFields = ['codigo', 'nome'];
 
   form = this.fb.group({
     codigo: ['', Validators.required],
@@ -47,8 +58,14 @@ export class ContatoTiposComponent implements OnInit {
   load() {
     this.loading = true;
     this.service.list().pipe(finalize(() => this.loading = false)).subscribe({
-      next: data => this.tipos = data,
-      error: () => this.tipos = []
+      next: data => {
+        this.tipos = data;
+        this.applySearch();
+      },
+      error: () => {
+        this.tipos = [];
+        this.filteredTipos = [];
+      }
     });
   }
 
@@ -80,4 +97,27 @@ export class ContatoTiposComponent implements OnInit {
       error: () => this.errorIds.add(row.id)
     });
   }
+
+  onSearchChange(value: FieldSearchValue) {
+    this.searchTerm = value.term;
+    this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(o => o.key);
+    this.applySearch();
+  }
+
+  private applySearch() {
+    const term = this.searchTerm.trim().toLowerCase();
+    if (!term) {
+      this.filteredTipos = [...this.tipos];
+      return;
+    }
+    const match = (val?: string) => (val || '').toLowerCase().includes(term);
+    this.filteredTipos = this.tipos.filter(t => {
+      const matchCodigo = this.searchFields.includes('codigo') && match(t.codigo);
+      const matchNome = this.searchFields.includes('nome') && match(t.nome);
+      const matchMascara = this.searchFields.includes('mascara') && match(t.mascara || '');
+      const matchRegex = this.searchFields.includes('regex') && match(t.regexValidacao || '');
+      return matchCodigo || matchNome || matchMascara || matchRegex;
+    });
+  }
 }
+

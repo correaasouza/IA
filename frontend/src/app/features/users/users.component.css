@@ -42,6 +42,12 @@
   padding-bottom: 8px;
 }
 
+.filters-row {
+  padding-bottom: 8px;
+  display: grid;
+  gap: 8px;
+}
+
 .panel-header {
   display: flex;
   justify-content: space-between;
@@ -217,3 +223,4 @@
     display: grid;
   }
 }
+

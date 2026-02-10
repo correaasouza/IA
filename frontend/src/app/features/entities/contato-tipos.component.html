@@ -40,8 +40,18 @@
     </div>
   </form>
 
-  <div class="table-wrap" *ngIf="tipos.length > 0">
-    <table mat-table [dataSource]="tipos" class="table-dense">
+  <div class="filters-row">
+    <app-field-search
+      [options]="searchOptions"
+      label="Buscar tipos"
+      placeholder="Digite e selecione os campos"
+      [defaultFields]="searchFields"
+      (searchChange)="onSearchChange($event)">
+    </app-field-search>
+  </div>
+
+  <div class="table-wrap" *ngIf="filteredTipos.length > 0">
+    <table mat-table [dataSource]="filteredTipos" class="table-dense">
       <ng-container matColumnDef="codigo">
         <th mat-header-cell *matHeaderCellDef>Código</th>
         <td mat-cell *matCellDef="let row">{{ row.codigo }}</td>
@@ -104,7 +114,7 @@
     </table>
   </div>
 
-  <section class="empty-state" *ngIf="tipos.length === 0" role="status" aria-live="polite">
+  <section class="empty-state" *ngIf="filteredTipos.length === 0" role="status" aria-live="polite">
     <mat-icon>contacts</mat-icon>
     <div>
       <div class="empty-title">Nenhum tipo cadastrado</div>
@@ -112,3 +122,4 @@
     </div>
   </section>
 </div>
+

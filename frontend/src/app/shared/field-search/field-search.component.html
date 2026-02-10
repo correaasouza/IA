@@ -1,0 +1,30 @@
+﻿<div class="field-search">
+  <mat-form-field appearance="outline" class="term">
+    <mat-label>{{ label }}</mat-label>
+    <input
+      matInput
+      [formControl]="termControl"
+      [placeholder]="placeholder"
+      aria-label="Texto da busca" />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" class="fields">
+    <mat-label>Campos</mat-label>
+    <mat-select [formControl]="fieldsControl" multiple aria-label="Campos da busca">
+      <mat-option *ngFor="let opt of options" [value]="opt.key">{{ opt.label }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <div class="actions">
+    <button mat-stroked-button type="button" (click)="clear()" aria-label="Limpar busca">
+      <mat-icon>close</mat-icon>
+      Limpar
+    </button>
+    <button mat-flat-button color="primary" type="button" (click)="apply()" aria-label="Aplicar busca">
+      <mat-icon>search</mat-icon>
+      Buscar
+    </button>
+  </div>
+</div>
+
+

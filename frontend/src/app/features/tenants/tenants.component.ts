@@ -8,11 +8,13 @@ import { MatTableModule } from '@angular/material/table';
 import { MatSelectModule } from '@angular/material/select';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSortModule, Sort } from '@angular/material/sort';
+import { MatIconModule } from '@angular/material/icon';
 import { DateMaskDirective } from '../../shared/date-mask.directive';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { finalize } from 'rxjs/operators';
 
 import { TenantService, LocatarioResponse } from './tenant.service';
+import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 
 @Component({
   selector: 'app-tenants',
@@ -27,8 +29,10 @@ import { TenantService, LocatarioResponse } from './tenant.service';
     MatSelectModule,
     MatPaginatorModule,
     MatSortModule,
+    MatIconModule,
     DateMaskDirective,
-    InlineLoaderComponent
+    InlineLoaderComponent,
+    FieldSearchComponent
   ],
   templateUrl: './tenants.component.html',
   styleUrls: ['./tenants.component.css']
@@ -42,13 +46,19 @@ export class TenantsComponent implements OnInit {
   sort = 'id,asc';
   loading = false;
 
+  searchOptions: FieldSearchOption[] = [
+    { key: 'nome', label: 'Nome' },
+    { key: 'id', label: 'ID' }
+  ];
+  searchTerm = '';
+  searchFields = ['nome'];
+
   form = this.fb.group({
     nome: ['', Validators.required],
     dataLimiteAcesso: ['', Validators.required]
   });
 
   filters = this.fb.group({
-    nome: [''],
     status: ['']
   });
 
@@ -63,17 +73,23 @@ export class TenantsComponent implements OnInit {
     const status = this.filters.value.status || '';
     const bloqueado = status === 'bloqueado' ? 'true' : '';
     const ativo = status === 'ativo' ? 'true' : '';
+    const nome = this.searchFields.includes('nome') ? this.searchTerm : '';
 
     this.service.list({
       page: this.pageIndex,
       size: this.pageSize,
       sort: this.sort,
-      nome: this.filters.value.nome || '',
+      nome,
       bloqueado,
       ativo
     }).pipe(finalize(() => this.loading = false)).subscribe({
       next: data => {
-        this.locatarios = data.content || [];
+        let items = data.content || [];
+        if (this.searchTerm && this.searchFields.includes('id')) {
+          const term = this.searchTerm.toLowerCase();
+          items = items.filter(i => String(i.id).toLowerCase().includes(term));
+        }
+        this.locatarios = items;
         this.totalElements = data.totalElements || 0;
       },
       error: () => {
@@ -86,6 +102,12 @@ export class TenantsComponent implements OnInit {
   applyFilters() {
     this.pageIndex = 0;
     this.load();
+  }
+
+  onSearchChange(value: FieldSearchValue) {
+    this.searchTerm = value.term;
+    this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(o => o.key);
+    this.applyFilters();
   }
 
   pageChange(event: PageEvent) {
@@ -134,3 +156,5 @@ export class TenantsComponent implements OnInit {
     });
   }
 }
+
+

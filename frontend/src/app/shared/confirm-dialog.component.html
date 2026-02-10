@@ -1,0 +1,14 @@
+﻿<div class="dialog" role="dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+  <div class="icon">
+    <mat-icon>warning</mat-icon>
+  </div>
+  <div class="content">
+    <div class="title" id="confirm-title">{{ data?.title || 'Confirmar' }}</div>
+    <div class="message" id="confirm-message">{{ data?.message || 'Tem certeza?' }}</div>
+  </div>
+</div>
+<div class="actions">
+  <button mat-stroked-button (click)="close(false)" aria-label="Cancelar ação">Cancelar</button>
+  <button mat-flat-button color="warn" (click)="close(true)" aria-label="Confirmar exclusão">Excluir</button>
+</div>
+

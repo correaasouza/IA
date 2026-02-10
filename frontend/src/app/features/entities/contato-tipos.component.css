@@ -29,6 +29,12 @@
   padding-bottom: 8px;
 }
 
+.filters-row {
+  padding-bottom: 8px;
+  display: grid;
+  gap: 8px;
+}
+
 .form-grid {
   display: grid;
   gap: 10px;
@@ -122,3 +128,4 @@
     grid-template-columns: 1fr;
   }
 }
+

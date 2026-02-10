@@ -5,25 +5,28 @@ import { environment } from '../../../environments/environment';
 
 export interface TipoEntidade {
   id: number;
+  codigo: string;
   nome: string;
+  ativo: boolean;
   versao: number;
 }
 
-export interface CampoDefinicao {
+export interface TipoEntidadeCampoRegra {
   id: number;
   tipoEntidadeId: number;
-  nome: string;
+  campo: string;
+  habilitado: boolean;
+  requerido: boolean;
+  visivel: boolean;
+  editavel: boolean;
   label?: string;
-  tipo: string;
-  obrigatorio: boolean;
-  tamanho?: number;
   versao: number;
 }
 
 @Injectable({ providedIn: 'root' })
 export class MetadataService {
   private baseTipos = `${environment.apiBaseUrl}/api/tipos-entidade`;
-  private baseCampos = `${environment.apiBaseUrl}/api/campos-definicao`;
+  private baseCampos = `${environment.apiBaseUrl}/api/tipos-entidade`;
 
   constructor(private http: HttpClient) {}
 
@@ -68,36 +71,21 @@ export class MetadataService {
     );
   }
 
-  createTipo(nome: string): Observable<TipoEntidade> {
-    return this.http.post<TipoEntidade>(this.baseTipos, { nome });
+  createTipo(payload: any): Observable<TipoEntidade> {
+    return this.http.post<TipoEntidade>(this.baseTipos, payload);
   }
 
-  listCampos(tenantId: string, tipoEntidadeId: number): Observable<any> {
+  listCampos(tenantId: string, tipoEntidadeId: number): Observable<TipoEntidadeCampoRegra[]> {
     const key = `meta:campos:${tenantId}:${tipoEntidadeId}`;
-    const etagKey = `meta:campos:etag:${tenantId}:${tipoEntidadeId}`;
     const cached = localStorage.getItem(key);
-    const etag = localStorage.getItem(etagKey) || '';
-    const headers = etag ? new HttpHeaders({ 'If-None-Match': etag }) : undefined;
-
-    return this.http.get(`${this.baseCampos}?tipoEntidadeId=${tipoEntidadeId}`, { headers, observe: 'response' }).pipe(
+    return this.http.get<TipoEntidadeCampoRegra[]>(`${this.baseCampos}/${tipoEntidadeId}/campos`).pipe(
       tap(resp => {
-        if (resp.status === 200) {
-          localStorage.setItem(key, JSON.stringify(resp.body));
-          const newEtag = resp.headers.get('ETag');
-          if (newEtag) {
-            localStorage.setItem(etagKey, newEtag);
-          }
-        }
+        localStorage.setItem(key, JSON.stringify(resp));
       }),
       (source) => new Observable(observer => {
         source.subscribe({
           next: resp => {
-            if (resp.status === 304 && cached) {
-              observer.next(JSON.parse(cached));
-              observer.complete();
-              return;
-            }
-            observer.next(resp.body);
+            observer.next(resp);
             observer.complete();
           },
           error: err => {
@@ -113,7 +101,7 @@ export class MetadataService {
     );
   }
 
-  createCampo(payload: any): Observable<CampoDefinicao> {
-    return this.http.post<CampoDefinicao>(this.baseCampos, payload);
+  saveCampos(tipoEntidadeId: number, payload: any[]): Observable<TipoEntidadeCampoRegra[]> {
+    return this.http.put<TipoEntidadeCampoRegra[]>(`${this.baseCampos}/${tipoEntidadeId}/campos`, payload);
   }
 }

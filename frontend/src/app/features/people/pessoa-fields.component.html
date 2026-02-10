@@ -1,0 +1,35 @@
+<div class="form-grid" [formGroup]="form">
+  <mat-form-field appearance="outline" *ngIf="isVisible('nome')">
+    <mat-label>{{ labelFor('nome', 'Nome') }}</mat-label>
+    <input matInput formControlName="nome" [attr.aria-required]="isRequired('nome')" />
+    <mat-error *ngIf="form.get('nome')?.hasError('required')">Informe o nome.</mat-error>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" *ngIf="isVisible('apelido')">
+    <mat-label>{{ labelFor('apelido', 'Apelido') }}</mat-label>
+    <input matInput formControlName="apelido" />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" *ngIf="isVisible('cpf')">
+    <mat-label>{{ labelFor('cpf', 'CPF') }}</mat-label>
+    <input matInput formControlName="cpf" />
+    <mat-error *ngIf="form.get('cpf')?.hasError('required')">Informe o CPF.</mat-error>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" *ngIf="isVisible('cnpj')">
+    <mat-label>{{ labelFor('cnpj', 'CNPJ') }}</mat-label>
+    <input matInput formControlName="cnpj" />
+    <mat-error *ngIf="form.get('cnpj')?.hasError('required')">Informe o CNPJ.</mat-error>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" *ngIf="isVisible('idEstrangeiro')">
+    <mat-label>{{ labelFor('idEstrangeiro', 'ID estrangeiro') }}</mat-label>
+    <input matInput formControlName="idEstrangeiro" />
+    <mat-error *ngIf="form.get('idEstrangeiro')?.hasError('required')">Informe o documento estrangeiro.</mat-error>
+  </mat-form-field>
+
+  <div class="status-toggle" *ngIf="showStatus">
+    <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
+    <span class="status-hint">Desative para bloquear o uso desta pessoa.</span>
+  </div>
+</div>

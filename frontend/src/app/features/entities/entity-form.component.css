@@ -63,6 +63,10 @@
   width: 100%;
 }
 
+.form-grid .wide {
+  grid-column: 1 / -1;
+}
+
 .status-toggle {
   display: flex;
   align-items: center;

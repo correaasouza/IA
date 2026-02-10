@@ -1,0 +1,17 @@
+﻿<div class="dialog-header">
+  <div>
+    <div class="title">Ordenar atalhos</div>
+    <div class="subtitle">Arraste para reorganizar a ordem exibida no topo.</div>
+  </div>
+</div>
+<div class="dialog-body" cdkDropList (cdkDropListDropped)="drop($event)" aria-label="Lista de atalhos">
+  <div class="item" *ngFor="let i of items" cdkDrag>
+    <span class="handle" aria-hidden="true">??</span>
+    <span class="label">{{ i.label }}</span>
+  </div>
+</div>
+<div class="actions">
+  <button mat-stroked-button (click)="cancel()">Cancelar</button>
+  <button mat-flat-button color="primary" (click)="save()">Salvar</button>
+</div>
+

@@ -49,9 +49,9 @@
 
       <div class="hint-block">
         <div class="hint-title">Exemplo</div>
-        <pre class="code">{
+        <pre class="code">{{ '{' }}
   "columns": ["nome", "cpfCnpj", "ativo", "acoes"]
-}</pre>
+{{ '}' }}</pre>
       </div>
 
       <div class="actions">
@@ -108,12 +108,12 @@
 
       <div class="hint-block">
         <div class="hint-title">Exemplo</div>
-        <pre class="code">{
-  "fields": {
-    "nome": {"label": "Razão social", "visible": true, "editable": true},
-    "cpfCnpj": {"label": "Documento", "visible": true, "editable": false}
-  }
-}</pre>
+        <pre class="code">{{ '{' }}
+  "fields": {{ '{' }}
+    "nome": {{ '{' }}"label": "Razão social", "visible": true, "editable": true{{ '}' }},
+    "cpfCnpj": {{ '{' }}"label": "Documento", "visible": true, "editable": false{{ '}' }}
+  {{ '}' }}
+{{ '}' }}</pre>
       </div>
 
       <div class="actions">
@@ -133,3 +133,5 @@
     </form>
   </section>
 </div>
+
+

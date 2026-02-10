@@ -29,6 +29,12 @@
   padding-bottom: 8px;
 }
 
+.filters-row {
+  padding-bottom: 8px;
+  display: grid;
+  gap: 8px;
+}
+
 .table-wrap {
   overflow: auto;
   border-top: 1px solid var(--border-light);
@@ -109,3 +115,4 @@
 .empty-subtitle {
   font-size: 12px;
 }
+

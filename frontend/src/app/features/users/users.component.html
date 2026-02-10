@@ -56,15 +56,25 @@
   <section class="panel">
     <div class="panel-header">
       <div class="panel-title">Usuários cadastrados</div>
-      <div class="panel-meta">{{ usuarios.length }} usuário(s)</div>
+      <div class="panel-meta">{{ filteredUsuarios.length }} usuário(s)</div>
     </div>
 
     <div class="panel-loader" *ngIf="loading">
       <app-inline-loader label="Carregando usuários"></app-inline-loader>
     </div>
 
-    <div class="table-wrap" *ngIf="usuarios.length > 0">
-      <table mat-table [dataSource]="usuarios" class="table-dense">
+    <div class="filters-row">
+      <app-field-search
+        [options]="searchOptions"
+        label="Buscar"
+        placeholder="Digite e selecione os campos"
+        [defaultFields]="searchFields"
+        (searchChange)="onSearchChange($event)">
+      </app-field-search>
+    </div>
+
+    <div class="table-wrap" *ngIf="filteredUsuarios.length > 0">
+      <table mat-table [dataSource]="filteredUsuarios" class="table-dense">
         <ng-container matColumnDef="username">
           <th mat-header-cell *matHeaderCellDef>Username</th>
           <td mat-cell *matCellDef="let row">{{ row.username }}</td>
@@ -106,8 +116,8 @@
       </table>
     </div>
 
-    <div class="cards" *ngIf="usuarios.length > 0">
-      <article class="card-row" *ngFor="let row of usuarios">
+    <div class="cards" *ngIf="filteredUsuarios.length > 0">
+      <article class="card-row" *ngFor="let row of filteredUsuarios">
         <div class="card-row-header">
           <div>
             <div class="card-row-title">{{ row.username }}</div>
@@ -131,7 +141,7 @@
       </article>
     </div>
 
-    <section class="empty-state" *ngIf="usuarios.length === 0" role="status" aria-live="polite">
+    <section class="empty-state" *ngIf="filteredUsuarios.length === 0" role="status" aria-live="polite">
       <app-inline-loader *ngIf="loading" label="Carregando usuários"></app-inline-loader>
       <mat-icon>group_off</mat-icon>
       <div>
@@ -141,3 +151,4 @@
     </section>
   </section>
 </div>
+

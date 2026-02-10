@@ -1,0 +1,24 @@
+﻿<h2 mat-dialog-title>Papéis do usuário</h2>
+<mat-dialog-content>
+  <div class="subtitle">{{ data.username }}</div>
+  <div class="content-body">
+    <app-inline-loader *ngIf="loading" label="Carregando papéis"></app-inline-loader>
+    <mat-selection-list
+      *ngIf="!loading"
+      #papelList
+      (selectionChange)="onChange(papelList.selectedOptions.selected)"
+      aria-label="Selecionar papéis do usuário">
+      <mat-list-option *ngFor="let p of papeis" [value]="p.id" [selected]="selected.has(p.id)">
+        {{ p.nome }}
+      </mat-list-option>
+    </mat-selection-list>
+  </div>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-stroked-button (click)="close()">Cancelar</button>
+  <button mat-flat-button color="primary" (click)="save()" [disabled]="saving">
+    <span *ngIf="!saving">Salvar</span>
+    <span *ngIf="saving">Salvando...</span>
+  </button>
+</mat-dialog-actions>
+

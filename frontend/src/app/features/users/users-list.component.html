@@ -1,0 +1,154 @@
+﻿<div class="page">
+  <header class="page-header">
+    <div class="title-block">
+      <h1>Usuários</h1>
+      <p>Gerencie acessos e perfis</p>
+    </div>
+    <div class="header-actions">
+      <button mat-flat-button color="primary" routerLink="/users/new">
+        <mat-icon>add</mat-icon>
+        Novo usuário
+      </button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Filtros</div>
+      <div class="panel-meta">{{ totalElements }} usuário(s)</div>
+    </div>
+    <div class="panel-content">
+      <app-field-search
+        [options]="searchOptions"
+        label="Buscar"
+        placeholder="Digite e selecione os campos"
+        [defaultFields]="searchFields"
+        (searchChange)="onSearchChange($event)">
+      </app-field-search>
+    </div>
+  </section>
+
+  <section class="panel table-panel" *ngIf="filteredUsuarios.length > 0">
+    <div class="panel-header">
+      <div class="panel-title">Usuários cadastrados</div>
+      <div class="panel-meta">{{ totalElements }} usuário(s)</div>
+    </div>
+    <div class="panel-loader" *ngIf="loading">
+      <app-inline-loader label="Carregando usuários"></app-inline-loader>
+    </div>
+
+    <div class="table-wrap">
+      <table mat-table [dataSource]="filteredUsuarios" class="table-dense">
+        <ng-container matColumnDef="username">
+          <th mat-header-cell *matHeaderCellDef>Username</th>
+          <td mat-cell *matCellDef="let row">{{ row.username }}</td>
+        </ng-container>
+        <ng-container matColumnDef="email">
+          <th mat-header-cell *matHeaderCellDef>Email</th>
+          <td mat-cell *matCellDef="let row">{{ row.email || '-' }}</td>
+        </ng-container>
+        <ng-container matColumnDef="ativo">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="status" [class.off]="!row.ativo">{{ statusLabel(row) }}</span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="papeis">
+          <th mat-header-cell *matHeaderCellDef>Papéis</th>
+          <td mat-cell *matCellDef="let row">
+            <mat-chip-listbox>
+              <mat-chip *ngFor="let p of (row.papeis || [])">{{ p }}</mat-chip>
+            </mat-chip-listbox>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef>Ações</th>
+          <td mat-cell *matCellDef="let row" class="actions">
+            <button mat-stroked-button (click)="view(row)" [attr.aria-label]="'Consultar ' + row.username">
+              <mat-icon>visibility</mat-icon>
+              Consultar
+            </button>
+            <button mat-stroked-button (click)="edit(row)" [attr.aria-label]="'Editar ' + row.username">
+              <mat-icon>edit</mat-icon>
+              Editar
+            </button>
+            <button mat-stroked-button (click)="editPapeis(row)" [attr.aria-label]="'Papéis de ' + row.username">
+              <mat-icon>security</mat-icon>
+              Papéis
+            </button>
+            <button mat-button color="warn" (click)="remove(row)" [attr.aria-label]="'Excluir ' + row.username">
+              <mat-icon>delete</mat-icon>
+              Excluir
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="data-row"></tr>
+      </table>
+    </div>
+
+    <div class="cards">
+      <article class="card-row" *ngFor="let row of filteredUsuarios">
+        <div class="card-row-header">
+          <div>
+            <div class="card-row-title">{{ row.username }}</div>
+            <div class="card-row-subtitle">{{ row.email || 'E-mail não informado' }}</div>
+          </div>
+          <span class="status" [class.off]="!row.ativo">{{ statusLabel(row) }}</span>
+        </div>
+        <div class="card-row-body">
+          <div class="meta">
+            <span class="meta-label">Papéis</span>
+            <div class="meta-value">
+              <mat-chip-listbox>
+                <mat-chip *ngFor="let p of (row.papeis || [])">{{ p }}</mat-chip>
+                <mat-chip *ngIf="(row.papeis || []).length === 0">Nenhum</mat-chip>
+              </mat-chip-listbox>
+            </div>
+          </div>
+        </div>
+        <div class="card-row-actions">
+          <button mat-stroked-button (click)="view(row)" [attr.aria-label]="'Consultar ' + row.username">
+            <mat-icon>visibility</mat-icon>
+            Consultar
+          </button>
+          <button mat-stroked-button (click)="edit(row)" [attr.aria-label]="'Editar ' + row.username">
+            <mat-icon>edit</mat-icon>
+            Editar
+          </button>
+          <button mat-stroked-button (click)="editPapeis(row)" [attr.aria-label]="'Papéis de ' + row.username">
+            <mat-icon>security</mat-icon>
+            Papéis
+          </button>
+          <button mat-button color="warn" (click)="remove(row)" [attr.aria-label]="'Excluir ' + row.username">
+            <mat-icon>delete</mat-icon>
+            Excluir
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <mat-paginator
+      [length]="totalElements"
+      [pageSize]="pageSize"
+      [pageIndex]="pageIndex"
+      [pageSizeOptions]="[10,25,50]"
+      (page)="pageChange($event)"></mat-paginator>
+  </section>
+
+  <section class="empty-state" *ngIf="filteredUsuarios.length === 0" role="status" aria-live="polite">
+    <app-inline-loader *ngIf="loading" label="Carregando usuários"></app-inline-loader>
+    <mat-icon>people</mat-icon>
+    <div>
+      <div class="empty-title">Nenhum usuário encontrado</div>
+      <div class="empty-subtitle">Cadastre um novo usuário para começar.</div>
+    </div>
+    <button mat-flat-button color="primary" routerLink="/users/new">
+      <mat-icon>add</mat-icon>
+      Criar usuário
+    </button>
+  </section>
+</div>
+
+

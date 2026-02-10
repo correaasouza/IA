@@ -11,11 +11,12 @@ import { finalize } from 'rxjs/operators';
 import { ContatoTipoService, ContatoTipo } from './contato-tipo.service';
 import { ContatoTipoPorEntidadeService, ContatoTipoPorEntidade } from './contato-tipo-por-entidade.service';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
+import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 
 @Component({
   selector: 'app-contato-tipos-por-entidade',
   standalone: true,
-  imports: [CommonModule, FormsModule, MatTableModule, MatSelectModule, MatSlideToggleModule, MatButtonModule, MatIconModule, InlineLoaderComponent],
+  imports: [CommonModule, FormsModule, MatTableModule, MatSelectModule, MatSlideToggleModule, MatButtonModule, MatIconModule, InlineLoaderComponent, FieldSearchComponent],
   templateUrl: './contato-tipos-por-entidade.component.html',
   styleUrls: ['./contato-tipos-por-entidade.component.css']
 })
@@ -24,11 +25,20 @@ export class ContatoTiposPorEntidadeComponent implements OnChanges {
 
   tipos: ContatoTipo[] = [];
   rows: ContatoTipoPorEntidade[] = [];
+  filteredRows: ContatoTipoPorEntidade[] = [];
   columns = ['tipo', 'obrigatorio', 'principalUnico', 'acoes'];
   loading = false;
   savingIds = new Set<number>();
   savedIds = new Set<number>();
   errorIds = new Set<number>();
+
+  searchOptions: FieldSearchOption[] = [
+    { key: 'tipo', label: 'Tipo' },
+    { key: 'obrigatorio', label: 'Obrigatório' },
+    { key: 'principalUnico', label: 'Principal único' }
+  ];
+  searchTerm = '';
+  searchFields = ['tipo'];
 
   constructor(
     private tiposService: ContatoTipoService,
@@ -44,7 +54,10 @@ export class ContatoTiposPorEntidadeComponent implements OnChanges {
 
   loadTipos() {
     this.tiposService.list().subscribe({
-      next: data => this.tipos = data,
+      next: data => {
+        this.tipos = data;
+        this.applySearch();
+      },
       error: () => this.tipos = []
     });
   }
@@ -53,8 +66,14 @@ export class ContatoTiposPorEntidadeComponent implements OnChanges {
     if (!this.entidadeDefinicaoId) return;
     this.loading = true;
     this.service.list(this.entidadeDefinicaoId).pipe(finalize(() => this.loading = false)).subscribe({
-      next: data => this.rows = data,
-      error: () => this.rows = []
+      next: data => {
+        this.rows = data;
+        this.applySearch();
+      },
+      error: () => {
+        this.rows = [];
+        this.filteredRows = [];
+      }
     });
   }
 
@@ -93,4 +112,31 @@ export class ContatoTiposPorEntidadeComponent implements OnChanges {
       });
     }
   }
+
+  onSearchChange(value: FieldSearchValue) {
+    this.searchTerm = value.term;
+    this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(o => o.key);
+    this.applySearch();
+  }
+
+  private applySearch() {
+    const term = this.searchTerm.trim().toLowerCase();
+    if (!term) {
+      this.filteredRows = [...this.rows];
+      return;
+    }
+    const match = (val?: string) => (val || '').toLowerCase().includes(term);
+    this.filteredRows = this.rows.filter(r => {
+      const tipoNome = this.getTipoNome(r.contatoTipoId);
+      const matchTipo = this.searchFields.includes('tipo') && match(tipoNome);
+      const matchObrigatorio = this.searchFields.includes('obrigatorio') && match(r.obrigatorio ? 'sim' : 'nao');
+      const matchPrincipal = this.searchFields.includes('principalUnico') && match(r.principalUnico ? 'sim' : 'nao');
+      return matchTipo || matchObrigatorio || matchPrincipal;
+    });
+  }
+
+  getTipoNome(id: number) {
+    return this.tipos.find(t => t.id === id)?.nome || '';
+  }
 }
+

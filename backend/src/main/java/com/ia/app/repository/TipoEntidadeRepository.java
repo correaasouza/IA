@@ -12,6 +12,7 @@ import org.springframework.data.repository.query.Param;
 public interface TipoEntidadeRepository extends JpaRepository<TipoEntidade, Long> {
   Page<TipoEntidade> findAllByTenantId(Long tenantId, Pageable pageable);
   Optional<TipoEntidade> findByIdAndTenantId(Long id, Long tenantId);
+  Optional<TipoEntidade> findByTenantIdAndCodigo(Long tenantId, String codigo);
 
   @Query("select max(t.updatedAt) from TipoEntidade t where t.tenantId = :tenantId")
   Instant findMaxUpdatedAt(@Param("tenantId") Long tenantId);

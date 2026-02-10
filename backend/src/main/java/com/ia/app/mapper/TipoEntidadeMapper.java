@@ -9,7 +9,9 @@ public class TipoEntidadeMapper {
   public static TipoEntidadeResponse toResponse(TipoEntidade entity) {
     return new TipoEntidadeResponse(
       entity.getId(),
+      entity.getCodigo(),
       entity.getNome(),
+      entity.isAtivo(),
       entity.getVersao()
     );
   }

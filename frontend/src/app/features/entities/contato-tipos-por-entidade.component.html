@@ -8,8 +8,18 @@
     <app-inline-loader label="Carregando vínculos"></app-inline-loader>
   </div>
 
-  <div class="table-wrap" *ngIf="rows.length > 0">
-    <table mat-table [dataSource]="rows" class="table-dense">
+  <div class="filters-row">
+    <app-field-search
+      [options]="searchOptions"
+      label="Buscar vínculos"
+      placeholder="Digite e selecione os campos"
+      [defaultFields]="searchFields"
+      (searchChange)="onSearchChange($event)">
+    </app-field-search>
+  </div>
+
+  <div class="table-wrap" *ngIf="filteredRows.length > 0">
+    <table mat-table [dataSource]="filteredRows" class="table-dense">
       <ng-container matColumnDef="tipo">
         <th mat-header-cell *matHeaderCellDef>Tipo</th>
         <td mat-cell *matCellDef="let row">
@@ -60,7 +70,7 @@
     </button>
   </div>
 
-  <section class="empty-state" *ngIf="rows.length === 0" role="status" aria-live="polite">
+  <section class="empty-state" *ngIf="filteredRows.length === 0" role="status" aria-live="polite">
     <mat-icon>playlist_add</mat-icon>
     <div>
       <div class="empty-title">Nenhum vínculo criado</div>
@@ -68,3 +78,4 @@
     </div>
   </section>
 </div>
+

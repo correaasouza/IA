@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -12,13 +12,18 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { forkJoin } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 
-import { EntidadeService, EntidadeDefinicao, EntidadeRegistro } from './entidade.service';
+import { TipoEntidadeService, TipoEntidade } from './tipo-entidade.service';
+import { EntidadePapelService, EntidadePapel } from './entidade-papel.service';
+import { PessoaService, Pessoa } from '../people/pessoa.service';
 import { ConfigService } from '../configs/config.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { NotificationService } from '../../core/notifications/notification.service';
+import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 
 @Component({
   selector: 'app-entities-list',
@@ -37,34 +42,44 @@ import { NotificationService } from '../../core/notifications/notification.servi
     FormsModule,
     MatIconModule,
     MatDialogModule,
-    InlineLoaderComponent
+    MatTooltipModule,
+    InlineLoaderComponent,
+    FieldSearchComponent
   ],
   templateUrl: './entities-list.component.html',
   styleUrls: ['./entities-list.component.css']
 })
 export class EntitiesListComponent implements OnInit {
-  definicoes: EntidadeDefinicao[] = [];
-  registros: EntidadeRegistro[] = [];
-  selectedDefId: number | null = null;
+  tipos: TipoEntidade[] = [];
+  registros: EntidadePapel[] = [];
+  filtered: EntidadePapel[] = [];
+  pessoas = new Map<number, Pessoa>();
+  selectedTipoId: number | null = null;
   totalElements = 0;
   pageIndex = 0;
   pageSize = 50;
   loading = false;
 
-  visible = { nome: true, apelido: true, cpfCnpj: true };
-  labels = { nome: 'Nome', apelido: 'Apelido', cpfCnpj: 'CPF/CNPJ' };
+  columns: string[] = ['pessoa', 'documento', 'alerta', 'ativo', 'acoes'];
 
-  columns: string[] = ['nome', 'apelido', 'cpfCnpj', 'ativo', 'acoes'];
+  searchOptions: FieldSearchOption[] = [
+    { key: 'nome', label: 'Nome' },
+    { key: 'documento', label: 'Documento' },
+    { key: 'alerta', label: 'Alerta' }
+  ];
+  searchTerm = '';
+  searchFields = ['nome', 'documento'];
 
   filters = this.fb.group({
-    nome: [''],
-    cpfCnpj: [''],
-    ativo: ['']
+    ativo: [''],
+    comAlerta: [false]
   });
 
   constructor(
     private fb: FormBuilder,
-    private service: EntidadeService,
+    private tipoService: TipoEntidadeService,
+    private service: EntidadePapelService,
+    private pessoaService: PessoaService,
     private config: ConfigService,
     private router: Router,
     private dialog: MatDialog,
@@ -72,49 +87,61 @@ export class EntitiesListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.loadDef();
+    this.loadTipos();
   }
 
-  loadDef() {
-    this.service.listDef(0, 50).subscribe({
+  loadTipos() {
+    this.tipoService.list(0, 100).subscribe({
       next: data => {
-        this.definicoes = data.content || [];
-        if (this.definicoes.length > 0 && this.definicoes[0]) {
-          this.selectedDefId = this.definicoes[0].id;
-          this.changeDef();
+        this.tipos = data.content || [];
+        if (this.tipos.length > 0 && this.tipos[0]) {
+          this.selectedTipoId = this.tipos[0].id;
+          this.changeTipo();
         }
       }
     });
   }
 
-  changeDef() {
-    if (!this.selectedDefId) return;
+  changeTipo() {
+    if (!this.selectedTipoId) return;
     this.loadConfig();
     this.loadReg();
   }
 
   loadReg() {
-    if (!this.selectedDefId) return;
     this.loading = true;
-    const ativo = this.filters.value.ativo || '';
-    this.service.listReg(this.selectedDefId, this.pageIndex, this.pageSize, {
-      nome: this.filters.value.nome || '',
-      cpfCnpj: this.filters.value.cpfCnpj || '',
-      ativo
-    }).pipe(finalize(() => this.loading = false)).subscribe({
+    this.service.list(this.selectedTipoId, this.pageIndex, this.pageSize).pipe(finalize(() => this.loading = false)).subscribe({
       next: data => {
         this.registros = data.content || [];
         this.totalElements = data.totalElements || 0;
+        this.loadPessoas();
       },
       error: () => {
         this.registros = [];
+        this.filtered = [];
         this.totalElements = 0;
       }
     });
   }
 
+  loadPessoas() {
+    const ids = Array.from(new Set(this.registros.map(r => r.pessoaId))).filter(id => !this.pessoas.has(id));
+    if (ids.length === 0) {
+      this.applySearch();
+      return;
+    }
+    const calls = ids.map(id => this.pessoaService.get(id));
+    forkJoin(calls).subscribe({
+      next: pessoas => {
+        pessoas.forEach(p => this.pessoas.set(p.id, p));
+        this.applySearch();
+      },
+      error: () => this.applySearch()
+    });
+  }
+
   loadConfig() {
-    const screenId = `entities-${this.selectedDefId}`;
+    const screenId = `entities-${this.selectedTipoId}`;
     const rolesKeycloak = (JSON.parse(localStorage.getItem('roles') || '[]') as string[]);
     const rolesTenant = (JSON.parse(localStorage.getItem('tenantRoles') || '[]') as string[]);
     const roles = Array.from(new Set([...rolesKeycloak, ...rolesTenant])).join(',');
@@ -123,29 +150,13 @@ export class EntitiesListComponent implements OnInit {
     this.config.getColunas(screenId, userId, roles).subscribe({
       next: cfg => this.applyConfig(cfg?.configJson || '{}')
     });
-
-    this.config.getForm(screenId, userId, roles).subscribe({
-      next: cfg => this.applyFormConfig(cfg?.configJson || '{}')
-    });
   }
 
   applyConfig(configJson: string) {
     try {
       const cfg = JSON.parse(configJson);
-      const cols = cfg?.columns || ['nome', 'apelido', 'cpfCnpj', 'ativo', 'acoes'];
-      this.columns = cols.filter((c: string) => ['nome','apelido','cpfCnpj','ativo','acoes'].includes(c));
-    } catch {
-    }
-  }
-
-  applyFormConfig(configJson: string) {
-    try {
-      const cfg = JSON.parse(configJson);
-      this.visible.apelido = cfg?.fields?.apelido?.visible ?? true;
-      this.visible.cpfCnpj = cfg?.fields?.cpfCnpj?.visible ?? true;
-      this.labels.nome = cfg?.fields?.nome?.label ?? 'Nome';
-      this.labels.apelido = cfg?.fields?.apelido?.label ?? 'Apelido';
-      this.labels.cpfCnpj = cfg?.fields?.cpfCnpj?.label ?? 'CPF/CNPJ';
+      const cols = cfg?.columns || ['pessoa', 'documento', 'alerta', 'ativo', 'acoes'];
+      this.columns = cols.filter((c: string) => ['pessoa', 'documento', 'alerta', 'ativo', 'acoes'].includes(c));
     } catch {
     }
   }
@@ -155,32 +166,70 @@ export class EntitiesListComponent implements OnInit {
     this.loadReg();
   }
 
+  onSearchChange(value: FieldSearchValue) {
+    this.searchTerm = value.term;
+    this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(o => o.key);
+    this.applySearch();
+  }
+
+  private applySearch() {
+    const term = this.searchTerm.trim().toLowerCase();
+    const status = this.filters.value.ativo || '';
+    const comAlerta = !!this.filters.value.comAlerta;
+    this.filtered = this.registros.filter(r => {
+      if (status && (r.ativo ? 'ATIVO' : 'INATIVO') !== status) return false;
+      if (comAlerta && !r.alerta) return false;
+      if (!term) return true;
+      const pessoa = this.pessoas.get(r.pessoaId);
+      const nome = pessoa?.nome || '';
+      const doc = pessoa?.cpf || pessoa?.cnpj || pessoa?.idEstrangeiro || '';
+      const alerta = (r.alerta || '').toLowerCase();
+      const matchNome = this.searchFields.includes('nome') && nome.toLowerCase().includes(term);
+      const matchDoc = this.searchFields.includes('documento') && doc.toLowerCase().includes(term);
+      const matchAlerta = this.searchFields.includes('alerta') && alerta.includes(term);
+      return matchNome || matchDoc || matchAlerta;
+    });
+  }
+
   pageChange(event: PageEvent) {
     this.pageIndex = event.pageIndex;
     this.pageSize = event.pageSize;
     this.loadReg();
   }
 
-  newRegistro() {
-    if (!this.selectedDefId) return;
-    this.router.navigate(['/entities/new'], { queryParams: { defId: this.selectedDefId } });
+  personName(row: EntidadePapel): string {
+    return this.pessoas.get(row.pessoaId)?.nome || '—';
   }
 
-  view(row: EntidadeRegistro) {
+  personDocument(row: EntidadePapel): string {
+    const pessoa = this.pessoas.get(row.pessoaId);
+    return pessoa?.cpf || pessoa?.cnpj || pessoa?.idEstrangeiro || '—';
+  }
+
+  alertaPreview(row: EntidadePapel): string {
+    if (!row.alerta) return '—';
+    return row.alerta.length > 48 ? `${row.alerta.slice(0, 48)}…` : row.alerta;
+  }
+
+  newRegistro() {
+    this.router.navigate(['/entities/new'], { queryParams: { tipoId: this.selectedTipoId } });
+  }
+
+  view(row: EntidadePapel) {
     this.router.navigate(['/entities', row.id]);
   }
 
-  edit(row: EntidadeRegistro) {
+  edit(row: EntidadePapel) {
     this.router.navigate(['/entities', row.id, 'edit']);
   }
 
-  remove(row: EntidadeRegistro) {
+  remove(row: EntidadePapel) {
     const ref = this.dialog.open(ConfirmDialogComponent, {
-      data: { title: 'Excluir registro', message: `Deseja excluir o registro "${row.nome}"?` }
+      data: { title: 'Excluir registro', message: `Deseja excluir o registro da pessoa "${this.personName(row)}"?` }
     });
     ref.afterClosed().subscribe(result => {
       if (!result) return;
-      this.service.deleteReg(row.id).subscribe({
+      this.service.delete(row.id).subscribe({
         next: () => {
           this.notify.success('Registro removido.');
           this.loadReg();

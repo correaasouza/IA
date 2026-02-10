@@ -1,15 +1,22 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
+import { FormBuilder, ReactiveFormsModule, Validators, FormsModule, FormControl } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatListModule, MatListOption } from '@angular/material/list';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatIconModule } from '@angular/material/icon';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { finalize } from 'rxjs/operators';
 
 import { RolesService, Papel, PermissaoCatalog } from './roles.service';
+import { InlineLoaderComponent } from '../../shared/inline-loader.component';
+import { NotificationService } from '../../core/notifications/notification.service';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 
 @Component({
   selector: 'app-roles',
@@ -17,141 +24,60 @@ import { RolesService, Papel, PermissaoCatalog } from './roles.service';
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatCardModule,
+    FormsModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
     MatTableModule,
     MatListModule,
-    MatChipsModule
+    MatChipsModule,
+    MatIconModule,
+    MatDialogModule,
+    MatSidenavModule,
+    InlineLoaderComponent,
+    FieldSearchComponent
   ],
-  template: `
-    <div class="grid">
-      <mat-card class="card">
-        <mat-card-title>Novo papel</mat-card-title>
-        <mat-card-content>
-          <form [formGroup]="form" (ngSubmit)="create()" class="form">
-            <mat-form-field appearance="outline">
-              <mat-label>Nome</mat-label>
-              <input matInput formControlName="nome" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Descrição</mat-label>
-              <input matInput formControlName="descricao" />
-            </mat-form-field>
-            <button mat-flat-button color="primary" type="submit">Criar</button>
-          </form>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="card">
-        <mat-card-title>Papéis</mat-card-title>
-        <mat-card-content>
-          <table mat-table [dataSource]="papeis" class="table-dense">
-            <ng-container matColumnDef="nome">
-              <th mat-header-cell *matHeaderCellDef>Nome</th>
-              <td mat-cell *matCellDef="let row">
-                <button mat-button (click)="select(row)">{{ row.nome }}</button>
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="descricao">
-              <th mat-header-cell *matHeaderCellDef>Descrição</th>
-              <td mat-cell *matCellDef="let row">{{ row.descricao }}</td>
-            </ng-container>
-            <ng-container matColumnDef="ativo">
-              <th mat-header-cell *matHeaderCellDef>Status</th>
-              <td mat-cell *matCellDef="let row">
-                <mat-chip>{{ row.ativo ? 'Ativo' : 'Inativo' }}</mat-chip>
-              </td>
-            </ng-container>
-            <ng-container matColumnDef="acoes">
-              <th mat-header-cell *matHeaderCellDef>Ações</th>
-              <td mat-cell *matCellDef="let row">
-                <button mat-stroked-button (click)="edit(row)">Editar</button>
-              </td>
-            </ng-container>
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-          </table>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="card">
-        <mat-card-title>Permissões (catálogo)</mat-card-title>
-        <mat-card-content>
-          <form [formGroup]="permForm" (ngSubmit)="createPerm()" class="form">
-            <mat-form-field appearance="outline">
-              <mat-label>Código</mat-label>
-              <input matInput formControlName="codigo" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Label</mat-label>
-              <input matInput formControlName="label" />
-            </mat-form-field>
-            <button mat-flat-button color="primary" type="submit">Adicionar</button>
-          </form>
-          <table mat-table [dataSource]="catalog" class="table-dense">
-            <ng-container matColumnDef="codigo">
-              <th mat-header-cell *matHeaderCellDef>Código</th>
-              <td mat-cell *matCellDef="let row">{{ row.codigo }}</td>
-            </ng-container>
-            <ng-container matColumnDef="label">
-              <th mat-header-cell *matHeaderCellDef>Label</th>
-              <td mat-cell *matCellDef="let row">{{ row.label }}</td>
-            </ng-container>
-            <ng-container matColumnDef="acoes">
-              <th mat-header-cell *matHeaderCellDef>Ações</th>
-              <td mat-cell *matCellDef="let row">
-                <button mat-stroked-button (click)="editPerm(row)">Editar</button>
-              </td>
-            </ng-container>
-            <tr mat-header-row *matHeaderRowDef="permColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: permColumns;"></tr>
-          </table>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="card">
-        <mat-card-title>Permissões do papel</mat-card-title>
-        <mat-card-content>
-          <div *ngIf="!selected">Selecione um papel para editar permissões.</div>
-          <div *ngIf="selected">
-            <div class="selected">
-              <div class="name">{{ selected.nome }}</div>
-              <div class="desc">{{ selected.descricao }}</div>
-            </div>
-            <mat-selection-list #permList (selectionChange)="onPermChange(permList.selectedOptions.selected)">
-              <mat-list-option *ngFor="let p of catalog" [value]="p.codigo" [selected]="selectedPerms.has(p.codigo)">
-                {{ p.codigo }} — {{ p.label }}
-              </mat-list-option>
-            </mat-selection-list>
-            <div class="actions">
-              <button mat-flat-button color="primary" (click)="savePerms()">Salvar permissões</button>
-            </div>
-          </div>
-        </mat-card-content>
-      </mat-card>
-    </div>
-  `,
-  styles: [
-    `
-      .grid { display: grid; gap: 12px; grid-template-columns: 320px 1fr; }
-      .form { display: grid; gap: 8px; }
-      .selected { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-      .selected .name { font-weight: 600; }
-      .selected .desc { color: var(--muted); font-size: 12px; }
-      .actions { margin-top: 8px; }
-      @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-    `
-  ]
+  templateUrl: './roles.component.html',
+  styleUrls: ['./roles.component.css']
 })
 export class RolesComponent implements OnInit {
   papeis: Papel[] = [];
+  filteredPapeis: Papel[] = [];
   catalog: PermissaoCatalog[] = [];
+  filteredCatalog: PermissaoCatalog[] = [];
   selected: Papel | null = null;
   selectedPerms = new Set<string>();
   displayedColumns = ['nome', 'descricao', 'ativo', 'acoes'];
   permColumns = ['codigo', 'label', 'acoes'];
+
+  rolesLoading = false;
+  catalogLoading = false;
+  permsLoading = false;
+  creatingRole = false;
+  creatingPerm = false;
+  savingPerms = false;
+  togglingRoleId: number | null = null;
+
+  roleSearchOptions: FieldSearchOption[] = [
+    { key: 'nome', label: 'Nome' },
+    { key: 'descricao', label: 'Descrição' }
+  ];
+  roleSearchTerm = '';
+  roleSearchFields = ['nome', 'descricao'];
+
+  permSearchOptions: FieldSearchOption[] = [
+    { key: 'codigo', label: 'Código' },
+    { key: 'label', label: 'Label' }
+  ];
+  permSearchTerm = '';
+  permSearchFields = ['codigo', 'label'];
+
+  editingPermId: number | null = null;
+  editingPermLabelControl = new FormControl('', { nonNullable: true });
+  savingPermId: number | null = null;
+
+  editingRole: Papel | null = null;
+  savingRole = false;
 
   form = this.fb.group({
     nome: ['', Validators.required],
@@ -163,47 +89,141 @@ export class RolesComponent implements OnInit {
     label: ['', Validators.required]
   });
 
-  constructor(private fb: FormBuilder, private service: RolesService) {}
+  roleEditForm = this.fb.group({
+    nome: ['', Validators.required],
+    descricao: ['']
+  });
+
+  constructor(
+    private fb: FormBuilder,
+    private service: RolesService,
+    private notify: NotificationService,
+    private dialog: MatDialog
+  ) {}
 
   ngOnInit(): void {
     this.load();
-    this.service.listCatalog().subscribe({ next: data => this.catalog = data || [] });
+    this.loadCatalog();
   }
 
   load() {
-    this.service.list().subscribe({
-      next: data => this.papeis = data || []
-    });
-  }
-
-  create() {
-    if (this.form.invalid) return;
-    this.service.create({
-      nome: this.form.value.nome!,
-      descricao: this.form.value.descricao || undefined,
-      ativo: true
-    }).subscribe({
-      next: () => {
-        this.form.reset();
-        this.load();
+    this.rolesLoading = true;
+    this.service.list().pipe(finalize(() => this.rolesLoading = false)).subscribe({
+      next: data => {
+        this.papeis = data || [];
+        this.applyRoleSearch();
+      },
+      error: () => {
+        this.papeis = [];
+        this.filteredPapeis = [];
+        this.notify.error('Não foi possível carregar os papéis.');
       }
     });
   }
 
-  edit(row: Papel) {
-    const nome = prompt('Nome do papel', row.nome);
-    if (!nome) return;
-    const descricao = prompt('Descrição', row.descricao || '') || '';
-    this.service.update(row.id, { nome, descricao, ativo: row.ativo }).subscribe({
-      next: () => this.load()
+  loadCatalog() {
+    this.catalogLoading = true;
+    this.service.listCatalog().pipe(finalize(() => this.catalogLoading = false)).subscribe({
+      next: data => {
+        this.catalog = data || [];
+        this.applyPermSearch();
+      },
+      error: () => {
+        this.catalog = [];
+        this.filteredCatalog = [];
+        this.notify.error('Não foi possível carregar o catálogo de permissões.');
+      }
+    });
+  }
+
+  create() {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    this.creatingRole = true;
+    this.service.create({
+      nome: this.form.value.nome!,
+      descricao: this.form.value.descricao || undefined,
+      ativo: true
+    }).pipe(finalize(() => this.creatingRole = false)).subscribe({
+      next: () => {
+        this.form.reset();
+        this.load();
+        this.notify.success('Papel criado.');
+      },
+      error: () => this.notify.error('Não foi possível criar o papel.')
+    });
+  }
+
+  openEditRole(row: Papel) {
+    this.editingRole = row;
+    this.roleEditForm.reset({
+      nome: row.nome,
+      descricao: row.descricao || ''
+    });
+  }
+
+  closeEditRole() {
+    this.editingRole = null;
+    this.roleEditForm.reset();
+  }
+
+  saveRoleEdit() {
+    if (!this.editingRole) return;
+    if (this.roleEditForm.invalid) {
+      this.roleEditForm.markAllAsTouched();
+      return;
+    }
+    const payload = {
+      nome: this.roleEditForm.value.nome!,
+      descricao: this.roleEditForm.value.descricao || '',
+      ativo: this.editingRole.ativo
+    };
+    this.savingRole = true;
+    this.service.update(this.editingRole.id, payload).pipe(finalize(() => this.savingRole = false)).subscribe({
+      next: () => {
+        this.editingRole!.nome = payload.nome;
+        this.editingRole!.descricao = payload.descricao;
+        this.notify.success('Papel atualizado.');
+        this.closeEditRole();
+      },
+      error: () => this.notify.error('Não foi possível atualizar o papel.')
+    });
+  }
+
+  toggleStatus(row: Papel) {
+    const nextStatus = !row.ativo;
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: nextStatus ? 'Ativar papel' : 'Desativar papel',
+        message: nextStatus
+          ? `Deseja ativar o papel "${row.nome}"?`
+          : `Deseja desativar o papel "${row.nome}"?`
+      }
+    });
+    ref.afterClosed().subscribe(result => {
+      if (!result) return;
+      this.togglingRoleId = row.id;
+      this.service.update(row.id, { nome: row.nome, descricao: row.descricao, ativo: nextStatus })
+        .pipe(finalize(() => this.togglingRoleId = null))
+        .subscribe({
+          next: () => {
+            row.ativo = nextStatus;
+            this.notify.success(nextStatus ? 'Papel ativado.' : 'Papel desativado.');
+          },
+          error: () => this.notify.error('Não foi possível atualizar o status.')
+        });
     });
   }
 
   select(row: Papel) {
     this.selected = row;
     this.selectedPerms = new Set<string>();
-    this.service.listPermissoes(row.id).subscribe({
-      next: data => this.selectedPerms = new Set(data || [])
+    this.permsLoading = true;
+    this.service.listPermissoes(row.id).pipe(finalize(() => this.permsLoading = false)).subscribe({
+      next: data => this.selectedPerms = new Set(data || []),
+      error: () => this.notify.error('Não foi possível carregar as permissões do papel.')
     });
   }
 
@@ -213,28 +233,105 @@ export class RolesComponent implements OnInit {
 
   savePerms() {
     if (!this.selected) return;
-    this.service.setPermissoes(this.selected.id, Array.from(this.selectedPerms)).subscribe();
+    this.savingPerms = true;
+    this.service.setPermissoes(this.selected.id, Array.from(this.selectedPerms))
+      .pipe(finalize(() => this.savingPerms = false))
+      .subscribe({
+        next: () => this.notify.success('Permissões atualizadas.'),
+        error: () => this.notify.error('Não foi possível salvar as permissões.')
+      });
   }
 
   createPerm() {
-    if (this.permForm.invalid) return;
+    if (this.permForm.invalid) {
+      this.permForm.markAllAsTouched();
+      return;
+    }
+    this.creatingPerm = true;
     this.service.createPerm({
       codigo: this.permForm.value.codigo!,
       label: this.permForm.value.label!,
       ativo: true
-    }).subscribe({
+    }).pipe(finalize(() => this.creatingPerm = false)).subscribe({
       next: () => {
         this.permForm.reset();
-        this.service.listCatalog().subscribe({ next: data => this.catalog = data || [] });
-      }
+        this.loadCatalog();
+        this.notify.success('Permissão criada.');
+      },
+      error: () => this.notify.error('Não foi possível criar a permissão.')
     });
   }
 
   editPerm(row: PermissaoCatalog) {
-    const label = prompt('Label', row.label);
-    if (!label) return;
-    this.service.updatePerm(row.id, row.codigo, label).subscribe({
-      next: () => this.service.listCatalog().subscribe({ next: data => this.catalog = data || [] })
+    this.editingPermId = row.id;
+    this.editingPermLabelControl.setValue(row.label);
+  }
+
+  cancelPermEdit() {
+    this.editingPermId = null;
+    this.editingPermLabelControl.setValue('');
+  }
+
+  savePerm(row: PermissaoCatalog) {
+    const nextLabel = (this.editingPermLabelControl.value || '').trim();
+    if (!nextLabel) {
+      this.notify.error('Informe um label válido.');
+      return;
+    }
+    this.savingPermId = row.id;
+    this.service.updatePerm(row.id, row.codigo, nextLabel).pipe(finalize(() => this.savingPermId = null)).subscribe({
+      next: () => {
+        row.label = nextLabel;
+        this.cancelPermEdit();
+        this.notify.success('Permissão atualizada.');
+      },
+      error: () => this.notify.error('Não foi possível atualizar a permissão.')
+    });
+  }
+
+  statusLabel(row: Papel) {
+    return row.ativo ? 'Ativo' : 'Inativo';
+  }
+
+  onRoleSearchChange(value: FieldSearchValue) {
+    this.roleSearchTerm = value.term;
+    this.roleSearchFields = value.fields.length ? value.fields : this.roleSearchOptions.map(o => o.key);
+    this.applyRoleSearch();
+  }
+
+  onPermSearchChange(value: FieldSearchValue) {
+    this.permSearchTerm = value.term;
+    this.permSearchFields = value.fields.length ? value.fields : this.permSearchOptions.map(o => o.key);
+    this.applyPermSearch();
+  }
+
+  private applyRoleSearch() {
+    const term = this.roleSearchTerm.trim().toLowerCase();
+    if (!term) {
+      this.filteredPapeis = [...this.papeis];
+      return;
+    }
+    const match = (val?: string) => (val || '').toLowerCase().includes(term);
+    this.filteredPapeis = this.papeis.filter(p => {
+      const matchNome = this.roleSearchFields.includes('nome') && match(p.nome);
+      const matchDescricao = this.roleSearchFields.includes('descricao') && match(p.descricao || '');
+      return matchNome || matchDescricao;
+    });
+  }
+
+  private applyPermSearch() {
+    const term = this.permSearchTerm.trim().toLowerCase();
+    if (!term) {
+      this.filteredCatalog = [...this.catalog];
+      return;
+    }
+    const match = (val?: string) => (val || '').toLowerCase().includes(term);
+    this.filteredCatalog = this.catalog.filter(p => {
+      const matchCodigo = this.permSearchFields.includes('codigo') && match(p.codigo);
+      const matchLabel = this.permSearchFields.includes('label') && match(p.label);
+      return matchCodigo || matchLabel;
     });
   }
 }
+
+

@@ -1,14 +1,18 @@
 ﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
-import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatIconModule } from '@angular/material/icon';
+import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs/operators';
 
-import { MetadataService, TipoEntidade, CampoDefinicao } from './metadata.service';
+import { MetadataService, TipoEntidade, TipoEntidadeCampoRegra } from './metadata.service';
+import { NotificationService } from '../../core/notifications/notification.service';
+import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 
 @Component({
   selector: 'app-metadata',
@@ -16,118 +20,38 @@ import { MetadataService, TipoEntidade, CampoDefinicao } from './metadata.servic
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
     MatTableModule,
-    MatSelectModule
+    MatSlideToggleModule,
+    MatIconModule,
+    FormsModule,
+    InlineLoaderComponent
   ],
-  template: `
-    <div class="grid">
-      <mat-card class="card">
-        <mat-card-title>Tipos de entidade</mat-card-title>
-        <mat-card-content>
-          <form [formGroup]="tipoForm" (ngSubmit)="createTipo()" class="form">
-            <mat-form-field appearance="outline">
-              <mat-label>Nome</mat-label>
-              <input matInput formControlName="nome" />
-            </mat-form-field>
-            <button mat-flat-button color="primary" type="submit">Criar</button>
-          </form>
-          <table mat-table [dataSource]="tipos" class="table-dense">
-            <ng-container matColumnDef="id">
-              <th mat-header-cell *matHeaderCellDef>ID</th>
-              <td mat-cell *matCellDef="let row">{{ row.id }}</td>
-            </ng-container>
-            <ng-container matColumnDef="nome">
-              <th mat-header-cell *matHeaderCellDef>Nome</th>
-              <td mat-cell *matCellDef="let row">
-                <button mat-button (click)="selectTipo(row)">{{ row.nome }}</button>
-              </td>
-            </ng-container>
-            <tr mat-header-row *matHeaderRowDef="tipoColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: tipoColumns;"></tr>
-          </table>
-        </mat-card-content>
-      </mat-card>
-
-      <mat-card class="card">
-        <mat-card-title>Campos do tipo</mat-card-title>
-        <mat-card-content>
-          <div class="subtitle">Selecionado: {{ tipoSelecionado?.nome || '-' }}</div>
-          <form [formGroup]="campoForm" (ngSubmit)="createCampo()" class="form">
-            <mat-form-field appearance="outline">
-              <mat-label>Nome</mat-label>
-              <input matInput formControlName="nome" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Label</mat-label>
-              <input matInput formControlName="label" />
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Tipo</mat-label>
-              <mat-select formControlName="tipo">
-                <mat-option value="TEXTO">TEXTO</mat-option>
-                <mat-option value="NUMERO">NUMERO</mat-option>
-                <mat-option value="DATA">DATA</mat-option>
-                <mat-option value="BOOLEANO">BOOLEANO</mat-option>
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Tamanho</mat-label>
-              <input matInput formControlName="tamanho" />
-            </mat-form-field>
-            <button mat-flat-button color="primary" type="submit">Adicionar</button>
-          </form>
-          <table mat-table [dataSource]="campos" class="table-dense">
-            <ng-container matColumnDef="id">
-              <th mat-header-cell *matHeaderCellDef>ID</th>
-              <td mat-cell *matCellDef="let row">{{ row.id }}</td>
-            </ng-container>
-            <ng-container matColumnDef="nome">
-              <th mat-header-cell *matHeaderCellDef>Nome</th>
-              <td mat-cell *matCellDef="let row">{{ row.nome }}</td>
-            </ng-container>
-            <ng-container matColumnDef="tipo">
-              <th mat-header-cell *matHeaderCellDef>Tipo</th>
-              <td mat-cell *matCellDef="let row">{{ row.tipo }}</td>
-            </ng-container>
-            <tr mat-header-row *matHeaderRowDef="campoColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: campoColumns;"></tr>
-          </table>
-        </mat-card-content>
-      </mat-card>
-    </div>
-  `,
-  styles: [
-    `
-      .grid { display: grid; gap: 12px; grid-template-columns: 1fr 1fr; }
-      .form { display: grid; gap: 8px; margin-bottom: 8px; }
-      .subtitle { color: #4d5660; margin-bottom: 6px; }
-      @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
-    `
-  ]
+  templateUrl: './metadata.component.html',
+  styleUrls: ['./metadata.component.css']
 })
 export class MetadataComponent implements OnInit {
   tipos: TipoEntidade[] = [];
-  campos: CampoDefinicao[] = [];
+  campos: TipoEntidadeCampoRegra[] = [];
   tipoSelecionado: TipoEntidade | null = null;
-  tipoColumns = ['id', 'nome'];
-  campoColumns = ['id', 'nome', 'tipo'];
+  tipoColumns = ['codigo', 'nome', 'ativo', 'acoes'];
+  campoColumns = ['campo', 'label', 'habilitado', 'requerido', 'visivel', 'editavel'];
+  loadingCampos = false;
+  savingCampos = false;
 
   tipoForm = this.fb.group({
-    nome: ['', Validators.required]
-  });
-
-  campoForm = this.fb.group({
+    codigo: ['', Validators.required],
     nome: ['', Validators.required],
-    label: [''],
-    tipo: ['TEXTO', Validators.required],
-    tamanho: ['']
+    ativo: [true]
   });
 
-  constructor(private fb: FormBuilder, private service: MetadataService) {}
+  constructor(
+    private fb: FormBuilder,
+    private service: MetadataService,
+    private notify: NotificationService
+  ) {}
 
   ngOnInit(): void {
     this.loadTipos();
@@ -152,8 +76,9 @@ export class MetadataComponent implements OnInit {
       return;
     }
     const tenantId = localStorage.getItem('tenantId') || '1';
-    this.service.listCampos(tenantId, this.tipoSelecionado.id).subscribe({
-      next: data => this.campos = data.content || [],
+    this.loadingCampos = true;
+    this.service.listCampos(tenantId, this.tipoSelecionado.id).pipe(finalize(() => this.loadingCampos = false)).subscribe({
+      next: data => this.campos = data || [],
       error: () => this.campos = []
     });
   }
@@ -162,30 +87,33 @@ export class MetadataComponent implements OnInit {
     if (this.tipoForm.invalid) {
       return;
     }
-    this.service.createTipo(this.tipoForm.value.nome!).subscribe({
+    const payload = {
+      codigo: this.tipoForm.value.codigo?.trim().toUpperCase(),
+      nome: this.tipoForm.value.nome,
+      ativo: this.tipoForm.value.ativo ?? true
+    };
+    this.service.createTipo(payload).subscribe({
       next: () => {
-        this.tipoForm.reset();
+        this.tipoForm.reset({ ativo: true });
         this.loadTipos();
       }
     });
   }
 
-  createCampo() {
-    if (this.campoForm.invalid || !this.tipoSelecionado) {
-      return;
-    }
-    this.service.createCampo({
-      tipoEntidadeId: this.tipoSelecionado.id,
-      nome: this.campoForm.value.nome,
-      label: this.campoForm.value.label,
-      tipo: this.campoForm.value.tipo,
-      obrigatorio: false,
-      tamanho: this.campoForm.value.tamanho ? Number(this.campoForm.value.tamanho) : null
-    }).subscribe({
-      next: () => {
-        this.campoForm.reset({ tipo: 'TEXTO' });
-        this.loadCampos();
-      }
+  saveCampos() {
+    if (!this.tipoSelecionado) return;
+    const payload = this.campos.map(c => ({
+      campo: c.campo,
+      habilitado: c.habilitado,
+      requerido: c.requerido,
+      visivel: c.visivel,
+      editavel: c.editavel,
+      label: c.label
+    }));
+    this.savingCampos = true;
+    this.service.saveCampos(this.tipoSelecionado.id, payload).pipe(finalize(() => this.savingCampos = false)).subscribe({
+      next: () => this.notify.success('Configurações salvas.'),
+      error: () => this.notify.error('Não foi possível salvar as configurações.')
     });
   }
 }

@@ -52,10 +52,13 @@
     </div>
 
     <form [formGroup]="filters" class="filters" role="search">
-      <mat-form-field appearance="outline">
-        <mat-label>Nome</mat-label>
-        <input matInput formControlName="nome" placeholder="Buscar por nome" />
-      </mat-form-field>
+      <app-field-search
+        [options]="searchOptions"
+        label="Buscar"
+        placeholder="Digite e selecione os campos"
+        [defaultFields]="searchFields"
+        (searchChange)="onSearchChange($event)">
+      </app-field-search>
       <mat-form-field appearance="outline">
         <mat-label>Status</mat-label>
         <mat-select formControlName="status">
@@ -153,3 +156,4 @@
     </section>
   </section>
 </div>
+

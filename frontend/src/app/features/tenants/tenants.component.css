@@ -74,7 +74,7 @@
 .filters {
   display: grid;
   gap: 8px;
-  grid-template-columns: 1fr 160px 120px;
+  grid-template-columns: 2fr 160px 120px;
   align-items: end;
   margin-bottom: 10px;
 }
@@ -222,3 +222,4 @@
     display: grid;
   }
 }
+

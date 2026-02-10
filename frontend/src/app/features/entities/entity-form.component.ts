@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -10,19 +10,17 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { finalize } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, finalize } from 'rxjs/operators';
 
-import { EntidadeService, EntidadeDefinicao, EntidadeRegistro } from './entidade.service';
-import { ConfigService } from '../configs/config.service';
-import { cpfCnpjValidator } from '../../shared/cpf-cnpj.validator';
-import { CpfCnpjMaskDirective } from '../../shared/cpf-cnpj-mask.directive';
-import { ContatosComponent } from './contatos.component';
-import { ContatoTipoPorEntidadeService, ContatoTipoPorEntidade } from './contato-tipo-por-entidade.service';
-import { ContatoTipoService, ContatoTipo } from './contato-tipo.service';
-import { ContatoService, Contato } from './contato.service';
-import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { EntidadePapelService } from './entidade-papel.service';
+import { TipoEntidadeService, TipoEntidade } from './tipo-entidade.service';
+import { PessoaService } from '../people/pessoa.service';
+import { MetadataService, TipoEntidadeCampoRegra } from '../metadata/metadata.service';
+import { PessoaFieldsComponent, PessoaFieldRule } from '../people/pessoa-fields.component';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { NotificationService } from '../../core/notifications/notification.service';
+import { ConfigService } from '../configs/config.service';
 
 @Component({
   selector: 'app-entity-form',
@@ -38,8 +36,7 @@ import { NotificationService } from '../../core/notifications/notification.servi
     MatSlideToggleModule,
     MatIconModule,
     MatDialogModule,
-    CpfCnpjMaskDirective,
-    ContatosComponent,
+    PessoaFieldsComponent,
     InlineLoaderComponent
   ],
   templateUrl: './entity-form.component.html',
@@ -48,35 +45,39 @@ import { NotificationService } from '../../core/notifications/notification.servi
 export class EntityFormComponent implements OnInit {
   mode: 'new' | 'view' | 'edit' = 'new';
   title = 'Novo registro';
-  definicoes: EntidadeDefinicao[] = [];
-  currentDef: EntidadeDefinicao | null = null;
+  tipos: TipoEntidade[] = [];
   registroId: number | null = null;
-
-  contatoTiposPorEntidade: ContatoTipoPorEntidade[] = [];
-  contatoTipos: ContatoTipo[] = [];
-  contatosDoRegistro: Contato[] = [];
+  loading = false;
   saving = false;
   deleting = false;
 
-  visible = { nome: true, apelido: true, cpfCnpj: true };
-  editable = { nome: true, apelido: true, cpfCnpj: true };
-  labels = { nome: 'Nome', apelido: 'Apelido', cpfCnpj: 'CPF/CNPJ' };
+  regras: Record<string, PessoaFieldRule> = {};
+  autoFilling = false;
+  entityRules: { alerta?: PessoaFieldRule } = {};
 
-  form = this.fb.group({
-    entidadeDefinicaoId: [null as number | null, Validators.required],
+  entityForm = this.fb.group({
+    tipoEntidadeId: [null as number | null, Validators.required],
+    pessoaId: [null as number | null],
+    alerta: [''],
+    ativo: [true]
+  });
+
+  pessoaForm = this.fb.group({
     nome: ['', Validators.required],
     apelido: [''],
-    cpfCnpj: ['', [Validators.required, cpfCnpjValidator]],
+    cpf: [''],
+    cnpj: [''],
+    idEstrangeiro: [''],
     ativo: [true]
   });
 
   constructor(
     private fb: FormBuilder,
-    private service: EntidadeService,
+    private service: EntidadePapelService,
+    private tipoService: TipoEntidadeService,
+    private pessoaService: PessoaService,
+    private metadataService: MetadataService,
     private config: ConfigService,
-    private contatoTiposPorEntidadeService: ContatoTipoPorEntidadeService,
-    private contatoTipoService: ContatoTipoService,
-    private contatoService: ContatoService,
     private route: ActivatedRoute,
     private router: Router,
     private dialog: MatDialog,
@@ -86,27 +87,35 @@ export class EntityFormComponent implements OnInit {
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');
     const isEdit = this.route.snapshot.url.some(s => s.path === 'edit');
+    this.loadTipos();
+
+    this.entityForm.get('tipoEntidadeId')?.valueChanges.subscribe(value => {
+      if (value) {
+        this.loadRegras(value);
+        this.loadEntityConfig(value);
+      }
+    });
+    this.entityForm.get('pessoaId')?.valueChanges.subscribe(value => {
+      if (value) {
+        this.loadPessoa(value);
+      } else if (this.mode !== 'view') {
+        this.pessoaForm.reset({ ativo: true });
+      }
+    });
+
+    this.watchDocumentoChanges();
+
     if (id) {
       this.mode = isEdit ? 'edit' : 'view';
       this.registroId = Number(id);
       this.loadRegistro(this.registroId);
     } else {
       this.mode = 'new';
-      this.loadDefList(() => {
-        const defId = Number(this.route.snapshot.queryParamMap.get('defId'));
-        if (defId) {
-          this.form.patchValue({ entidadeDefinicaoId: defId });
-          this.currentDef = this.definicoes.find(d => d.id === defId) || null;
-          this.loadConfig(defId);
-          this.loadContatoTipos(defId);
-        }
-      });
-      this.form.get('entidadeDefinicaoId')?.valueChanges.subscribe(value => {
-        if (!value) return;
-        this.currentDef = this.definicoes.find(d => d.id === value) || null;
-        this.loadConfig(value);
-        this.loadContatoTipos(value);
-      });
+      const tipoId = Number(this.route.snapshot.queryParamMap.get('tipoId')) || null;
+      if (tipoId) {
+        this.entityForm.patchValue({ tipoEntidadeId: tipoId });
+        this.loadRegras(tipoId);
+      }
       this.updateTitle();
     }
   }
@@ -115,18 +124,16 @@ export class EntityFormComponent implements OnInit {
     this.title = this.mode === 'new' ? 'Novo registro' : this.mode === 'edit' ? 'Editar registro' : 'Consultar registro';
   }
 
-  private loadDefList(after?: () => void) {
-    this.service.listDef(0, 50).subscribe({
+  private loadTipos() {
+    this.tipoService.list(0, 100).subscribe({
       next: data => {
-        this.definicoes = data.content || [];
-        if (after) after();
-        if (!this.form.value.entidadeDefinicaoId && this.definicoes.length > 0 && this.mode === 'new') {
-          const first = this.definicoes[0];
+        this.tipos = data.content || [];
+        if (!this.entityForm.value.tipoEntidadeId && this.tipos.length > 0 && this.mode === 'new') {
+          const first = this.tipos[0];
           if (first) {
-            this.form.patchValue({ entidadeDefinicaoId: first.id });
-            this.currentDef = first;
-            this.loadConfig(first.id);
-            this.loadContatoTipos(first.id);
+            this.entityForm.patchValue({ tipoEntidadeId: first.id });
+            this.loadRegras(first.id);
+            this.loadEntityConfig(first.id);
           }
         }
       }
@@ -134,129 +141,226 @@ export class EntityFormComponent implements OnInit {
   }
 
   private loadRegistro(id: number) {
-    this.loadDefList(() => {
-      this.service.getReg(id).subscribe({
-        next: data => {
-          this.form.patchValue({
-            entidadeDefinicaoId: data.entidadeDefinicaoId,
-            nome: data.nome,
-            apelido: data.apelido || '',
-            cpfCnpj: data.cpfCnpj,
-            ativo: data.ativo
-          });
-          this.currentDef = this.definicoes.find(d => d.id === data.entidadeDefinicaoId) || null;
-          this.loadConfig(data.entidadeDefinicaoId);
-          this.loadContatoTipos(data.entidadeDefinicaoId);
-          this.loadContatosRegistro();
-          if (this.mode === 'view') {
-            this.form.disable();
-          } else {
-            this.form.enable();
-            this.form.get('entidadeDefinicaoId')?.disable();
-          }
-          this.updateTitle();
+    this.loading = true;
+    this.service.get(id).pipe(finalize(() => this.loading = false)).subscribe({
+      next: data => {
+        this.entityForm.patchValue({
+          tipoEntidadeId: data.tipoEntidadeId,
+          pessoaId: data.pessoaId,
+          alerta: data.alerta || '',
+          ativo: data.ativo
+        });
+        this.loadRegras(data.tipoEntidadeId);
+        this.loadEntityConfig(data.tipoEntidadeId);
+        this.loadPessoa(data.pessoaId);
+        if (this.mode === 'view') {
+          this.entityForm.disable();
+          this.pessoaForm.disable();
         }
-      });
+        this.updateTitle();
+      },
+      error: () => this.notify.error('Não foi possível carregar o registro.')
     });
   }
 
-  private loadConfig(defId: number) {
-    const screenId = `entities-${defId}`;
+  private loadPessoa(id: number) {
+    this.autoFilling = true;
+    this.pessoaService.get(id).subscribe({
+      next: pessoa => {
+        this.pessoaForm.patchValue({
+          nome: pessoa.nome,
+          apelido: pessoa.apelido || '',
+          cpf: pessoa.cpf || '',
+          cnpj: pessoa.cnpj || '',
+          idEstrangeiro: pessoa.idEstrangeiro || '',
+          ativo: pessoa.ativo
+        });
+        this.autoFilling = false;
+      },
+      error: () => {
+        this.autoFilling = false;
+        this.notify.error('Não foi possível carregar a pessoa.');
+      }
+    });
+  }
+
+  private watchDocumentoChanges() {
+    const cpf = this.pessoaForm.get('cpf');
+    const cnpj = this.pessoaForm.get('cnpj');
+    const idEstrangeiro = this.pessoaForm.get('idEstrangeiro');
+    cpf?.valueChanges.pipe(debounceTime(400), distinctUntilChanged()).subscribe(value => this.lookupByDocumento(value, 'cpf'));
+    cnpj?.valueChanges.pipe(debounceTime(400), distinctUntilChanged()).subscribe(value => this.lookupByDocumento(value, 'cnpj'));
+    idEstrangeiro?.valueChanges.pipe(debounceTime(400), distinctUntilChanged()).subscribe(value => this.lookupByDocumento(value, 'idEstrangeiro'));
+  }
+
+  private lookupByDocumento(value: string | null | undefined, tipo: 'cpf' | 'cnpj' | 'idEstrangeiro') {
+    if (this.autoFilling || this.mode === 'view') return;
+    const documento = (value || '').trim();
+    if (!documento) {
+      this.entityForm.patchValue({ pessoaId: null }, { emitEvent: false });
+      return;
+    }
+    const normalized = this.normalizeDocumento(documento, tipo);
+    if (tipo === 'cpf' && normalized.length !== 11) return;
+    if (tipo === 'cnpj' && normalized.length !== 14) return;
+    if (tipo === 'idEstrangeiro' && normalized.length < 5) return;
+    this.pessoaService.findByDocumento(documento).subscribe({
+      next: pessoa => {
+        this.autoFilling = true;
+        this.entityForm.patchValue({ pessoaId: pessoa.id }, { emitEvent: false });
+        this.pessoaForm.patchValue({
+          nome: pessoa.nome,
+          apelido: pessoa.apelido || '',
+          cpf: pessoa.cpf || '',
+          cnpj: pessoa.cnpj || '',
+          idEstrangeiro: pessoa.idEstrangeiro || '',
+          ativo: pessoa.ativo
+        }, { emitEvent: false });
+        this.autoFilling = false;
+      },
+      error: () => {
+        this.entityForm.patchValue({ pessoaId: null }, { emitEvent: false });
+      }
+    });
+  }
+
+  private normalizeDocumento(value: string, tipo: 'cpf' | 'cnpj' | 'idEstrangeiro') {
+    if (tipo === 'idEstrangeiro') return value.trim();
+    return value.replace(/\D/g, '');
+  }
+
+  private loadRegras(tipoId: number) {
+    const tenantId = localStorage.getItem('tenantId') || '1';
+    this.metadataService.listCampos(tenantId, tipoId).subscribe({
+      next: regras => this.applyRegras(regras),
+      error: () => this.applyRegras([])
+    });
+  }
+
+  private loadEntityConfig(tipoId: number) {
+    const screenId = `entities-${tipoId}`;
     const rolesKeycloak = (JSON.parse(localStorage.getItem('roles') || '[]') as string[]);
     const rolesTenant = (JSON.parse(localStorage.getItem('tenantRoles') || '[]') as string[]);
     const roles = Array.from(new Set([...rolesKeycloak, ...rolesTenant])).join(',');
     const userId = localStorage.getItem('userId') || '';
-
     this.config.getForm(screenId, userId, roles).subscribe({
-      next: cfg => this.applyConfig(cfg?.configJson || '{}')
+      next: cfg => this.applyEntityConfig(cfg?.configJson || '{}'),
+      error: () => this.applyEntityConfig('{}')
     });
   }
 
-  private applyConfig(configJson: string) {
+  private applyEntityConfig(configJson: string) {
     try {
       const cfg = JSON.parse(configJson);
-      this.visible.nome = cfg?.fields?.nome?.visible ?? true;
-      this.visible.apelido = cfg?.fields?.apelido?.visible ?? true;
-      this.visible.cpfCnpj = cfg?.fields?.cpfCnpj?.visible ?? true;
-      this.editable.nome = cfg?.fields?.nome?.editable ?? true;
-      this.editable.apelido = cfg?.fields?.apelido?.editable ?? true;
-      this.editable.cpfCnpj = cfg?.fields?.cpfCnpj?.editable ?? true;
-      this.labels.nome = cfg?.fields?.nome?.label ?? 'Nome';
-      this.labels.apelido = cfg?.fields?.apelido?.label ?? 'Apelido';
-      this.labels.cpfCnpj = cfg?.fields?.cpfCnpj?.label ?? 'CPF/CNPJ';
+      const fieldCfg = cfg?.fields || {};
+      this.entityRules = {
+        alerta: {
+          visible: fieldCfg?.alerta?.visible ?? true,
+          required: fieldCfg?.alerta?.required ?? false,
+          editable: fieldCfg?.alerta?.editable ?? true,
+          label: fieldCfg?.alerta?.label ?? 'Alerta'
+        }
+      };
     } catch {
+      this.entityRules = { alerta: { visible: true, required: false, editable: true, label: 'Alerta' } };
+    }
+    this.applyEntityValidators();
+  }
+
+  private applyEntityValidators() {
+    const alerta = this.entityForm.get('alerta');
+    if (!alerta) return;
+    alerta.clearValidators();
+    if (this.entityRules.alerta?.required) {
+      alerta.addValidators(Validators.required);
+    }
+    alerta.updateValueAndValidity({ emitEvent: false });
+    if (this.mode !== 'view') {
+      if (this.entityRules.alerta?.editable === false) {
+        alerta.disable({ emitEvent: false });
+      } else {
+        alerta.enable({ emitEvent: false });
+      }
     }
   }
 
-  private loadContatoTipos(defId: number) {
-    this.contatoTiposPorEntidadeService.list(defId).subscribe({
-      next: data => this.contatoTiposPorEntidade = data,
-      error: () => this.contatoTiposPorEntidade = []
+  private applyRegras(regras: TipoEntidadeCampoRegra[]) {
+    const map: Record<string, PessoaFieldRule> = {};
+    const toKey = (campo: string) => campo === 'id_estrangeiro' ? 'idEstrangeiro' : campo;
+    regras.forEach(r => {
+      const key = toKey(r.campo);
+      const visible = r.habilitado && r.visivel;
+      map[key] = {
+        visible,
+        required: visible ? r.requerido : false,
+        editable: r.editavel,
+        label: r.label
+      };
     });
-    this.contatoTipoService.list().subscribe({
-      next: data => this.contatoTipos = data,
-      error: () => this.contatoTipos = []
-    });
+    this.regras = map;
+    this.applyValidators();
   }
 
-  private loadContatosRegistro() {
-    if (!this.registroId) return;
-    this.contatoService.list(this.registroId).subscribe({
-      next: data => this.contatosDoRegistro = data,
-      error: () => this.contatosDoRegistro = []
+  private applyValidators() {
+    const fields = ['nome', 'apelido', 'cpf', 'cnpj', 'idEstrangeiro'];
+    fields.forEach(field => {
+      const control = this.pessoaForm.get(field);
+      if (!control) return;
+      const required = this.regras[field]?.required ?? (field === 'nome');
+      control.clearValidators();
+      if (required) {
+        control.addValidators(Validators.required);
+      }
+      control.updateValueAndValidity({ emitEvent: false });
+      if (this.mode !== 'view') {
+        const editable = this.regras[field]?.editable ?? true;
+        if (!editable) {
+          control.disable({ emitEvent: false });
+        } else {
+          control.enable({ emitEvent: false });
+        }
+      }
     });
-  }
-
-  private checkMissingObrigatorios(): string[] {
-    const tiposObrigatorios = (this.contatoTiposPorEntidade || []).filter(t => t.obrigatorio);
-    if (tiposObrigatorios.length === 0) return [];
-    const existentes = (this.contatosDoRegistro || []).map(c => c.tipo);
-    return tiposObrigatorios
-      .filter(t => !existentes.includes(this.getTipoCodigoById(t.contatoTipoId)))
-      .map(t => this.getTipoCodigoById(t.contatoTipoId))
-      .filter(Boolean) as string[];
-  }
-
-  private getTipoCodigoById(id: number): string {
-    const tipo = this.contatoTipos.find(t => t.id === id);
-    return tipo ? tipo.codigo : '';
   }
 
   save() {
-    if (this.form.invalid) return;
-    if (this.form.value.ativo) {
-      const missing = this.checkMissingObrigatorios();
-      if (missing.length > 0) {
-        alert(`Contatos obrigatórios faltando: ${missing.join(', ')}`);
-        return;
-      }
-    }
-    const payload = {
-      entidadeDefinicaoId: this.form.value.entidadeDefinicaoId,
-      nome: this.form.value.nome,
-      apelido: this.form.value.apelido,
-      cpfCnpj: this.form.value.cpfCnpj,
-      ativo: this.form.value.ativo
-    };
-    if (this.mode === 'new') {
-      this.saving = true;
-      this.service.createReg(payload).pipe(finalize(() => this.saving = false)).subscribe({
-        next: data => {
-          this.notify.success('Registro criado com sucesso.');
-          this.router.navigate(['/entities', data.id]);
-        },
-        error: () => this.notify.error('Não foi possível criar o registro.')
-      });
-      return;
-    }
-    if (!this.registroId) return;
+    if (this.entityForm.invalid || this.pessoaForm.invalid) return;
     this.saving = true;
-    this.service.updateReg(this.registroId, payload).pipe(finalize(() => this.saving = false)).subscribe({
-      next: () => {
-        this.notify.success('Registro atualizado com sucesso.');
-        this.router.navigate(['/entities', this.registroId]);
+    const pessoaPayload = this.normalizePessoaPayload(this.pessoaForm.value);
+    const existingPessoaId = this.entityForm.value.pessoaId;
+
+    const upsertPessoa = existingPessoaId
+      ? this.pessoaService.update(existingPessoaId, pessoaPayload)
+      : this.pessoaService.create(pessoaPayload);
+
+    upsertPessoa.pipe(finalize(() => this.saving = false)).subscribe({
+      next: pessoa => {
+        const entityPayload = {
+          tipoEntidadeId: this.entityForm.value.tipoEntidadeId,
+          pessoaId: pessoa.id,
+          alerta: this.entityForm.value.alerta,
+          ativo: this.entityForm.value.ativo
+        };
+        if (this.mode === 'new') {
+          this.service.create(entityPayload).subscribe({
+            next: data => {
+              this.notify.success('Registro criado com sucesso.');
+              this.router.navigate(['/entities', data.id]);
+            },
+            error: () => this.notify.error('Não foi possível criar o registro.')
+          });
+          return;
+        }
+        if (!this.registroId) return;
+        this.service.update(this.registroId, entityPayload).subscribe({
+          next: () => {
+            this.notify.success('Registro atualizado com sucesso.');
+            this.router.navigate(['/entities', this.registroId]);
+          },
+          error: () => this.notify.error('Não foi possível atualizar o registro.')
+        });
       },
-      error: () => this.notify.error('Não foi possível atualizar o registro.')
+      error: () => this.notify.error('Não foi possível salvar os dados da pessoa.')
     });
   }
 
@@ -268,7 +372,7 @@ export class EntityFormComponent implements OnInit {
     ref.afterClosed().subscribe(result => {
       if (!result) return;
       this.deleting = true;
-      this.service.deleteReg(this.registroId!).pipe(finalize(() => this.deleting = false)).subscribe({
+      this.service.delete(this.registroId!).pipe(finalize(() => this.deleting = false)).subscribe({
         next: () => {
           this.notify.success('Registro removido.');
           this.router.navigateByUrl('/entities');
@@ -285,5 +389,15 @@ export class EntityFormComponent implements OnInit {
 
   back() {
     this.router.navigateByUrl('/entities');
+  }
+
+  private normalizePessoaPayload(payload: any) {
+    const cleaned = { ...payload };
+    ['apelido', 'cpf', 'cnpj', 'idEstrangeiro'].forEach(key => {
+      if (cleaned[key] === '') {
+        cleaned[key] = null;
+      }
+    });
+    return cleaned;
   }
 }

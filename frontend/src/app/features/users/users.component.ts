@@ -6,11 +6,13 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatIconModule } from '@angular/material/icon';
 import { finalize } from 'rxjs/operators';
 
 import { UsuarioService, UsuarioResponse } from './usuario.service';
 import { UsuarioPapeisDialogComponent } from './usuario-papeis-dialog.component';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
+import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 
 @Component({
   selector: 'app-users',
@@ -23,15 +25,26 @@ import { InlineLoaderComponent } from '../../shared/inline-loader.component';
     MatButtonModule,
     MatTableModule,
     MatDialogModule,
-    InlineLoaderComponent
+    MatIconModule,
+    InlineLoaderComponent,
+    FieldSearchComponent
   ],
   templateUrl: './users.component.html',
   styleUrls: ['./users.component.css']
 })
 export class UsersComponent implements OnInit {
   usuarios: UsuarioResponse[] = [];
+  filteredUsuarios: UsuarioResponse[] = [];
   displayedColumns = ['username', 'email', 'ativo', 'papeis', 'acoes'];
   loading = false;
+
+  searchOptions: FieldSearchOption[] = [
+    { key: 'username', label: 'Username' },
+    { key: 'email', label: 'Email' },
+    { key: 'papeis', label: 'Papéis' }
+  ];
+  searchTerm = '';
+  searchFields = ['username', 'email'];
 
   form = this.fb.group({
     username: ['', Validators.required],
@@ -50,8 +63,14 @@ export class UsersComponent implements OnInit {
   load() {
     this.loading = true;
     this.service.list(0, 50).pipe(finalize(() => this.loading = false)).subscribe({
-      next: data => this.usuarios = data.content || [],
-      error: () => this.usuarios = []
+      next: data => {
+        this.usuarios = data.content || [];
+        this.applySearch();
+      },
+      error: () => {
+        this.usuarios = [];
+        this.filteredUsuarios = [];
+      }
     });
   }
 
@@ -89,4 +108,27 @@ export class UsersComponent implements OnInit {
     });
     ref.afterClosed().subscribe();
   }
+
+  onSearchChange(value: FieldSearchValue) {
+    this.searchTerm = value.term;
+    this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(o => o.key);
+    this.applySearch();
+  }
+
+  private applySearch() {
+    const term = this.searchTerm.trim().toLowerCase();
+    if (!term) {
+      this.filteredUsuarios = [...this.usuarios];
+      return;
+    }
+    const match = (val?: string) => (val || '').toLowerCase().includes(term);
+    this.filteredUsuarios = this.usuarios.filter(u => {
+      const matchUsername = this.searchFields.includes('username') && match(u.username);
+      const matchEmail = this.searchFields.includes('email') && match(u.email || '');
+      const matchPapeis = this.searchFields.includes('papeis') && match((u.papeis || []).join(' '));
+      return matchUsername || matchEmail || matchPapeis;
+    });
+  }
 }
+
+

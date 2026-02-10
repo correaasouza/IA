@@ -17,6 +17,7 @@ import { TelefoneMaskDirective } from '../../shared/telefone-mask.directive';
 import { CustomMaskDirective } from '../../shared/custom-mask.directive';
 import { contatoValorValidator } from '../../shared/contato.validator';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
+import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 
 @Component({
   selector: 'app-contatos',
@@ -34,7 +35,8 @@ import { InlineLoaderComponent } from '../../shared/inline-loader.component';
     MatIconModule,
     TelefoneMaskDirective,
     CustomMaskDirective,
-    InlineLoaderComponent
+    InlineLoaderComponent,
+    FieldSearchComponent
   ],
   templateUrl: './contatos.component.html',
   styleUrls: ['./contatos.component.css']
@@ -43,11 +45,20 @@ export class ContatosComponent implements OnChanges {
   @Input() entidadeRegistroId: number | null = null;
 
   contatos: Contato[] = [];
+  filteredContatos: Contato[] = [];
   tipos: ContatoTipo[] = [];
   columns: string[] = ['tipo', 'valor', 'principal', 'acoes'];
   editingId: number | null = null;
   loading = false;
   saving = false;
+
+  searchOptions: FieldSearchOption[] = [
+    { key: 'tipo', label: 'Tipo' },
+    { key: 'valor', label: 'Valor' },
+    { key: 'principal', label: 'Principal' }
+  ];
+  searchTerm = '';
+  searchFields = ['tipo', 'valor'];
 
   form: FormGroup;
 
@@ -76,8 +87,14 @@ export class ContatosComponent implements OnChanges {
     if (!this.entidadeRegistroId) return;
     this.loading = true;
     this.service.list(this.entidadeRegistroId).pipe(finalize(() => this.loading = false)).subscribe({
-      next: data => this.contatos = data,
-      error: () => this.contatos = []
+      next: data => {
+        this.contatos = data;
+        this.applySearch();
+      },
+      error: () => {
+        this.contatos = [];
+        this.filteredContatos = [];
+      }
     });
   }
 
@@ -135,6 +152,27 @@ export class ContatosComponent implements OnChanges {
     });
   }
 
+  onSearchChange(value: FieldSearchValue) {
+    this.searchTerm = value.term;
+    this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(o => o.key);
+    this.applySearch();
+  }
+
+  private applySearch() {
+    const term = this.searchTerm.trim().toLowerCase();
+    if (!term) {
+      this.filteredContatos = [...this.contatos];
+      return;
+    }
+    const match = (val?: string) => (val || '').toLowerCase().includes(term);
+    this.filteredContatos = this.contatos.filter(c => {
+      const matchTipo = this.searchFields.includes('tipo') && match(c.tipo);
+      const matchValor = this.searchFields.includes('valor') && match(c.valor);
+      const matchPrincipal = this.searchFields.includes('principal') && match(c.principal ? 'sim' : 'nao');
+      return matchTipo || matchValor || matchPrincipal;
+    });
+  }
+
   currentRegex(): string {
     const tipo = this.form.value.tipo || '';
     const cfg = this.tipos.find(t => t.codigo === tipo);
@@ -156,3 +194,4 @@ export class ContatosComponent implements OnChanges {
     return ['TELEFONE', 'WHATSAPP'].includes(tipo) && !this.currentMask();
   }
 }
+

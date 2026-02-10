@@ -1,16 +1,20 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { Router, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs/operators';
 
 import { UsuarioService, UsuarioResponse } from './usuario.service';
 import { UsuarioPapeisDialogComponent } from './usuario-papeis-dialog.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { InlineLoaderComponent } from '../../shared/inline-loader.component';
+import { NotificationService } from '../../core/notifications/notification.service';
+import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 
 @Component({
   selector: 'app-users-list',
@@ -18,93 +22,96 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
   imports: [
     CommonModule,
     RouterLink,
-    MatCardModule,
     MatButtonModule,
     MatTableModule,
     MatChipsModule,
     MatDialogModule,
-    MatIconModule
+    MatIconModule,
+    MatPaginatorModule,
+    InlineLoaderComponent,
+    FieldSearchComponent
   ],
-  template: `
-    <mat-card class="card">
-      <mat-card-title>Usuários</mat-card-title>
-      <mat-card-content>
-        <div class="toolbar">
-          <button mat-flat-button color="primary" routerLink="/users/new">
-            <mat-icon>add</mat-icon> Novo usuário
-          </button>
-        </div>
-
-        <table mat-table [dataSource]="usuarios" class="table-dense">
-          <ng-container matColumnDef="username">
-            <th mat-header-cell *matHeaderCellDef>Username</th>
-            <td mat-cell *matCellDef="let row">{{ row.username }}</td>
-          </ng-container>
-          <ng-container matColumnDef="email">
-            <th mat-header-cell *matHeaderCellDef>Email</th>
-            <td mat-cell *matCellDef="let row">{{ row.email }}</td>
-          </ng-container>
-          <ng-container matColumnDef="ativo">
-            <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let row">
-              <mat-chip>{{ row.ativo ? 'Ativo' : 'Inativo' }}</mat-chip>
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="papeis">
-            <th mat-header-cell *matHeaderCellDef>Papéis</th>
-            <td mat-cell *matCellDef="let row">
-              <mat-chip-listbox>
-                <mat-chip *ngFor="let p of (row.papeis || [])">{{ p }}</mat-chip>
-              </mat-chip-listbox>
-            </td>
-          </ng-container>
-          <ng-container matColumnDef="acoes">
-            <th mat-header-cell *matHeaderCellDef>Ações</th>
-            <td mat-cell *matCellDef="let row">
-              <button mat-stroked-button (click)="view(row)">
-                <mat-icon>visibility</mat-icon> Consultar
-              </button>
-              <button mat-stroked-button (click)="edit(row)">
-                <mat-icon>edit</mat-icon> Editar
-              </button>
-              <button mat-stroked-button (click)="editPapeis(row)">
-                <mat-icon>security</mat-icon> Papéis
-              </button>
-              <button mat-button color="warn" (click)="remove(row)">
-                <mat-icon>delete</mat-icon> Excluir
-              </button>
-            </td>
-          </ng-container>
-
-          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-        </table>
-      </mat-card-content>
-    </mat-card>
-  `,
-  styles: [
-    `
-      .toolbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
-      .mat-mdc-button .mat-icon,
-      .mat-mdc-outlined-button .mat-icon { margin-right: 4px; }
-    `
-  ]
+  templateUrl: './users-list.component.html',
+  styleUrls: ['./users-list.component.css']
 })
 export class UsersListComponent implements OnInit {
   usuarios: UsuarioResponse[] = [];
+  filteredUsuarios: UsuarioResponse[] = [];
   displayedColumns = ['username', 'email', 'ativo', 'papeis', 'acoes'];
+  totalElements = 0;
+  pageIndex = 0;
+  pageSize = 50;
+  loading = false;
 
-  constructor(private service: UsuarioService, private dialog: MatDialog, private router: Router) {}
+  searchOptions: FieldSearchOption[] = [
+    { key: 'username', label: 'Username' },
+    { key: 'email', label: 'Email' },
+    { key: 'papeis', label: 'Papéis' }
+  ];
+  searchTerm = '';
+  searchFields = ['username', 'email'];
+
+  constructor(
+    private service: UsuarioService,
+    private dialog: MatDialog,
+    private router: Router,
+    private notify: NotificationService
+  ) {}
 
   ngOnInit(): void {
     this.load();
   }
 
   load() {
-    this.service.list(0, 50).subscribe({
-      next: data => this.usuarios = data.content || [],
-      error: () => this.usuarios = []
+    this.loading = true;
+    this.service.list(this.pageIndex, this.pageSize).pipe(finalize(() => this.loading = false)).subscribe({
+      next: data => {
+        this.usuarios = data.content || [];
+        this.totalElements = data.totalElements || 0;
+        this.applySearch();
+      },
+      error: () => {
+        this.usuarios = [];
+        this.filteredUsuarios = [];
+        this.totalElements = 0;
+        this.notify.error('Não foi possível carregar os usuários.');
+      }
     });
+  }
+
+  pageChange(event: PageEvent) {
+    this.pageIndex = event.pageIndex;
+    this.pageSize = event.pageSize;
+    this.load();
+  }
+
+  onSearchChange(value: FieldSearchValue) {
+    this.searchTerm = value.term;
+    this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(o => o.key);
+    this.applySearch();
+  }
+
+  private applySearch() {
+    const term = this.searchTerm.trim().toLowerCase();
+    if (!term) {
+      this.filteredUsuarios = [...this.usuarios];
+      return;
+    }
+    const has = (value?: string) => (value || '').toLowerCase().includes(term);
+    this.filteredUsuarios = this.usuarios.filter(u => {
+      const matchUsername = this.searchFields.includes('username') && has(u.username);
+      const matchEmail = this.searchFields.includes('email') && has(u.email || '');
+      const matchPapeis = this.searchFields.includes('papeis') && has((u.papeis || []).join(' '));
+      return matchUsername || matchEmail || matchPapeis;
+    });
+  }
+
+  statusClass(row: UsuarioResponse) {
+    return row.ativo ? '' : 'off';
+  }
+
+  statusLabel(row: UsuarioResponse) {
+    return row.ativo ? 'Ativo' : 'Inativo';
   }
 
   view(row: UsuarioResponse) {
@@ -121,7 +128,13 @@ export class UsersListComponent implements OnInit {
     });
     ref.afterClosed().subscribe(result => {
       if (!result) return;
-      this.service.delete(row.id).subscribe({ next: () => this.load() });
+      this.service.delete(row.id).subscribe({
+        next: () => {
+          this.notify.success('Usuário removido.');
+          this.load();
+        },
+        error: () => this.notify.error('Não foi possível remover o usuário.')
+      });
     });
   }
 
@@ -132,3 +145,5 @@ export class UsersListComponent implements OnInit {
     ref.afterClosed().subscribe();
   }
 }
+
+

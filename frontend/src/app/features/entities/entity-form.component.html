@@ -2,7 +2,7 @@
   <header class="page-header">
     <div class="title-block">
       <h1>{{ title }}</h1>
-      <p *ngIf="currentDef">{{ currentDef.nome }}</p>
+      <p *ngIf="registroId">ID {{ registroId }}</p>
     </div>
     <div class="header-actions">
       <button mat-stroked-button type="button" (click)="back()">
@@ -26,56 +26,50 @@
 
   <section class="panel">
     <div class="panel-header">
-      <div class="panel-title">Dados principais</div>
-      <div class="panel-meta" *ngIf="mode !== 'new' && currentDef">Tipo: {{ currentDef.nome }}</div>
+      <div class="panel-title">Dados do registro</div>
+      <div class="panel-meta">
+        Status
+        <span class="status" [class.off]="!entityForm.value.ativo">{{ entityForm.value.ativo ? 'Ativo' : 'Inativo' }}</span>
+      </div>
     </div>
 
-    <form [formGroup]="form" class="form-grid">
-      <mat-form-field appearance="outline" *ngIf="mode === 'new'">
-        <mat-label>Tipo</mat-label>
-        <mat-select formControlName="entidadeDefinicaoId">
-          <mat-option *ngFor="let d of definicoes" [value]="d.id">{{ d.nome }}</mat-option>
+    <form [formGroup]="entityForm" class="form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo de entidade</mat-label>
+        <mat-select formControlName="tipoEntidadeId">
+          <mat-option *ngFor="let tipo of tipos" [value]="tipo.id">{{ tipo.nome }}</mat-option>
         </mat-select>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" *ngIf="visible.nome">
-        <mat-label>{{ labels.nome }}</mat-label>
-        <input matInput formControlName="nome" [readonly]="!editable.nome" aria-describedby="nome-err" />
-        <mat-error id="nome-err" *ngIf="form.get('nome')?.hasError('required')">Informe o nome.</mat-error>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" *ngIf="visible.apelido">
-        <mat-label>{{ labels.apelido }}</mat-label>
-        <input matInput formControlName="apelido" [readonly]="!editable.apelido" />
-      </mat-form-field>
-
-      <mat-form-field appearance="outline" *ngIf="visible.cpfCnpj">
-        <mat-label>{{ labels.cpfCnpj }}</mat-label>
-        <input matInput formControlName="cpfCnpj" [readonly]="!editable.cpfCnpj" appCpfCnpjMask aria-describedby="cpf-hint cpf-err-invalid cpf-err-required" />
-        <mat-hint id="cpf-hint">Use somente números.</mat-hint>
-        <mat-error id="cpf-err-invalid" *ngIf="form.get('cpfCnpj')?.hasError('cpfCnpj')">CPF/CNPJ inválido.</mat-error>
-        <mat-error id="cpf-err-required" *ngIf="form.get('cpfCnpj')?.hasError('required')">Informe o CPF/CNPJ.</mat-error>
+      <mat-form-field appearance="outline" class="wide" *ngIf="entityRules.alerta?.visible !== false">
+        <mat-label>{{ entityRules.alerta?.label || 'Alerta' }}</mat-label>
+        <textarea matInput rows="2" formControlName="alerta" placeholder="Informações específicas do papel"></textarea>
+        <mat-error *ngIf="entityForm.get('alerta')?.hasError('required')">Informe o alerta.</mat-error>
       </mat-form-field>
 
       <div class="status-toggle">
         <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
-        <span class="status-hint">Bloqueie para impedir uso imediato.</span>
-      </div>
-
-      <div class="inline-status" *ngIf="saving" role="status" aria-live="polite">
-        <app-inline-loader label="Salvando"></app-inline-loader>
-      </div>
-      <div class="inline-status" *ngIf="deleting" role="status" aria-live="polite">
-        <app-inline-loader label="Excluindo"></app-inline-loader>
+        <span class="status-hint">Controla o papel desta pessoa no tipo selecionado.</span>
       </div>
     </form>
   </section>
 
-  <section class="panel" *ngIf="registroId">
+  <section class="panel">
     <div class="panel-header">
-      <div class="panel-title">Contatos vinculados</div>
-      <div class="panel-meta">Gerencie telefones, e-mails e outros</div>
+      <div class="panel-title">Pessoa</div>
+      <div class="panel-meta">Digite o documento para buscar pessoas existentes</div>
     </div>
-    <app-contatos [entidadeRegistroId]="registroId"></app-contatos>
+
+    <app-pessoa-fields [form]="pessoaForm" [rules]="regras" [showStatus]="true"></app-pessoa-fields>
+
+    <div class="inline-status" *ngIf="loading" role="status" aria-live="polite">
+      <app-inline-loader label="Carregando dados"></app-inline-loader>
+    </div>
+    <div class="inline-status" *ngIf="saving" role="status" aria-live="polite">
+      <app-inline-loader label="Salvando"></app-inline-loader>
+    </div>
+    <div class="inline-status" *ngIf="deleting" role="status" aria-live="polite">
+      <app-inline-loader label="Excluindo"></app-inline-loader>
+    </div>
   </section>
 </div>

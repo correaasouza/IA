@@ -1,18 +1,20 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import { DateMaskDirective } from '../../shared/date-mask.directive';
+import { finalize } from 'rxjs/operators';
 
+import { DateMaskDirective } from '../../shared/date-mask.directive';
 import { TenantService, LocatarioResponse } from './tenant.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { InlineLoaderComponent } from '../../shared/inline-loader.component';
+import { NotificationService } from '../../core/notifications/notification.service';
 
 @Component({
   selector: 'app-tenant-form',
@@ -20,72 +22,27 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
     MatSlideToggleModule,
     DateMaskDirective,
     MatIconModule,
-    MatDialogModule
+    MatDialogModule,
+    InlineLoaderComponent
   ],
-  template: `
-    <mat-card class="card">
-      <mat-card-title>{{ title }}</mat-card-title>
-      <mat-card-content>
-        <form [formGroup]="form" class="form">
-          <mat-form-field appearance="outline">
-            <mat-label>Nome</mat-label>
-            <input matInput formControlName="nome" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Data limite</mat-label>
-            <input matInput formControlName="dataLimiteAcesso" placeholder="DD-MM-YYYY" appDateMask />
-          </mat-form-field>
-          <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
-          <div class="status" *ngIf="locatario">
-            Status atual: <strong>{{ locatario.ativo ? (locatario.bloqueado ? 'Bloqueado' : 'Ativo') : 'Inativo' }}</strong>
-          </div>
-          <div class="actions">
-            <button mat-stroked-button type="button" (click)="back()">
-              <mat-icon>arrow_back</mat-icon> Voltar
-            </button>
-            <button mat-button color="warn" *ngIf="mode !== 'new'" type="button" (click)="remove()">
-              <mat-icon>delete</mat-icon> Excluir
-            </button>
-            <button mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()">
-              <mat-icon>save</mat-icon> Salvar
-            </button>
-            <button mat-stroked-button *ngIf="mode === 'view'" type="button" (click)="toEdit()">
-              <mat-icon>edit</mat-icon> Editar
-            </button>
-          </div>
-          <div class="actions" *ngIf="mode !== 'new'">
-            <button mat-stroked-button type="button" (click)="renew()">
-              <mat-icon>event_repeat</mat-icon> Renovar +30d
-            </button>
-            <button mat-stroked-button type="button" (click)="toggleStatus()">
-              {{ form.value.ativo ? 'Desativar' : 'Ativar' }}
-            </button>
-          </div>
-        </form>
-      </mat-card-content>
-    </mat-card>
-  `,
-  styles: [
-    `
-      .form { display: grid; gap: 8px; max-width: 520px; }
-      .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-      .mat-mdc-button .mat-icon,
-      .mat-mdc-outlined-button .mat-icon { margin-right: 4px; }
-      .status { font-size: 12px; color: var(--muted); }
-    `
-  ]
+  templateUrl: './tenant-form.component.html',
+  styleUrls: ['./tenant-form.component.css']
 })
 export class TenantFormComponent implements OnInit {
   mode: 'new' | 'view' | 'edit' = 'new';
   locatario: LocatarioResponse | null = null;
   title = 'Novo locatário';
+  loading = false;
+  saving = false;
+  deleting = false;
+  renewing = false;
+  toggling = false;
 
   form = this.fb.group({
     nome: ['', Validators.required],
@@ -98,7 +55,8 @@ export class TenantFormComponent implements OnInit {
     private service: TenantService,
     private route: ActivatedRoute,
     private router: Router,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private notify: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -118,7 +76,8 @@ export class TenantFormComponent implements OnInit {
   }
 
   private load(id: number) {
-    this.service.get(id).subscribe({
+    this.loading = true;
+    this.service.get(id).pipe(finalize(() => this.loading = false)).subscribe({
       next: data => {
         this.locatario = data;
         this.form.patchValue({
@@ -132,26 +91,42 @@ export class TenantFormComponent implements OnInit {
           this.form.enable();
         }
         this.updateTitle();
-      }
+      },
+      error: () => this.notify.error('Não foi possível carregar o locatário.')
     });
   }
 
   save() {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
     const payload = {
       nome: this.form.value.nome!,
       dataLimiteAcesso: this.form.value.dataLimiteAcesso!,
       ativo: !!this.form.value.ativo
     };
+    this.saving = true;
     if (this.mode === 'new') {
-      this.service.create(payload).subscribe({
-        next: () => this.router.navigateByUrl('/tenants')
+      this.service.create(payload).pipe(finalize(() => this.saving = false)).subscribe({
+        next: () => {
+          this.notify.success('Locatário criado.');
+          this.router.navigateByUrl('/tenants');
+        },
+        error: () => this.notify.error('Não foi possível criar o locatário.')
       });
       return;
     }
-    if (!this.locatario) return;
-    this.service.update(this.locatario.id, payload).subscribe({
-      next: () => this.router.navigate(['/tenants', this.locatario!.id])
+    if (!this.locatario) {
+      this.saving = false;
+      return;
+    }
+    this.service.update(this.locatario.id, payload).pipe(finalize(() => this.saving = false)).subscribe({
+      next: () => {
+        this.notify.success('Locatário atualizado.');
+        this.router.navigate(['/tenants', this.locatario!.id]);
+      },
+      error: () => this.notify.error('Não foi possível atualizar o locatário.')
     });
   }
 
@@ -160,22 +135,28 @@ export class TenantFormComponent implements OnInit {
     const date = new Date(this.locatario.dataLimiteAcesso);
     date.setDate(date.getDate() + 30);
     const iso = date.toISOString().slice(0, 10);
-    this.service.updateAccessLimit(this.locatario.id, iso).subscribe({
+    this.renewing = true;
+    this.service.updateAccessLimit(this.locatario.id, iso).pipe(finalize(() => this.renewing = false)).subscribe({
       next: data => {
         this.locatario = data;
         this.form.patchValue({ dataLimiteAcesso: data.dataLimiteAcesso });
-      }
+        this.notify.success('Acesso renovado por 30 dias.');
+      },
+      error: () => this.notify.error('Não foi possível renovar o acesso.')
     });
   }
 
   toggleStatus() {
     if (!this.locatario) return;
     const ativo = !this.locatario.ativo;
-    this.service.updateStatus(this.locatario.id, ativo).subscribe({
+    this.toggling = true;
+    this.service.updateStatus(this.locatario.id, ativo).pipe(finalize(() => this.toggling = false)).subscribe({
       next: data => {
         this.locatario = data;
         this.form.patchValue({ ativo: data.ativo });
-      }
+        this.notify.success(ativo ? 'Locatário ativado.' : 'Locatário desativado.');
+      },
+      error: () => this.notify.error('Não foi possível atualizar o status.')
     });
   }
 
@@ -186,8 +167,13 @@ export class TenantFormComponent implements OnInit {
     });
     ref.afterClosed().subscribe(result => {
       if (!result) return;
-      this.service.delete(this.locatario!.id).subscribe({
-        next: () => this.router.navigateByUrl('/tenants')
+      this.deleting = true;
+      this.service.delete(this.locatario!.id).pipe(finalize(() => this.deleting = false)).subscribe({
+        next: () => {
+          this.notify.success('Locatário removido.');
+          this.router.navigateByUrl('/tenants');
+        },
+        error: () => this.notify.error('Não foi possível remover o locatário.')
       });
     });
   }
@@ -200,4 +186,12 @@ export class TenantFormComponent implements OnInit {
   back() {
     this.router.navigateByUrl('/tenants');
   }
+
+  statusLabel() {
+    if (!this.locatario) return '';
+    if (!this.locatario.ativo) return 'Inativo';
+    if (this.locatario.bloqueado) return 'Bloqueado';
+    return 'Ativo';
+  }
 }
+

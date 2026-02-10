@@ -1,8 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -10,9 +9,12 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { finalize } from 'rxjs/operators';
 
 import { UsuarioService, UsuarioResponse } from './usuario.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { InlineLoaderComponent } from '../../shared/inline-loader.component';
+import { NotificationService } from '../../core/notifications/notification.service';
 
 @Component({
   selector: 'app-user-form',
@@ -20,83 +22,27 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
     MatSlideToggleModule,
     FormsModule,
     MatIconModule,
-    MatDialogModule
+    MatDialogModule,
+    InlineLoaderComponent
   ],
-  template: `
-    <mat-card class="card">
-      <mat-card-title>{{ title }}</mat-card-title>
-      <mat-card-content>
-        <form [formGroup]="form" class="form">
-          <mat-form-field appearance="outline">
-            <mat-label>Username</mat-label>
-            <input matInput formControlName="username" />
-          </mat-form-field>
-          <mat-form-field appearance="outline">
-            <mat-label>Email</mat-label>
-            <input matInput formControlName="email" />
-          </mat-form-field>
-          <mat-form-field appearance="outline" *ngIf="mode === 'new'">
-            <mat-label>Password</mat-label>
-            <input matInput type="password" formControlName="password" />
-          </mat-form-field>
-          <mat-form-field appearance="outline" *ngIf="mode === 'new'">
-            <mat-label>Roles (vírgula)</mat-label>
-            <input matInput formControlName="roles" placeholder="USER, TENANT_ADMIN" />
-          </mat-form-field>
-          <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
-
-          <div class="actions">
-            <button mat-stroked-button type="button" (click)="back()">
-              <mat-icon>arrow_back</mat-icon> Voltar
-            </button>
-            <button mat-button color="warn" *ngIf="mode !== 'new'" type="button" (click)="remove()">
-              <mat-icon>delete</mat-icon> Excluir
-            </button>
-            <button mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()">
-              <mat-icon>save</mat-icon> Salvar
-            </button>
-            <button mat-stroked-button *ngIf="mode === 'view'" type="button" (click)="toEdit()">
-              <mat-icon>edit</mat-icon> Editar
-            </button>
-          </div>
-
-          <div class="reset" *ngIf="mode !== 'new'">
-            <div class="reset-title">Resetar senha</div>
-            <mat-form-field appearance="outline">
-              <mat-label>Nova senha</mat-label>
-              <input matInput type="password" [(ngModel)]="resetPasswordValue" name="resetPasswordValue" />
-            </mat-form-field>
-            <button mat-stroked-button type="button" (click)="resetPassword()">
-              <mat-icon>lock_reset</mat-icon> Aplicar nova senha
-            </button>
-          </div>
-        </form>
-      </mat-card-content>
-    </mat-card>
-  `,
-  styles: [
-    `
-      .form { display: grid; gap: 8px; max-width: 520px; }
-      .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-      .mat-mdc-button .mat-icon,
-      .mat-mdc-outlined-button .mat-icon { margin-right: 4px; }
-      .reset { margin-top: 12px; display: grid; gap: 6px; }
-      .reset-title { font-size: 12px; color: var(--muted); }
-    `
-  ]
+  templateUrl: './user-form.component.html',
+  styleUrls: ['./user-form.component.css']
 })
 export class UserFormComponent implements OnInit {
   mode: 'new' | 'view' | 'edit' = 'new';
   user: UsuarioResponse | null = null;
   title = 'Novo usuário';
   resetPasswordValue = '';
+  loading = false;
+  saving = false;
+  deleting = false;
+  resetting = false;
 
   form = this.fb.group({
     username: ['', Validators.required],
@@ -111,7 +57,8 @@ export class UserFormComponent implements OnInit {
     private service: UsuarioService,
     private route: ActivatedRoute,
     private router: Router,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private notify: NotificationService
   ) {}
 
   ngOnInit(): void {
@@ -131,7 +78,8 @@ export class UserFormComponent implements OnInit {
   }
 
   private load(id: number) {
-    this.service.get(id).subscribe({
+    this.loading = true;
+    this.service.get(id).pipe(finalize(() => this.loading = false)).subscribe({
       next: data => {
         this.user = data;
         this.form.patchValue({
@@ -147,12 +95,17 @@ export class UserFormComponent implements OnInit {
           this.form.get('roles')?.disable();
         }
         this.updateTitle();
-      }
+      },
+      error: () => this.notify.error('Não foi possível carregar o usuário.')
     });
   }
 
   save() {
-    if (this.form.invalid) return;
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    this.saving = true;
     if (this.mode === 'new') {
       const roles = (this.form.value.roles || '')
         .split(',')
@@ -164,26 +117,41 @@ export class UserFormComponent implements OnInit {
         password: this.form.value.password!,
         ativo: !!this.form.value.ativo,
         roles
-      }).subscribe({ next: () => this.router.navigateByUrl('/users') });
+      }).pipe(finalize(() => this.saving = false)).subscribe({
+        next: () => {
+          this.notify.success('Usuário criado.');
+          this.router.navigateByUrl('/users');
+        },
+        error: () => this.notify.error('Não foi possível criar o usuário.')
+      });
       return;
     }
-    if (!this.user) return;
+    if (!this.user) {
+      this.saving = false;
+      return;
+    }
     this.service.update(this.user.id, {
       username: this.form.value.username!,
       email: this.form.value.email || undefined,
       ativo: !!this.form.value.ativo
-    }).subscribe({
-      next: () => this.router.navigate(['/users', this.user!.id])
+    }).pipe(finalize(() => this.saving = false)).subscribe({
+      next: () => {
+        this.notify.success('Usuário atualizado.');
+        this.router.navigate(['/users', this.user!.id]);
+      },
+      error: () => this.notify.error('Não foi possível atualizar o usuário.')
     });
   }
 
   resetPassword() {
     if (!this.user || !this.resetPasswordValue) return;
-    this.service.resetPassword(this.user.id, this.resetPasswordValue).subscribe({
+    this.resetting = true;
+    this.service.resetPassword(this.user.id, this.resetPasswordValue).pipe(finalize(() => this.resetting = false)).subscribe({
       next: () => {
         this.resetPasswordValue = '';
-        alert('Senha atualizada.');
-      }
+        this.notify.success('Senha atualizada.');
+      },
+      error: () => this.notify.error('Não foi possível atualizar a senha.')
     });
   }
 
@@ -194,8 +162,13 @@ export class UserFormComponent implements OnInit {
     });
     ref.afterClosed().subscribe(result => {
       if (!result) return;
-      this.service.delete(this.user!.id).subscribe({
-        next: () => this.router.navigateByUrl('/users')
+      this.deleting = true;
+      this.service.delete(this.user!.id).pipe(finalize(() => this.deleting = false)).subscribe({
+        next: () => {
+          this.notify.success('Usuário removido.');
+          this.router.navigateByUrl('/users');
+        },
+        error: () => this.notify.error('Não foi possível remover o usuário.')
       });
     });
   }
@@ -209,3 +182,4 @@ export class UserFormComponent implements OnInit {
     this.router.navigateByUrl('/users');
   }
 }
+
