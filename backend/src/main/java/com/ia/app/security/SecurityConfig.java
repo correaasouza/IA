@@ -47,7 +47,7 @@ public class SecurityConfig {
   @Bean
   CorsConfigurationSource corsConfigurationSource() {
     String raw = System.getenv().getOrDefault("CORS_ALLOWED_ORIGINS",
-      "http://localhost:8080,http://192.168.0.243:8080");
+      "http://localhost:8080,http://host.docker.internal:8080");
     CorsConfiguration config = new CorsConfiguration();
     config.setAllowedOrigins(java.util.Arrays.stream(raw.split(","))
       .map(String::trim)

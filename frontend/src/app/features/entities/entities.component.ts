@@ -1,6 +1,6 @@
 ﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, ValidatorFn, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -59,7 +59,7 @@ export class EntitiesComponent implements OnInit {
 
   visible = { nome: true, apelido: true, cpfCnpj: true };
   editable = { nome: true, apelido: true, cpfCnpj: true };
-  labels = { nome: 'Nome', apelido: 'Apelido', cpfCnpj: 'CPF/CNPJ' };
+  labels = { nome: 'Nome', apelido: 'Apelido', cpfCnpj: 'Documento' };
 
   columns: string[] = ['nome', 'apelido', 'cpfCnpj', 'ativo', 'acoes'];
   defColumns: string[] = ['nome', 'role', 'ativo', 'save'];
@@ -73,12 +73,14 @@ export class EntitiesComponent implements OnInit {
   form = this.fb.group({
     nome: ['', Validators.required],
     apelido: [''],
-    cpfCnpj: ['', [Validators.required, cpfCnpjValidator]],
+    tipoPessoa: ['FISICA'],
+    cpfCnpj: [''],
     ativo: [true]
   });
 
   filters = this.fb.group({
     nome: [''],
+    tipoPessoa: [''],
     cpfCnpj: [''],
     ativo: ['']
   });
@@ -94,6 +96,7 @@ export class EntitiesComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadDef();
+    this.form.get('tipoPessoa')?.valueChanges.subscribe(() => this.updateDocumentoValidators());
   }
 
   loadDef() {
@@ -112,7 +115,8 @@ export class EntitiesComponent implements OnInit {
     if (!this.selectedDefId) {
       return;
     }
-    this.form.reset({ ativo: true });
+    this.form.reset({ ativo: true, tipoPessoa: 'FISICA' });
+    this.updateDocumentoValidators();
     this.editingRowId = null;
     this.selectedRegistroId = null;
     this.contatosDoRegistro = [];
@@ -169,7 +173,7 @@ export class EntitiesComponent implements OnInit {
         this.editable.cpfCnpj = cfg?.fields?.cpfCnpj?.editable ?? true;
         this.labels.nome = cfg?.fields?.nome?.label ?? 'Nome';
         this.labels.apelido = cfg?.fields?.apelido?.label ?? 'Apelido';
-        this.labels.cpfCnpj = cfg?.fields?.cpfCnpj?.label ?? 'CPF/CNPJ';
+        this.labels.cpfCnpj = cfg?.fields?.cpfCnpj?.label ?? 'Documento';
       } else {
         const cols = cfg?.columns || ['nome', 'apelido', 'cpfCnpj', 'ativo', 'acoes'];
         this.columns = cols.filter((c: string) => ['nome','apelido','cpfCnpj','ativo','acoes'].includes(c));
@@ -180,7 +184,7 @@ export class EntitiesComponent implements OnInit {
 
   editRow(row: EntidadeRegistro) {
     this.editingRowId = row.id;
-    this.editingRow = { ...row };
+    this.editingRow = { ...row, tipoPessoa: row.tipoPessoa || this.resolveTipoPessoa(row.cpfCnpj) };
   }
 
   selectRegistro(row: EntidadeRegistro) {
@@ -195,6 +199,10 @@ export class EntitiesComponent implements OnInit {
 
   saveRow() {
     if (!this.editingRowId) return;
+    if (!this.isDocumentoValido(this.editingRow.tipoPessoa || 'FISICA', this.editingRow.cpfCnpj)) {
+      alert('Documento inválido.');
+      return;
+    }
     if (this.editingRow?.ativo) {
       const missing = this.checkMissingObrigatorios();
       if (missing.length > 0) {
@@ -205,7 +213,8 @@ export class EntitiesComponent implements OnInit {
     const payload = {
       nome: this.editingRow.nome,
       apelido: this.editingRow.apelido,
-      cpfCnpj: this.editingRow.cpfCnpj,
+      cpfCnpj: this.normalizeDocumento(this.editingRow.cpfCnpj, this.editingRow.tipoPessoa || 'FISICA'),
+      tipoPessoa: this.editingRow.tipoPessoa || 'FISICA',
       ativo: this.editingRow.ativo
     };
     this.service.updateReg(this.editingRowId, payload).subscribe({
@@ -236,6 +245,10 @@ export class EntitiesComponent implements OnInit {
     if (this.form.invalid || !this.selectedDefId) {
       return;
     }
+    if (!this.isDocumentoValido(this.form.value.tipoPessoa || 'FISICA', this.form.value.cpfCnpj || '')) {
+      alert('Documento inválido.');
+      return;
+    }
     if (this.form.value.ativo) {
       const missing = this.checkMissingObrigatorios();
       if (missing.length > 0) {
@@ -247,7 +260,8 @@ export class EntitiesComponent implements OnInit {
       entidadeDefinicaoId: this.selectedDefId,
       nome: this.form.value.nome,
       apelido: this.form.value.apelido,
-      cpfCnpj: this.form.value.cpfCnpj,
+      cpfCnpj: this.normalizeDocumento(this.form.value.cpfCnpj || '', this.form.value.tipoPessoa || 'FISICA'),
+      tipoPessoa: this.form.value.tipoPessoa || 'FISICA',
       ativo: this.form.value.ativo
     };
     this.service.createReg(payload).subscribe({
@@ -314,5 +328,66 @@ export class EntitiesComponent implements OnInit {
   getTipoCodigoById(id: number): string {
     const tipo = this.contatoTipos.find(t => t.id === id);
     return tipo ? tipo.codigo : '';
+  }
+
+  get documentoLabel(): string {
+    const tipo = this.form.value.tipoPessoa || 'FISICA';
+    if (tipo === 'JURIDICA') return 'CNPJ';
+    if (tipo === 'ESTRANGEIRA') return 'ID estrangeiro';
+    return 'CPF';
+  }
+
+  get filterDocumentoLabel(): string {
+    const tipo = this.filters.value.tipoPessoa || '';
+    if (tipo === 'JURIDICA') return 'CNPJ';
+    if (tipo === 'ESTRANGEIRA') return 'ID estrangeiro';
+    if (tipo === 'FISICA') return 'CPF';
+    return 'Documento';
+  }
+
+  updateDocumentoValidators() {
+    const control = this.form.get('cpfCnpj');
+    if (!control) return;
+    const tipo = this.form.value.tipoPessoa || 'FISICA';
+    const validators: ValidatorFn[] = [Validators.required];
+    if (tipo !== 'ESTRANGEIRA') {
+      validators.push(cpfCnpjValidator);
+      validators.push(this.documentoTipoValidator(tipo));
+    }
+    control.setValidators(validators);
+    control.updateValueAndValidity({ emitEvent: false });
+  }
+
+  private normalizeDocumento(value: string, tipo: string): string {
+    if (tipo === 'ESTRANGEIRA') return (value || '').trim();
+    return (value || '').replace(/\D/g, '');
+  }
+
+  resolveTipoPessoa(documento: string): string {
+    const digits = (documento || '').replace(/\D/g, '');
+    if (digits.length === 14) return 'JURIDICA';
+    if (digits.length === 11) return 'FISICA';
+    return 'ESTRANGEIRA';
+  }
+
+  private isDocumentoValido(tipo: string, documento: string): boolean {
+    const value = (documento || '').trim();
+    if (!value) return false;
+    if (tipo === 'ESTRANGEIRA') return value.length >= 5;
+    const digits = value.replace(/\D/g, '');
+    if (tipo === 'FISICA' && digits.length !== 11) return false;
+    if (tipo === 'JURIDICA' && digits.length !== 14) return false;
+    return cpfCnpjValidator({ value } as any) === null;
+  }
+
+  private documentoTipoValidator(tipo: string): ValidatorFn {
+    return (control: AbstractControl): ValidationErrors | null => {
+      const value = String(control.value || '').trim();
+      if (!value) return null;
+      const digits = value.replace(/\D/g, '');
+      if (tipo === 'FISICA' && digits.length !== 11) return { cpf: true };
+      if (tipo === 'JURIDICA' && digits.length !== 14) return { cnpj: true };
+      return null;
+    };
   }
 }

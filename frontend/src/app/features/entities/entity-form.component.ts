@@ -68,6 +68,7 @@ export class EntityFormComponent implements OnInit {
     cpf: [''],
     cnpj: [''],
     idEstrangeiro: [''],
+    tipoPessoa: ['FISICA'],
     ativo: [true]
   });
 
@@ -99,8 +100,12 @@ export class EntityFormComponent implements OnInit {
       if (value) {
         this.loadPessoa(value);
       } else if (this.mode !== 'view') {
-        this.pessoaForm.reset({ ativo: true });
+        this.pessoaForm.reset({ ativo: true, tipoPessoa: 'FISICA' });
       }
+    });
+
+    this.pessoaForm.get('tipoPessoa')?.valueChanges.subscribe(tipo => {
+      this.handleTipoPessoaChange(String(tipo || 'FISICA'));
     });
 
     this.watchDocumentoChanges();
@@ -167,12 +172,14 @@ export class EntityFormComponent implements OnInit {
     this.autoFilling = true;
     this.pessoaService.get(id).subscribe({
       next: pessoa => {
+        const tipoPessoa = pessoa.tipoPessoa || (pessoa.cnpj ? 'JURIDICA' : (pessoa.idEstrangeiro ? 'ESTRANGEIRA' : 'FISICA'));
         this.pessoaForm.patchValue({
           nome: pessoa.nome,
           apelido: pessoa.apelido || '',
           cpf: pessoa.cpf || '',
           cnpj: pessoa.cnpj || '',
           idEstrangeiro: pessoa.idEstrangeiro || '',
+          tipoPessoa,
           ativo: pessoa.ativo
         });
         this.autoFilling = false;
@@ -195,6 +202,7 @@ export class EntityFormComponent implements OnInit {
 
   private lookupByDocumento(value: string | null | undefined, tipo: 'cpf' | 'cnpj' | 'idEstrangeiro') {
     if (this.autoFilling || this.mode === 'view') return;
+    if (!this.isDocTypeActive(tipo)) return;
     const documento = (value || '').trim();
     if (!documento) {
       this.entityForm.patchValue({ pessoaId: null }, { emitEvent: false });
@@ -208,12 +216,14 @@ export class EntityFormComponent implements OnInit {
       next: pessoa => {
         this.autoFilling = true;
         this.entityForm.patchValue({ pessoaId: pessoa.id }, { emitEvent: false });
+        const tipoPessoa = pessoa.tipoPessoa || (pessoa.cnpj ? 'JURIDICA' : (pessoa.idEstrangeiro ? 'ESTRANGEIRA' : 'FISICA'));
         this.pessoaForm.patchValue({
           nome: pessoa.nome,
           apelido: pessoa.apelido || '',
           cpf: pessoa.cpf || '',
           cnpj: pessoa.cnpj || '',
           idEstrangeiro: pessoa.idEstrangeiro || '',
+          tipoPessoa,
           ativo: pessoa.ativo
         }, { emitEvent: false });
         this.autoFilling = false;
@@ -306,7 +316,9 @@ export class EntityFormComponent implements OnInit {
     fields.forEach(field => {
       const control = this.pessoaForm.get(field);
       if (!control) return;
-      const required = this.regras[field]?.required ?? (field === 'nome');
+      const isDocField = field === 'cpf' || field === 'cnpj' || field === 'idEstrangeiro';
+      const isVisibleDoc = isDocField ? this.isDocTypeActive(field as any) : true;
+      const required = isDocField ? isVisibleDoc : (this.regras[field]?.required ?? (field === 'nome'));
       control.clearValidators();
       if (required) {
         control.addValidators(Validators.required);
@@ -314,7 +326,7 @@ export class EntityFormComponent implements OnInit {
       control.updateValueAndValidity({ emitEvent: false });
       if (this.mode !== 'view') {
         const editable = this.regras[field]?.editable ?? true;
-        if (!editable) {
+        if (!editable || (isDocField && !isVisibleDoc)) {
           control.disable({ emitEvent: false });
         } else {
           control.enable({ emitEvent: false });
@@ -393,11 +405,53 @@ export class EntityFormComponent implements OnInit {
 
   private normalizePessoaPayload(payload: any) {
     const cleaned = { ...payload };
+    const tipoPessoa = cleaned.tipoPessoa as string | undefined;
+    if (tipoPessoa === 'FISICA') {
+      cleaned.cnpj = null;
+      cleaned.idEstrangeiro = null;
+    } else if (tipoPessoa === 'JURIDICA') {
+      cleaned.cpf = null;
+      cleaned.idEstrangeiro = null;
+    } else if (tipoPessoa === 'ESTRANGEIRA') {
+      cleaned.cpf = null;
+      cleaned.cnpj = null;
+    }
     ['apelido', 'cpf', 'cnpj', 'idEstrangeiro'].forEach(key => {
       if (cleaned[key] === '') {
         cleaned[key] = null;
       }
     });
     return cleaned;
+  }
+
+  private getTipoPessoa(): 'FISICA' | 'JURIDICA' | 'ESTRANGEIRA' {
+    const value = (this.pessoaForm.get('tipoPessoa')?.value as string) || 'FISICA';
+    if (value === 'JURIDICA' || value === 'ESTRANGEIRA') return value;
+    return 'FISICA';
+  }
+
+  private isDocTypeActive(tipo: 'cpf' | 'cnpj' | 'idEstrangeiro') {
+    const current = this.getTipoPessoa();
+    if (tipo === 'cpf') return current === 'FISICA';
+    if (tipo === 'cnpj') return current === 'JURIDICA';
+    return current === 'ESTRANGEIRA';
+  }
+
+  private handleTipoPessoaChange(tipo: string) {
+    if (this.autoFilling) return;
+    const cpf = this.pessoaForm.get('cpf');
+    const cnpj = this.pessoaForm.get('cnpj');
+    const idEstrangeiro = this.pessoaForm.get('idEstrangeiro');
+    if (tipo === 'FISICA') {
+      cnpj?.reset('', { emitEvent: false });
+      idEstrangeiro?.reset('', { emitEvent: false });
+    } else if (tipo === 'JURIDICA') {
+      cpf?.reset('', { emitEvent: false });
+      idEstrangeiro?.reset('', { emitEvent: false });
+    } else if (tipo === 'ESTRANGEIRA') {
+      cpf?.reset('', { emitEvent: false });
+      cnpj?.reset('', { emitEvent: false });
+    }
+    this.applyValidators();
   }
 }

@@ -6,5 +6,6 @@ public record EntidadeRegistroResponse(
   String nome,
   String apelido,
   String cpfCnpj,
+  String tipoPessoa,
   boolean ativo
 ) {}

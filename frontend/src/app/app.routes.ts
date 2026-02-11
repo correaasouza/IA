@@ -8,11 +8,10 @@ import { UserFormComponent } from './features/users/user-form.component';
 import { RolesComponent } from './features/roles/roles.component';
 import { TenantsListComponent } from './features/tenants/tenants-list.component';
 import { TenantFormComponent } from './features/tenants/tenant-form.component';
-import { MetadataComponent } from './features/metadata/metadata.component';
-import { ConfigsComponent } from './features/configs/configs.component';
+import { MetadataListComponent } from './features/metadata/metadata-list.component';
+import { MetadataFormComponent } from './features/metadata/metadata-form.component';
 import { EntitiesListComponent } from './features/entities/entities-list.component';
 import { EntityFormComponent } from './features/entities/entity-form.component';
-import { EntitiesConfigComponent } from './features/entities/entities-config.component';
 import { ReportsComponent } from './features/reports/reports.component';
 import { HelpComponent } from './features/help/help.component';
 
@@ -32,9 +31,11 @@ export const routes: Routes = [
   { path: 'entities/new', component: EntityFormComponent, canActivate: [AuthGuard] },
   { path: 'entities/:id', component: EntityFormComponent, canActivate: [AuthGuard] },
   { path: 'entities/:id/edit', component: EntityFormComponent, canActivate: [AuthGuard] },
-  { path: 'entities/config', component: EntitiesConfigComponent, canActivate: [AuthGuard] },
-  { path: 'metadata', component: MetadataComponent, canActivate: [AuthGuard] },
-  { path: 'configs', component: ConfigsComponent, canActivate: [AuthGuard] },
+  { path: 'entities/config', redirectTo: 'metadata', pathMatch: 'full' },
+  { path: 'metadata', component: MetadataListComponent, canActivate: [AuthGuard] },
+  { path: 'metadata/new', component: MetadataFormComponent, canActivate: [AuthGuard] },
+  { path: 'metadata/:id/edit', component: MetadataFormComponent, canActivate: [AuthGuard] },
+  { path: 'configs', redirectTo: 'metadata', pathMatch: 'full' },
   { path: 'reports', component: ReportsComponent, canActivate: [AuthGuard] },
   { path: 'help', component: HelpComponent, canActivate: [AuthGuard] },
   { path: 'blocked', component: BlockedComponent }

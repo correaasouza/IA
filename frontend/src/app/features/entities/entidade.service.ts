@@ -17,6 +17,7 @@ export interface EntidadeRegistro {
   nome: string;
   apelido?: string;
   cpfCnpj: string;
+  tipoPessoa?: string;
   ativo: boolean;
 }
 

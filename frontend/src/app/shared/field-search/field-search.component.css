@@ -1,14 +1,19 @@
-﻿.field-search {
+.field-search {
   display: grid;
   grid-template-columns: 1.4fr 1fr auto;
   gap: 8px;
-  align-items: end;
+  align-items: center;
+}
+
+.field-search.no-actions {
+  grid-template-columns: 1.4fr 1fr;
 }
 
 .actions {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  align-items: center;
 }
 
 .actions button {
@@ -20,9 +25,11 @@
     grid-template-columns: 1fr;
   }
 
+  .field-search.no-actions {
+    grid-template-columns: 1fr;
+  }
+
   .actions {
     width: 100%;
   }
 }
-
-

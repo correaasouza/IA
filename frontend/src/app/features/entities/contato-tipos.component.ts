@@ -8,6 +8,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs/operators';
 
 import { ContatoTipoService, ContatoTipo } from './contato-tipo.service';
@@ -17,7 +18,7 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
 @Component({
   selector: 'app-contato-tipos',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSlideToggleModule, MatIconModule, InlineLoaderComponent, FieldSearchComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSlideToggleModule, MatIconModule, MatTooltipModule, InlineLoaderComponent, FieldSearchComponent],
   templateUrl: './contato-tipos.component.html',
   styleUrls: ['./contato-tipos.component.css']
 })

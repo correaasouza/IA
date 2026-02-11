@@ -25,18 +25,18 @@
     <div class="filters">
       <mat-form-field appearance="outline">
         <mat-label>Tipo de entidade</mat-label>
-        <mat-select [(ngModel)]="entidadeDefinicaoId">
+        <mat-select [(ngModel)]="tipoEntidadeId">
           <mat-option [value]="null">Todas</mat-option>
-          <mat-option *ngFor="let e of definicoes" [value]="e.id">{{ e.nome }}</mat-option>
+          <mat-option *ngFor="let e of tipos" [value]="e.id">{{ e.nome }}</mat-option>
         </mat-select>
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>De</mat-label>
-        <input matInput [(ngModel)]="criadoDe" placeholder="DD-MM-YYYY" appDateMask />
+        <input matInput [(ngModel)]="criadoDe" placeholder="DD/MM/AAAA" appDateMask />
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>Até</mat-label>
-        <input matInput [(ngModel)]="criadoAte" placeholder="DD-MM-YYYY" appDateMask />
+        <input matInput [(ngModel)]="criadoAte" placeholder="DD/MM/AAAA" appDateMask />
       </mat-form-field>
       <button mat-flat-button color="primary" (click)="loadEntidades()">
         <mat-icon>search</mat-icon>
@@ -53,6 +53,10 @@
         <mat-icon>download</mat-icon>
         Entidades XLSX
       </button>
+      <button mat-stroked-button (click)="downloadEntidadesPdf()" aria-label="Exportar entidades em PDF">
+        <mat-icon>download</mat-icon>
+        Entidades PDF
+      </button>
       <button mat-stroked-button (click)="downloadContatosCsv()" aria-label="Exportar contatos em CSV">
         <mat-icon>download</mat-icon>
         Contatos CSV
@@ -61,6 +65,10 @@
         <mat-icon>download</mat-icon>
         Contatos XLSX
       </button>
+      <button mat-stroked-button (click)="downloadContatosPdf()" aria-label="Exportar contatos em PDF">
+        <mat-icon>download</mat-icon>
+        Contatos PDF
+      </button>
       <button mat-stroked-button (click)="downloadPendenciasCsv()" aria-label="Exportar pendências em CSV">
         <mat-icon>download</mat-icon>
         Pendências CSV
@@ -68,6 +76,10 @@
       <button mat-stroked-button (click)="downloadPendenciasXlsx()" aria-label="Exportar pendências em XLSX">
         <mat-icon>download</mat-icon>
         Pendências XLSX
+      </button>
+      <button mat-stroked-button (click)="downloadPendenciasPdf()" aria-label="Exportar pendências em PDF">
+        <mat-icon>download</mat-icon>
+        Pendências PDF
       </button>
     </div>
   </section>
@@ -170,19 +182,19 @@
     <div class="filters two">
       <mat-form-field appearance="outline">
         <mat-label>Período 1 - De</mat-label>
-        <input matInput [(ngModel)]="criadoDe1" placeholder="DD-MM-YYYY" appDateMask />
+        <input matInput [(ngModel)]="criadoDe1" placeholder="DD/MM/AAAA" appDateMask />
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>Período 1 - Até</mat-label>
-        <input matInput [(ngModel)]="criadoAte1" placeholder="DD-MM-YYYY" appDateMask />
+        <input matInput [(ngModel)]="criadoAte1" placeholder="DD/MM/AAAA" appDateMask />
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>Período 2 - De</mat-label>
-        <input matInput [(ngModel)]="criadoDe2" placeholder="DD-MM-YYYY" appDateMask />
+        <input matInput [(ngModel)]="criadoDe2" placeholder="DD/MM/AAAA" appDateMask />
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>Período 2 - Até</mat-label>
-        <input matInput [(ngModel)]="criadoAte2" placeholder="DD-MM-YYYY" appDateMask />
+        <input matInput [(ngModel)]="criadoAte2" placeholder="DD/MM/AAAA" appDateMask />
       </mat-form-field>
       <button mat-flat-button color="primary" (click)="loadComparativo()">
         <mat-icon>compare_arrows</mat-icon>
@@ -194,6 +206,10 @@
       <button mat-stroked-button (click)="downloadComparativoXlsx()" aria-label="Exportar comparativo em XLSX">
         <mat-icon>download</mat-icon>
         Exportar comparativo
+      </button>
+      <button mat-stroked-button (click)="downloadComparativoPdf()" aria-label="Exportar comparativo em PDF">
+        <mat-icon>download</mat-icon>
+        Exportar comparativo PDF
       </button>
     </div>
 

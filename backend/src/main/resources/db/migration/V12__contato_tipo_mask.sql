@@ -1,4 +1,0 @@
-﻿ALTER TABLE contato_tipo
-  ADD COLUMN IF NOT EXISTS mascara VARCHAR(60);
-ALTER TABLE contato_tipo
-  ADD COLUMN IF NOT EXISTS regex_validacao VARCHAR(200);

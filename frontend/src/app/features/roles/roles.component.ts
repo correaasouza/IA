@@ -10,6 +10,8 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { finalize } from 'rxjs/operators';
 
 import { RolesService, Papel, PermissaoCatalog } from './roles.service';
@@ -34,6 +36,8 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     MatIconModule,
     MatDialogModule,
     MatSidenavModule,
+    MatTooltipModule,
+    MatMenuModule,
     InlineLoaderComponent,
     FieldSearchComponent
   ],

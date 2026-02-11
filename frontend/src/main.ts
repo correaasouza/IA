@@ -16,6 +16,7 @@ import { keycloakInitializer } from './app/core/auth/keycloak-init';
 import { AuthInterceptor } from './app/core/interceptors/auth.interceptor';
 import { BlockingInterceptor } from './app/core/interceptors/blocking.interceptor';
 import { ErrorInterceptor } from './app/core/interceptors/error.interceptor';
+import { SanitizeInterceptor } from './app/core/interceptors/sanitize.interceptor';
 
 registerLocaleData(localePt);
 
@@ -34,6 +35,7 @@ bootstrapApplication(AppComponent, {
       multi: true
     },
     { provide: HTTP_INTERCEPTORS, useClass: AuthInterceptor, multi: true },
+    { provide: HTTP_INTERCEPTORS, useClass: SanitizeInterceptor, multi: true },
     { provide: HTTP_INTERCEPTORS, useClass: BlockingInterceptor, multi: true },
     { provide: HTTP_INTERCEPTORS, useClass: ErrorInterceptor, multi: true }
   ]

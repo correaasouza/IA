@@ -8,5 +8,6 @@ public record PessoaRequest(
   String cpf,
   String cnpj,
   String idEstrangeiro,
+  String tipoPessoa,
   boolean ativo
 ) {}

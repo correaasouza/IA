@@ -10,6 +10,8 @@ import { MatSortModule, Sort } from '@angular/material/sort';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 
@@ -35,6 +37,8 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     MatSortModule,
     MatIconModule,
     MatDialogModule,
+    MatTooltipModule,
+    MatMenuModule,
     InlineLoaderComponent,
     FieldSearchComponent
   ],
@@ -43,16 +47,15 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
 })
 export class TenantsListComponent implements OnInit {
   locatarios: LocatarioResponse[] = [];
-  displayedColumns = ['id', 'nome', 'dataLimite', 'status', 'acoes'];
+  displayedColumns = ['nome', 'dataLimite', 'status', 'acoes'];
   totalElements = 0;
   pageIndex = 0;
   pageSize = 50;
-  sort = 'id,asc';
+  sort = 'nome,asc';
   loading = false;
 
   searchOptions: FieldSearchOption[] = [
-    { key: 'nome', label: 'Nome' },
-    { key: 'id', label: 'ID' }
+    { key: 'nome', label: 'Nome' }
   ];
   searchTerm = '';
   searchFields = ['nome'];
@@ -90,10 +93,6 @@ export class TenantsListComponent implements OnInit {
     }).pipe(finalize(() => this.loading = false)).subscribe({
       next: data => {
         let items = data.content || [];
-        if (this.searchTerm && this.searchFields.includes('id')) {
-          const term = this.searchTerm.toLowerCase();
-          items = items.filter(i => String(i.id).toLowerCase().includes(term));
-        }
         this.locatarios = items;
         this.totalElements = data.totalElements || 0;
       },
@@ -122,7 +121,7 @@ export class TenantsListComponent implements OnInit {
   }
 
   sortChange(sort: Sort) {
-    this.sort = sort.direction ? `${sort.active},${sort.direction}` : 'id,asc';
+    this.sort = sort.direction ? `${sort.active},${sort.direction}` : 'nome,asc';
     this.load();
   }
 
@@ -136,6 +135,19 @@ export class TenantsListComponent implements OnInit {
     if (!row.ativo) return 'off';
     if (row.bloqueado) return 'warn';
     return '';
+  }
+
+  renew(row: LocatarioResponse) {
+    const date = new Date(row.dataLimiteAcesso);
+    date.setDate(date.getDate() + 30);
+    const iso = date.toISOString().slice(0, 10);
+    this.service.updateAccessLimit(row.id, iso).subscribe({
+      next: () => {
+        this.notify.success('Acesso renovado por mais 30 dias.');
+        this.load();
+      },
+      error: () => this.notify.error('Não foi possível renovar o acesso.')
+    });
   }
 
   view(row: LocatarioResponse) {

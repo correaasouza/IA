@@ -18,10 +18,26 @@
           <mat-label>{{ labels.apelido }}</mat-label>
           <input matInput formControlName="apelido" [readonly]="!editable.apelido" />
         </mat-form-field>
-        <mat-form-field appearance="outline" *ngIf="visible.cpfCnpj">
-          <mat-label>{{ labels.cpfCnpj }}</mat-label>
+        <mat-form-field appearance="outline">
+          <mat-label>Tipo de pessoa</mat-label>
+          <mat-select formControlName="tipoPessoa">
+            <mat-option value="FISICA">Pessoa física</mat-option>
+            <mat-option value="JURIDICA">Pessoa jurídica</mat-option>
+            <mat-option value="ESTRANGEIRA">Pessoa estrangeira</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" *ngIf="visible.cpfCnpj && form.get('tipoPessoa')?.value !== 'ESTRANGEIRA'">
+          <mat-label>{{ documentoLabel }}</mat-label>
           <input matInput formControlName="cpfCnpj" [readonly]="!editable.cpfCnpj" appCpfCnpjMask aria-describedby="legacy-cpf-err" />
-          <mat-error id="legacy-cpf-err" *ngIf="form.get('cpfCnpj')?.hasError('cpfCnpj')">CPF/CNPJ inválido</mat-error>
+          <mat-error id="legacy-cpf-err" *ngIf="form.get('cpfCnpj')?.hasError('required')">Informe o documento.</mat-error>
+          <mat-error *ngIf="form.get('cpfCnpj')?.hasError('cpf')">CPF inválido.</mat-error>
+          <mat-error *ngIf="form.get('cpfCnpj')?.hasError('cnpj')">CNPJ inválido.</mat-error>
+          <mat-error *ngIf="form.get('cpfCnpj')?.hasError('cpfCnpj')">Documento inválido.</mat-error>
+        </mat-form-field>
+        <mat-form-field appearance="outline" *ngIf="visible.cpfCnpj && form.get('tipoPessoa')?.value === 'ESTRANGEIRA'">
+          <mat-label>{{ documentoLabel }}</mat-label>
+          <input matInput formControlName="cpfCnpj" [readonly]="!editable.cpfCnpj" aria-describedby="legacy-cpf-err" />
+          <mat-error id="legacy-cpf-err" *ngIf="form.get('cpfCnpj')?.hasError('required')">Informe o documento.</mat-error>
         </mat-form-field>
         <mat-slide-toggle formControlName="ativo" aria-label="Ativo">Ativo</mat-slide-toggle>
         <button mat-flat-button color="primary" type="submit" aria-label="Salvar cadastro">Salvar</button>
@@ -70,8 +86,17 @@
           <input matInput formControlName="nome" aria-label="Filtrar por nome" />
         </mat-form-field>
         <mat-form-field appearance="outline">
-          <mat-label>CPF/CNPJ</mat-label>
-          <input matInput formControlName="cpfCnpj" aria-label="Filtrar por CPF ou CNPJ" />
+          <mat-label>Tipo de pessoa</mat-label>
+          <mat-select formControlName="tipoPessoa" aria-label="Filtrar por tipo de pessoa">
+            <mat-option value="">Todos</mat-option>
+            <mat-option value="FISICA">Pessoa física</mat-option>
+            <mat-option value="JURIDICA">Pessoa jurídica</mat-option>
+            <mat-option value="ESTRANGEIRA">Pessoa estrangeira</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>{{ filterDocumentoLabel }}</mat-label>
+          <input matInput formControlName="cpfCnpj" aria-label="Filtrar por documento" />
         </mat-form-field>
         <mat-form-field appearance="outline">
           <mat-label>Status</mat-label>
@@ -107,7 +132,12 @@
           <th mat-header-cell *matHeaderCellDef>{{ labels.cpfCnpj }}</th>
           <td mat-cell *matCellDef="let row">
             <ng-container *ngIf="editingRowId === row.id; else cpfView">
-              <input matInput [(ngModel)]="editingRow.cpfCnpj" appCpfCnpjMask aria-label="CPF/CNPJ" />
+              <ng-container *ngIf="(editingRow.tipoPessoa || resolveTipoPessoa(editingRow.cpfCnpj)) !== 'ESTRANGEIRA'; else docForeign">
+                <input matInput [(ngModel)]="editingRow.cpfCnpj" appCpfCnpjMask aria-label="Documento" />
+              </ng-container>
+              <ng-template #docForeign>
+                <input matInput [(ngModel)]="editingRow.cpfCnpj" aria-label="Documento estrangeiro" />
+              </ng-template>
             </ng-container>
             <ng-template #cpfView>{{ row.cpfCnpj }}</ng-template>
           </td>

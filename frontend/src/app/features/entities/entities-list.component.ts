@@ -13,6 +13,7 @@ import { Router, RouterLink } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { forkJoin } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 
@@ -43,6 +44,7 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     MatIconModule,
     MatDialogModule,
     MatTooltipModule,
+    MatMenuModule,
     InlineLoaderComponent,
     FieldSearchComponent
   ],

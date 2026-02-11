@@ -36,7 +36,9 @@ export class HomeDashboardComponent implements OnInit {
     this.atalhoService.list().subscribe({
       next: data => {
         const atalhos = data || [];
-        const allowed = this.menuService.items;
+        const allowed = this.menuService.items
+          .flatMap(item => item.children && item.children.length > 0 ? item.children : [item])
+          .filter(item => !!item.route);
         this.shortcuts = atalhos
           .sort((a, b) => a.ordem - b.ordem)
           .map(a => allowed.find(m => m.id === a.menuId))

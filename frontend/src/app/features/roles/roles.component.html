@@ -120,13 +120,11 @@
             <ng-container matColumnDef="acoes">
               <th mat-header-cell *matHeaderCellDef>Ações</th>
               <td mat-cell *matCellDef="let row" class="actions">
-                <button mat-stroked-button (click)="openEditRole(row)" [attr.aria-label]="'Editar ' + row.nome">
+                <button mat-icon-button matTooltip="Editar" (click)="openEditRole(row)" [attr.aria-label]="'Editar ' + row.nome">
                   <mat-icon>edit</mat-icon>
-                  Editar
                 </button>
-                <button mat-stroked-button (click)="toggleStatus(row)" [disabled]="togglingRoleId === row.id" [attr.aria-label]="(row.ativo ? 'Desativar ' : 'Ativar ') + row.nome">
+                <button mat-icon-button matTooltip="{{ row.ativo ? 'Desativar' : 'Ativar' }}" (click)="toggleStatus(row)" [disabled]="togglingRoleId === row.id" [attr.aria-label]="(row.ativo ? 'Desativar ' : 'Ativar ') + row.nome">
                   <mat-icon>{{ row.ativo ? 'block' : 'check_circle' }}</mat-icon>
-                  {{ row.ativo ? 'Desativar' : 'Ativar' }}
                 </button>
               </td>
             </ng-container>
@@ -145,18 +143,23 @@
               <span class="status" [class.off]="!row.ativo">{{ statusLabel(row) }}</span>
             </div>
             <div class="card-row-actions">
-              <button mat-stroked-button (click)="select(row)" [attr.aria-label]="'Selecionar papel ' + row.nome">
-                <mat-icon>check_circle</mat-icon>
-                Selecionar
+              <button mat-icon-button [matMenuTriggerFor]="roleMenu" aria-label="Ações do papel">
+                <mat-icon>more_vert</mat-icon>
               </button>
-              <button mat-stroked-button (click)="openEditRole(row)" [attr.aria-label]="'Editar ' + row.nome">
-                <mat-icon>edit</mat-icon>
-                Editar
-              </button>
-              <button mat-stroked-button (click)="toggleStatus(row)" [disabled]="togglingRoleId === row.id" [attr.aria-label]="(row.ativo ? 'Desativar ' : 'Ativar ') + row.nome">
-                <mat-icon>{{ row.ativo ? 'block' : 'check_circle' }}</mat-icon>
-                {{ row.ativo ? 'Desativar' : 'Ativar' }}
-              </button>
+              <mat-menu #roleMenu="matMenu">
+                <button mat-menu-item (click)="select(row)">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>Selecionar</span>
+                </button>
+                <button mat-menu-item (click)="openEditRole(row)">
+                  <mat-icon>edit</mat-icon>
+                  <span>Editar</span>
+                </button>
+                <button mat-menu-item (click)="toggleStatus(row)">
+                  <mat-icon>{{ row.ativo ? 'block' : 'check_circle' }}</mat-icon>
+                  <span>{{ row.ativo ? 'Desativar' : 'Ativar' }}</span>
+                </button>
+              </mat-menu>
             </div>
           </article>
         </div>
@@ -228,17 +231,14 @@
             <ng-container matColumnDef="acoes">
               <th mat-header-cell *matHeaderCellDef>Ações</th>
               <td mat-cell *matCellDef="let row" class="actions">
-                <button *ngIf="editingPermId !== row.id" mat-stroked-button (click)="editPerm(row)" [attr.aria-label]="'Editar permissão ' + row.codigo">
+                <button *ngIf="editingPermId !== row.id" mat-icon-button matTooltip="Editar" (click)="editPerm(row)" [attr.aria-label]="'Editar permissão ' + row.codigo">
                   <mat-icon>edit</mat-icon>
-                  Editar
                 </button>
-                <button *ngIf="editingPermId === row.id" mat-stroked-button (click)="cancelPermEdit()" aria-label="Cancelar edição">
+                <button *ngIf="editingPermId === row.id" mat-icon-button matTooltip="Cancelar" (click)="cancelPermEdit()" aria-label="Cancelar edição">
                   <mat-icon>close</mat-icon>
-                  Cancelar
                 </button>
-                <button *ngIf="editingPermId === row.id" mat-flat-button color="primary" (click)="savePerm(row)" [disabled]="savingPermId === row.id">
+                <button *ngIf="editingPermId === row.id" mat-icon-button color="primary" matTooltip="Salvar" (click)="savePerm(row)" [disabled]="savingPermId === row.id">
                   <mat-icon>save</mat-icon>
-                  Salvar
                 </button>
               </td>
             </ng-container>

@@ -1,4 +1,4 @@
-﻿.page {
+.page {
   display: grid;
   gap: 12px;
 }
@@ -20,6 +20,12 @@
   margin: 4px 0 0;
   color: var(--muted);
   font-size: 12px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .panel {
@@ -47,21 +53,24 @@
 }
 
 .panel-content {
-  padding: 8px 12px 0;
+  padding: 8px 12px 12px;
+  display: grid;
+  gap: 8px;
 }
 
-.form-inline {
+.table-panel {
+  padding: 0;
+}
+
+.panel-loader {
+  padding: 6px 12px 0;
   display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  padding: 8px 12px 12px;
+  justify-content: flex-end;
 }
 
 .table-wrap {
   overflow: auto;
-  border-top: 1px solid var(--border-light);
-  margin-top: 8px;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .table-dense {
@@ -85,16 +94,6 @@
   padding: 6px 10px;
 }
 
-.table-input {
-  width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 4px 8px;
-  background: var(--surface);
-  color: var(--ink);
-  font-size: 12px;
-}
-
 .status {
   display: inline-flex;
   align-items: center;
@@ -112,15 +111,83 @@
   color: var(--warning-ink);
 }
 
-.panel-actions {
-  padding: 10px 12px 12px;
+.cards {
+  display: none;
+  gap: 10px;
+  padding: 10px 12px 0;
+}
+
+.card-row {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-xs);
+}
+
+.card-row-header {
   display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.card-row-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.card-row-subtitle {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.card-row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
   justify-content: flex-end;
 }
 
+.empty-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.empty-state mat-icon {
+  font-size: 28px;
+  width: 28px;
+  height: 28px;
+}
+
+.empty-title {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.empty-subtitle {
+  font-size: 12px;
+}
+
 @media (max-width: 900px) {
-  .form-inline {
+  .page-header {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
+  }
+
+  .table-wrap {
+    display: none;
+  }
+
+  .cards {
+    display: grid;
   }
 }

@@ -13,6 +13,7 @@ public class EntidadeRegistroMapper {
       entity.getNome(),
       entity.getApelido(),
       entity.getCpfCnpj(),
+      entity.getTipoPessoa(),
       entity.isAtivo()
     );
   }

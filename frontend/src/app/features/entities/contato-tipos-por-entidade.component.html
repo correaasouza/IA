@@ -43,9 +43,8 @@
       <ng-container matColumnDef="acoes">
         <th mat-header-cell *matHeaderCellDef>Ações</th>
         <td mat-cell *matCellDef="let row" class="actions">
-          <button mat-stroked-button (click)="save(row)" [disabled]="savingIds.has(row.id || 0)" aria-label="Salvar vínculo">
+          <button mat-icon-button matTooltip="Salvar" (click)="save(row)" [disabled]="savingIds.has(row.id || 0)" aria-label="Salvar vínculo">
             <mat-icon>save</mat-icon>
-            Salvar
           </button>
           <span class="feedback ok" *ngIf="savedIds.has(row.id || 0)">
             <mat-icon>check_circle</mat-icon>

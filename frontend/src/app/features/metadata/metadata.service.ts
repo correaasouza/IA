@@ -75,6 +75,10 @@ export class MetadataService {
     return this.http.post<TipoEntidade>(this.baseTipos, payload);
   }
 
+  updateTipo(id: number, payload: any): Observable<TipoEntidade> {
+    return this.http.put<TipoEntidade>(`${this.baseTipos}/${id}`, payload);
+  }
+
   listCampos(tenantId: string, tipoEntidadeId: number): Observable<TipoEntidadeCampoRegra[]> {
     const key = `meta:campos:${tenantId}:${tipoEntidadeId}`;
     const cached = localStorage.getItem(key);

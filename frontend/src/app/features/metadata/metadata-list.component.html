@@ -1,0 +1,103 @@
+<div class="page">
+  <header class="page-header">
+    <div class="title-block">
+      <h1>Tipos de Entidades</h1>
+      <p>Gerencie os tipos disponíveis e configure campos fixos.</p>
+    </div>
+    <div class="header-actions">
+      <button mat-flat-button color="primary" type="button" (click)="newTipo()">
+        <mat-icon>add</mat-icon>
+        Novo tipo
+      </button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <div class="panel-header">
+      <div class="panel-title">Filtros</div>
+      <div class="panel-meta">{{ filtered.length }} tipo(s)</div>
+    </div>
+    <div class="panel-content">
+      <app-field-search
+        [options]="searchOptions"
+        label="Buscar"
+        placeholder="Digite e selecione os campos"
+        [defaultFields]="searchFields"
+        [showActions]="false"
+        (searchChange)="onSearchChange($event)">
+      </app-field-search>
+    </div>
+  </section>
+
+  <section class="panel table-panel" *ngIf="filtered.length > 0">
+    <div class="panel-loader" *ngIf="loading">
+      <app-inline-loader label="Carregando tipos"></app-inline-loader>
+    </div>
+
+    <div class="table-wrap">
+      <table mat-table [dataSource]="filtered" class="table-dense">
+        <ng-container matColumnDef="codigo">
+          <th mat-header-cell *matHeaderCellDef>Código</th>
+          <td mat-cell *matCellDef="let row">{{ row.codigo }}</td>
+        </ng-container>
+        <ng-container matColumnDef="nome">
+          <th mat-header-cell *matHeaderCellDef>Nome</th>
+          <td mat-cell *matCellDef="let row">{{ row.nome }}</td>
+        </ng-container>
+        <ng-container matColumnDef="ativo">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="status" [class.off]="!row.ativo">{{ row.ativo ? 'Ativo' : 'Inativo' }}</span>
+          </td>
+        </ng-container>
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef>Ações</th>
+          <td mat-cell *matCellDef="let row" class="actions">
+            <button mat-icon-button matTooltip="Editar" (click)="editTipo(row)" [attr.aria-label]="'Editar ' + row.nome">
+              <mat-icon>edit</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="columns; sticky: true"></tr>
+        <tr mat-row *matRowDef="let row; columns: columns;"></tr>
+      </table>
+    </div>
+
+    <div class="cards">
+      <article class="card-row" *ngFor="let row of filtered">
+        <div class="card-row-header">
+          <div>
+            <div class="card-row-title">{{ row.nome }}</div>
+            <div class="card-row-subtitle">{{ row.codigo }}</div>
+          </div>
+          <span class="status" [class.off]="!row.ativo">{{ row.ativo ? 'Ativo' : 'Inativo' }}</span>
+        </div>
+        <div class="card-row-actions">
+          <button mat-icon-button [matMenuTriggerFor]="tipoMenu" aria-label="Ações do tipo">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #tipoMenu="matMenu">
+            <button mat-menu-item (click)="editTipo(row)">
+              <mat-icon>edit</mat-icon>
+              <span>Editar</span>
+            </button>
+          </mat-menu>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="empty-state" *ngIf="filtered.length === 0" role="status" aria-live="polite">
+    <app-inline-loader *ngIf="loading" label="Carregando tipos"></app-inline-loader>
+    <mat-icon>view_list</mat-icon>
+    <div>
+      <div class="empty-title">Nenhum tipo cadastrado</div>
+      <div class="empty-subtitle">Crie um novo tipo para começar.</div>
+    </div>
+    <button mat-flat-button color="primary" type="button" (click)="newTipo()">
+      <mat-icon>add</mat-icon>
+      Criar tipo
+    </button>
+  </section>
+</div>

@@ -33,6 +33,9 @@ public class Pessoa extends AuditableEntity {
   @Column(name = "id_estrangeiro", length = 40)
   private String idEstrangeiro;
 
+  @Column(name = "tipo_pessoa", nullable = false, length = 20)
+  private String tipoPessoa = "FISICA";
+
   @Column(name = "ativo", nullable = false)
   private boolean ativo = true;
 
@@ -89,6 +92,14 @@ public class Pessoa extends AuditableEntity {
 
   public void setIdEstrangeiro(String idEstrangeiro) {
     this.idEstrangeiro = idEstrangeiro;
+  }
+
+  public String getTipoPessoa() {
+    return tipoPessoa;
+  }
+
+  public void setTipoPessoa(String tipoPessoa) {
+    this.tipoPessoa = tipoPessoa;
   }
 
   public boolean isAtivo() {

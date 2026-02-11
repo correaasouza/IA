@@ -4,6 +4,7 @@ import { FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSelectModule } from '@angular/material/select';
 
 export interface PessoaFieldRule {
   visible?: boolean;
@@ -20,7 +21,8 @@ export interface PessoaFieldRule {
     ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    MatSelectModule
   ],
   templateUrl: './pessoa-fields.component.html',
   styleUrls: ['./pessoa-fields.component.css']
@@ -34,8 +36,21 @@ export class PessoaFieldsComponent {
     return this.rules[field]?.label || fallback;
   }
 
+  getTipoPessoa(): 'FISICA' | 'JURIDICA' | 'ESTRANGEIRA' {
+    const value = (this.form.get('tipoPessoa')?.value as string) || 'FISICA';
+    if (value === 'JURIDICA' || value === 'ESTRANGEIRA') return value;
+    return 'FISICA';
+  }
+
   isVisible(field: string): boolean {
     return this.rules[field]?.visible ?? true;
+  }
+
+  isDocVisible(field: 'cpf' | 'cnpj' | 'idEstrangeiro'): boolean {
+    const tipo = this.getTipoPessoa();
+    if (field === 'cpf') return tipo === 'FISICA';
+    if (field === 'cnpj') return tipo === 'JURIDICA';
+    return tipo === 'ESTRANGEIRA';
   }
 
   isRequired(field: string): boolean {

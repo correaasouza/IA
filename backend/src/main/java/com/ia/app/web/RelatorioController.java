@@ -10,11 +10,19 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -37,11 +45,13 @@ public class RelatorioController {
   @GetMapping("/entidades")
   @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW')")
   public ResponseEntity<List<RelatorioEntidadeResponse>> entidades(
+      @RequestParam(required = false) Long tipoEntidadeId,
       @RequestParam(required = false) Long entidadeDefinicaoId,
       @RequestParam(required = false) LocalDate criadoDe,
       @RequestParam(required = false) LocalDate criadoAte) {
-    if (entidadeDefinicaoId != null || criadoDe != null || criadoAte != null) {
-      return ResponseEntity.ok(service.entidadesPorTipoFiltrado(entidadeDefinicaoId, criadoDe, criadoAte));
+    Long effectiveId = tipoEntidadeId != null ? tipoEntidadeId : entidadeDefinicaoId;
+    if (effectiveId != null || criadoDe != null || criadoAte != null) {
+      return ResponseEntity.ok(service.entidadesPorTipoFiltrado(effectiveId, criadoDe, criadoAte));
     }
     return ResponseEntity.ok(service.entidadesPorTipo());
   }
@@ -77,11 +87,13 @@ public class RelatorioController {
   @GetMapping("/entidades.csv")
   @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW')")
   public ResponseEntity<byte[]> entidadesCsv(
+      @RequestParam(required = false) Long tipoEntidadeId,
       @RequestParam(required = false) Long entidadeDefinicaoId,
       @RequestParam(required = false) LocalDate criadoDe,
       @RequestParam(required = false) LocalDate criadoAte) {
-    List<RelatorioEntidadeResponse> data = (entidadeDefinicaoId != null || criadoDe != null || criadoAte != null)
-      ? service.entidadesPorTipoFiltrado(entidadeDefinicaoId, criadoDe, criadoAte)
+    Long effectiveId = tipoEntidadeId != null ? tipoEntidadeId : entidadeDefinicaoId;
+    List<RelatorioEntidadeResponse> data = (effectiveId != null || criadoDe != null || criadoAte != null)
+      ? service.entidadesPorTipoFiltrado(effectiveId, criadoDe, criadoAte)
       : service.entidadesPorTipo();
     StringBuilder sb = new StringBuilder();
     sb.append("tipo,total\n");
@@ -92,11 +104,13 @@ public class RelatorioController {
   @GetMapping("/entidades.xlsx")
   @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW')")
   public ResponseEntity<byte[]> entidadesXlsx(
+      @RequestParam(required = false) Long tipoEntidadeId,
       @RequestParam(required = false) Long entidadeDefinicaoId,
       @RequestParam(required = false) LocalDate criadoDe,
       @RequestParam(required = false) LocalDate criadoAte) {
-    List<RelatorioEntidadeResponse> data = (entidadeDefinicaoId != null || criadoDe != null || criadoAte != null)
-      ? service.entidadesPorTipoFiltrado(entidadeDefinicaoId, criadoDe, criadoAte)
+    Long effectiveId = tipoEntidadeId != null ? tipoEntidadeId : entidadeDefinicaoId;
+    List<RelatorioEntidadeResponse> data = (effectiveId != null || criadoDe != null || criadoAte != null)
+      ? service.entidadesPorTipoFiltrado(effectiveId, criadoDe, criadoAte)
       : service.entidadesPorTipo();
     Workbook wb = new XSSFWorkbook();
     Sheet sheet = wb.createSheet("Entidades");
@@ -112,6 +126,23 @@ public class RelatorioController {
     sheet.autoSizeColumn(0);
     sheet.autoSizeColumn(1);
     return xlsxResponse("relatorio-entidades.xlsx", wb);
+  }
+
+  @GetMapping("/entidades.pdf")
+  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW')")
+  public ResponseEntity<byte[]> entidadesPdf(
+      @RequestParam(required = false) Long tipoEntidadeId,
+      @RequestParam(required = false) Long entidadeDefinicaoId,
+      @RequestParam(required = false) LocalDate criadoDe,
+      @RequestParam(required = false) LocalDate criadoAte) {
+    Long effectiveId = tipoEntidadeId != null ? tipoEntidadeId : entidadeDefinicaoId;
+    List<RelatorioEntidadeResponse> data = (effectiveId != null || criadoDe != null || criadoAte != null)
+      ? service.entidadesPorTipoFiltrado(effectiveId, criadoDe, criadoAte)
+      : service.entidadesPorTipo();
+    List<String[]> rows = new ArrayList<>();
+    rows.add(new String[] { "Tipo", "Total" });
+    data.forEach(r -> rows.add(new String[] { r.nome(), String.valueOf(r.total()) }));
+    return pdfResponse("relatorio-entidades.pdf", simplePdf("Relatorio Entidades", rows));
   }
 
   @GetMapping("/entidades-comparativo.xlsx")
@@ -144,6 +175,25 @@ public class RelatorioController {
     return xlsxResponse("relatorio-entidades-comparativo.xlsx", wb);
   }
 
+  @GetMapping("/entidades-comparativo.pdf")
+  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW')")
+  public ResponseEntity<byte[]> entidadesComparativoPdf(
+      @RequestParam(required = false) LocalDate criadoDe1,
+      @RequestParam(required = false) LocalDate criadoAte1,
+      @RequestParam(required = false) LocalDate criadoDe2,
+      @RequestParam(required = false) LocalDate criadoAte2) {
+    List<RelatorioEntidadeComparativoResponse> data = service.entidadesComparativo(criadoDe1, criadoAte1, criadoDe2, criadoAte2);
+    List<String[]> rows = new ArrayList<>();
+    rows.add(new String[] { "Tipo", "Periodo1", "Periodo2", "Variacao" });
+    data.forEach(r -> rows.add(new String[] {
+      r.nome(),
+      String.valueOf(r.totalPeriodo1()),
+      String.valueOf(r.totalPeriodo2()),
+      String.valueOf(r.totalPeriodo2() - r.totalPeriodo1())
+    }));
+    return pdfResponse("relatorio-entidades-comparativo.pdf", simplePdf("Relatorio Comparativo", rows));
+  }
+
   @GetMapping("/contatos.csv")
   @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW')")
   public ResponseEntity<byte[]> contatosCsv() {
@@ -172,6 +222,16 @@ public class RelatorioController {
     sheet.autoSizeColumn(0);
     sheet.autoSizeColumn(1);
     return xlsxResponse("relatorio-contatos.xlsx", wb);
+  }
+
+  @GetMapping("/contatos.pdf")
+  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW')")
+  public ResponseEntity<byte[]> contatosPdf() {
+    List<RelatorioContatoResponse> data = service.contatosPorTipo();
+    List<String[]> rows = new ArrayList<>();
+    rows.add(new String[] { "Tipo", "Total" });
+    data.forEach(r -> rows.add(new String[] { r.tipo(), String.valueOf(r.total()) }));
+    return pdfResponse("relatorio-contatos.pdf", simplePdf("Relatorio Contatos", rows));
   }
 
   @GetMapping("/pendencias-contato.csv")
@@ -210,6 +270,16 @@ public class RelatorioController {
     return xlsxResponse("relatorio-pendencias.xlsx", wb);
   }
 
+  @GetMapping("/pendencias-contato.pdf")
+  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW')")
+  public ResponseEntity<byte[]> pendenciasPdf() {
+    List<RelatorioPendenciaContatoResponse> data = service.pendenciasContato();
+    List<String[]> rows = new ArrayList<>();
+    rows.add(new String[] { "Entidade", "Contato" });
+    data.forEach(r -> rows.add(new String[] { r.entidadeNome(), r.tipoContato() }));
+    return pdfResponse("relatorio-pendencias.pdf", simplePdf("Relatorio Pendencias", rows));
+  }
+
   private ResponseEntity<byte[]> csvResponse(String filename, String content) {
     byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
     return ResponseEntity.ok()
@@ -228,6 +298,58 @@ public class RelatorioController {
         .body(bytes);
     } catch (IOException e) {
       throw new IllegalStateException("xlsx_export_failed", e);
+    }
+  }
+
+  private ResponseEntity<byte[]> pdfResponse(String filename, byte[] content) {
+    return ResponseEntity.ok()
+      .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+      .contentType(MediaType.APPLICATION_PDF)
+      .body(content);
+  }
+
+  private byte[] simplePdf(String title, List<String[]> rows) {
+    try (PDDocument doc = new PDDocument(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+      PDPage page = new PDPage(PDRectangle.A4);
+      doc.addPage(page);
+      PDPageContentStream content = new PDPageContentStream(doc, page);
+
+      float margin = 48;
+      float y = page.getMediaBox().getHeight() - margin;
+      float leading = 14;
+
+      content.setFont(PDType1Font.HELVETICA_BOLD, 14);
+      content.beginText();
+      content.newLineAtOffset(margin, y);
+      content.showText(Objects.toString(title, "Relatorio"));
+      content.endText();
+
+      y -= leading * 1.5f;
+      content.setFont(PDType1Font.HELVETICA, 10);
+
+      for (String[] row : rows) {
+        if (y < margin) {
+          content.close();
+          page = new PDPage(PDRectangle.A4);
+          doc.addPage(page);
+          content = new PDPageContentStream(doc, page);
+          y = page.getMediaBox().getHeight() - margin;
+        }
+        String line = java.util.Arrays.stream(row)
+          .map(v -> v == null ? "" : v)
+          .collect(Collectors.joining(" | "));
+        content.beginText();
+        content.newLineAtOffset(margin, y);
+        content.showText(line);
+        content.endText();
+        y -= leading;
+      }
+
+      content.close();
+      doc.save(out);
+      return out.toByteArray();
+    } catch (IOException e) {
+      throw new IllegalStateException("pdf_export_failed", e);
     }
   }
 

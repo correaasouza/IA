@@ -17,7 +17,6 @@ public class CacheConfig {
     CaffeineCacheManager manager = new CaffeineCacheManager(
       "configColuna",
       "configFormulario",
-      "metadados",
       "permissoesUsuario",
       "papeisUsuario"
     );

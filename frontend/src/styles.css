@@ -141,35 +141,81 @@ body {
   min-height: 28px;
 }
 
-.filters .mat-mdc-form-field {
+.filters,
+.filter-bar {
+  --mdc-outlined-text-field-container-height: 36px;
+  --mdc-filled-text-field-container-height: 36px;
+}
+
+.filters .mat-mdc-form-field,
+.filter-bar .mat-mdc-form-field {
   margin-bottom: 0;
 }
 
-.filters .mat-mdc-text-field-wrapper {
-  padding: 0 4px;
-  min-height: 24px;
+.filters .mat-mdc-text-field-wrapper,
+.filter-bar .mat-mdc-text-field-wrapper {
+  padding: 0 6px;
+  min-height: 36px;
 }
 
-.filters .mat-mdc-form-field-infix {
-  padding: 0;
-  min-height: 22px;
+.filters .mat-mdc-form-field-flex,
+.filter-bar .mat-mdc-form-field-flex {
+  align-items: center;
 }
 
-.filters .mat-mdc-form-field-subscript-wrapper {
+.filters .mat-mdc-form-field-infix,
+.filter-bar .mat-mdc-form-field-infix {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+}
+
+.filters .mdc-text-field,
+.filter-bar .mdc-text-field {
+  height: 36px;
+}
+
+.filters .mat-mdc-form-field-subscript-wrapper,
+.filter-bar .mat-mdc-form-field-subscript-wrapper {
   display: none;
 }
 
 .filters .mat-mdc-select-trigger,
-.filters .mat-mdc-input-element {
+.filters .mat-mdc-input-element,
+.filter-bar .mat-mdc-select-trigger,
+.filter-bar .mat-mdc-input-element {
   font-size: 11.5px;
-  line-height: 14px;
-  height: 20px;
+  line-height: 18px;
+  height: 22px;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
-.filters .mat-mdc-button-base {
-  align-self: end;
-  height: 28px;
-  min-height: 28px;
+.filters .mat-mdc-select-trigger,
+.filter-bar .mat-mdc-select-trigger {
+  display: flex;
+  align-items: center;
+}
+
+.filters .mat-mdc-select-value,
+.filter-bar .mat-mdc-select-value {
+  display: flex;
+  align-items: center;
+}
+
+.filters .mat-mdc-input-element,
+.filter-bar .mat-mdc-input-element {
+  display: flex;
+  align-items: center;
+}
+
+.filters .mat-mdc-button-base,
+.filter-bar .mat-mdc-button-base {
+  align-self: center;
+  height: 32px;
+  min-height: 32px;
   padding: 0 12px;
 }
 
@@ -182,11 +228,34 @@ body {
 .mat-mdc-outlined-button {
   min-height: 32px;
   font-size: 12.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .mat-mdc-icon-button .mat-icon {
   font-family: 'Material Symbols Outlined';
   font-weight: 400;
+}
+
+.mat-mdc-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mat-mdc-button .mat-icon,
+.mat-mdc-unelevated-button .mat-icon,
+.mat-mdc-outlined-button .mat-icon,
+.mat-mdc-icon-button .mat-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1em;
+  height: 1em;
+  line-height: 1;
+  margin: 0;
 }
 
 mat-icon {
@@ -212,6 +281,7 @@ mat-icon {
 }
 
 .mat-mdc-list-item .mdc-list-item__content {
+  display: flex;
   align-items: center;
 }
 
@@ -232,11 +302,36 @@ mat-icon {
 
 .table-dense td .mat-mdc-button-base {
   margin-right: 6px;
-  min-width: 96px;
 }
 
 .table-dense td .mat-mdc-button-base:last-child {
   margin-right: 0;
+}
+
+.table-dense .mat-column-acoes,
+.table-dense .mat-column-actions {
+  text-align: right;
+}
+
+.table-dense .mat-column-acoes .actions,
+.table-dense .mat-column-actions .actions {
+  justify-content: flex-end;
+}
+
+.table-dense td.actions {
+  padding-right: 4px;
+}
+
+.table-dense th.mat-column-acoes,
+.table-dense th.mat-column-actions,
+.table-dense td.mat-column-acoes,
+.table-dense td.mat-column-actions {
+  padding-right: 4px;
+}
+
+.table-dense .mat-mdc-icon-button {
+  width: 32px;
+  height: 32px;
 }
 
 .mat-mdc-button:hover,

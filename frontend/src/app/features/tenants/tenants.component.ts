@@ -9,6 +9,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSortModule, Sort } from '@angular/material/sort';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { DateMaskDirective } from '../../shared/date-mask.directive';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { finalize } from 'rxjs/operators';
@@ -30,6 +32,8 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     MatPaginatorModule,
     MatSortModule,
     MatIconModule,
+    MatTooltipModule,
+    MatMenuModule,
     DateMaskDirective,
     InlineLoaderComponent,
     FieldSearchComponent
@@ -39,16 +43,15 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
 })
 export class TenantsComponent implements OnInit {
   locatarios: LocatarioResponse[] = [];
-  displayedColumns = ['id', 'nome', 'dataLimite', 'status', 'acoes'];
+  displayedColumns = ['nome', 'dataLimite', 'status', 'acoes'];
   totalElements = 0;
   pageIndex = 0;
   pageSize = 50;
-  sort = 'id,asc';
+  sort = 'nome,asc';
   loading = false;
 
   searchOptions: FieldSearchOption[] = [
-    { key: 'nome', label: 'Nome' },
-    { key: 'id', label: 'ID' }
+    { key: 'nome', label: 'Nome' }
   ];
   searchTerm = '';
   searchFields = ['nome'];
@@ -85,10 +88,6 @@ export class TenantsComponent implements OnInit {
     }).pipe(finalize(() => this.loading = false)).subscribe({
       next: data => {
         let items = data.content || [];
-        if (this.searchTerm && this.searchFields.includes('id')) {
-          const term = this.searchTerm.toLowerCase();
-          items = items.filter(i => String(i.id).toLowerCase().includes(term));
-        }
         this.locatarios = items;
         this.totalElements = data.totalElements || 0;
       },
@@ -120,7 +119,7 @@ export class TenantsComponent implements OnInit {
     if (sort.direction) {
       this.sort = `${sort.active},${sort.direction}`;
     } else {
-      this.sort = 'id,asc';
+      this.sort = 'nome,asc';
     }
     this.load();
   }

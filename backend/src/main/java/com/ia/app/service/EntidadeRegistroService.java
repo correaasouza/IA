@@ -53,7 +53,9 @@ public class EntidadeRegistroService {
   public EntidadeRegistro create(EntidadeRegistroRequest request) {
     Long tenantId = requireTenant();
     ensureRole(request.entidadeDefinicaoId(), tenantId);
-    validateCpfCnpj(request.cpfCnpj());
+    String tipoPessoa = resolveTipoPessoa(request.tipoPessoa(), request.cpfCnpj());
+    String documento = normalizeDocumento(request.cpfCnpj(), tipoPessoa);
+    validateDocumento(tipoPessoa, documento);
     definicaoRepository.findByIdAndTenantId(request.entidadeDefinicaoId(), tenantId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_definicao_not_found"));
 
@@ -62,7 +64,8 @@ public class EntidadeRegistroService {
     entity.setEntidadeDefinicaoId(request.entidadeDefinicaoId());
     entity.setNome(request.nome());
     entity.setApelido(request.apelido());
-    entity.setCpfCnpj(request.cpfCnpj());
+    entity.setCpfCnpj(documento);
+    entity.setTipoPessoa(tipoPessoa);
     entity.setAtivo(request.ativo());
     EntidadeRegistro saved = repository.save(entity);
     if (request.ativo()) {
@@ -76,11 +79,14 @@ public class EntidadeRegistroService {
     EntidadeRegistro existing = repository.findByIdAndTenantId(id, tenantId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_registro_not_found"));
     ensureRole(existing.getEntidadeDefinicaoId(), tenantId);
-    validateCpfCnpj(request.cpfCnpj());
+    String tipoPessoa = resolveTipoPessoa(request.tipoPessoa(), request.cpfCnpj());
+    String documento = normalizeDocumento(request.cpfCnpj(), tipoPessoa);
+    validateDocumento(tipoPessoa, documento);
     EntidadeRegistro entity = existing;
     entity.setNome(request.nome());
     entity.setApelido(request.apelido());
-    entity.setCpfCnpj(request.cpfCnpj());
+    entity.setCpfCnpj(documento);
+    entity.setTipoPessoa(tipoPessoa);
     entity.setAtivo(request.ativo());
     entity.setVersao(entity.getVersao() + 1);
     EntidadeRegistro saved = repository.save(entity);
@@ -118,10 +124,63 @@ public class EntidadeRegistroService {
     }
   }
 
-  private void validateCpfCnpj(String value) {
-    if (!CpfCnpjValidator.isValid(value)) {
-      throw new IllegalArgumentException("cpf_cnpj_invalido");
+  private void validateDocumento(String tipoPessoa, String documento) {
+    if ("FISICA".equals(tipoPessoa)) {
+      if (documento == null || documento.isBlank()) {
+        throw new IllegalArgumentException("cpf_required");
+      }
+      if (!CpfCnpjValidator.isValid(documento)) {
+        throw new IllegalArgumentException("cpf_invalido");
+      }
+      return;
     }
+    if ("JURIDICA".equals(tipoPessoa)) {
+      if (documento == null || documento.isBlank()) {
+        throw new IllegalArgumentException("cnpj_required");
+      }
+      if (!CpfCnpjValidator.isValid(documento)) {
+        throw new IllegalArgumentException("cnpj_invalido");
+      }
+      return;
+    }
+    if ("ESTRANGEIRA".equals(tipoPessoa)) {
+      if (documento == null || documento.isBlank()) {
+        throw new IllegalArgumentException("id_estrangeiro_required");
+      }
+      return;
+    }
+    throw new IllegalArgumentException("tipo_pessoa_invalido");
+  }
+
+  private String resolveTipoPessoa(String tipoPessoa, String documento) {
+    if (tipoPessoa != null) {
+      String normalized = normalizeTipoPessoa(tipoPessoa);
+      if (normalized == null) {
+        throw new IllegalArgumentException("tipo_pessoa_invalido");
+      }
+      return normalized;
+    }
+    String digits = documento == null ? "" : documento.replaceAll("\\D", "");
+    if (digits.length() == 14) return "JURIDICA";
+    if (digits.length() == 11) return "FISICA";
+    return "ESTRANGEIRA";
+  }
+
+  private String normalizeTipoPessoa(String value) {
+    if (value == null) return null;
+    String upper = value.trim().toUpperCase();
+    if (upper.equals("FISICA") || upper.equals("JURIDICA") || upper.equals("ESTRANGEIRA")) {
+      return upper;
+    }
+    return null;
+  }
+
+  private String normalizeDocumento(String value, String tipoPessoa) {
+    if (value == null) return null;
+    if ("ESTRANGEIRA".equals(tipoPessoa)) {
+      return value.trim();
+    }
+    return value.replaceAll("\\D", "");
   }
 
   private Long requireTenant() {

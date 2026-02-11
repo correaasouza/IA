@@ -6,6 +6,8 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 
@@ -28,6 +30,8 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     MatDialogModule,
     MatIconModule,
     MatPaginatorModule,
+    MatTooltipModule,
+    MatMenuModule,
     InlineLoaderComponent,
     FieldSearchComponent
   ],

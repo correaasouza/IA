@@ -3,13 +3,16 @@ package com.ia.app.service;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.ia.app.domain.Locatario;
+import com.ia.app.config.AuditingConfig;
 import com.ia.app.repository.LocatarioRepository;
 import java.time.LocalDate;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
 @DataJpaTest
+@Import(AuditingConfig.class)
 class LocatarioRepositoryTest {
 
   @Autowired

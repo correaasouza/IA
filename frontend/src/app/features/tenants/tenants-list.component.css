@@ -57,7 +57,7 @@
   display: grid;
   grid-template-columns: 2fr 180px 120px;
   gap: 8px;
-  align-items: end;
+  align-items: center;
 }
 
 .table-panel {
@@ -187,6 +187,7 @@
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .empty-state {

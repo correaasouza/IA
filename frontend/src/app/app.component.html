@@ -1,37 +1,76 @@
 ﻿<div class="app-shell dense">
   <mat-toolbar class="app-toolbar" role="banner">
-    <button mat-icon-button class="nav-toggle" *ngIf="hasTenant" (click)="toggleSidebar()" aria-label="Alternar menu lateral">
-      <mat-icon>menu</mat-icon>
-    </button>
+    <div class="toolbar-left">
+      <button mat-icon-button class="nav-toggle" *ngIf="hasTenant" (click)="toggleSidebar()" aria-label="Alternar menu lateral">
+        <mat-icon>menu</mat-icon>
+      </button>
 
-    <div class="brand" aria-label="Zeta Web ERP">
-      <span class="brand-mark">
-        <img src="assets/logo-zeta.png" alt="Zeta Informática" class="brand-logo" onerror="this.style.display='none';" />
-        <span class="brand-fallback">Z</span>
-      </span>
-      <div class="brand-text">
-        <span class="brand-title">Zeta Web ERP</span>
-        <span class="brand-subtitle" *ngIf="hasTenant">Ambiente do locatário</span>
+      <div class="brand" aria-label="Sistema de Gestão de Negócios">
+        <span class="brand-mark" aria-hidden="true">
+          <mat-icon class="brand-icon">business</mat-icon>
+        </span>
+        <div class="brand-text">
+          <span class="brand-title">Sistema de Gestão de Negócios</span>
+          <span class="brand-subtitle" *ngIf="hasTenant">Ambiente do locatário</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar-center" *ngIf="hasTenant">
+      <div class="header-divider"></div>
+      <button mat-button class="home-link" routerLink="/home" aria-label="Home" matTooltip="Ir para Home">
+        <mat-icon>home</mat-icon>
+        <span>Home</span>
+      </button>
+      <div class="quick-actions" aria-label="Navegação rápida">
+        <ng-container *ngFor="let s of atalhosTop">
+          <button mat-button class="quick-link" [routerLink]="s.route" [class.active]="isActiveRoute(s.route)">
+            <mat-icon>{{ s.icon }}</mat-icon>
+            <span [attr.title]="s.label">{{ getMenuLabel(s) }}</span>
+          </button>
+        </ng-container>
+        <button
+          mat-icon-button
+          class="quick-reorder"
+          (click)="openOrdenar()"
+          aria-label="Ordenar atalhos rápidos"
+          matTooltip="Ordenar atalhos">
+          <mat-icon>reorder</mat-icon>
+        </button>
       </div>
     </div>
 
     <span class="spacer"></span>
 
-    <div class="quick-actions" *ngIf="hasTenant">
-      <ng-container *ngFor="let s of atalhosTop">
-        <button mat-button class="quick-link" [routerLink]="s.route" [class.active]="isActiveRoute(s.route)">
-          <mat-icon>{{ s.icon }}</mat-icon>
-          <span>{{ s.label }}</span>
-        </button>
-      </ng-container>
-      <button mat-icon-button class="quick-reorder" (click)="openOrdenar()" aria-label="Ordenar atalhos rápidos">
-        <mat-icon>reorder</mat-icon>
+    <div class="header-actions">
+      <button
+        mat-icon-button
+        class="help-btn"
+        routerLink="/help"
+        aria-label="Ajuda"
+        matTooltip="Ajuda"
+        *ngIf="hasTenant">
+        <mat-icon>help_outline</mat-icon>
       </button>
-    </div>
 
-    <div class="session-actions">
-      <button mat-stroked-button class="session-btn" (click)="login()">Login</button>
-      <button mat-flat-button color="primary" class="session-btn" (click)="logout()">Logout</button>
+      <div class="user-area" *ngIf="loggedIn; else loginActions">
+        <button mat-button class="user-btn" [matMenuTriggerFor]="userMenu" aria-label="Abrir menu do usuário">
+          <span class="avatar">{{ userInitials }}</span>
+          <span class="user-name">{{ userName }}</span>
+          <mat-icon>expand_more</mat-icon>
+        </button>
+        <mat-menu #userMenu="matMenu">
+          <button mat-menu-item (click)="logout()">
+            <mat-icon>logout</mat-icon>
+            <span>Sair</span>
+          </button>
+        </mat-menu>
+      </div>
+      <ng-template #loginActions>
+        <div class="session-actions">
+          <button mat-stroked-button class="session-btn" (click)="login()">Login</button>
+        </div>
+      </ng-template>
     </div>
   </mat-toolbar>
 
@@ -42,20 +81,65 @@
         <span class="sidebar-hint">Favoritos e módulos</span>
       </div>
       <mat-nav-list class="menu-list">
-        <a mat-list-item *ngFor="let item of menu" [routerLink]="item.route" [class.active]="isActiveRoute(item.route)">
-          <mat-icon>{{ item.icon }}</mat-icon>
-          <span>{{ item.label }}</span>
-          <button
-            mat-icon-button
-            class="pin-button"
-            (click)="toggleShortcut(item); $event.preventDefault(); $event.stopPropagation();"
-            [attr.aria-pressed]="isShortcut(item.id) || isActiveRoute(item.route)"
-            aria-label="Fixar ou desfazer atalho">
-            <mat-icon [class.active-star]="isShortcut(item.id) || isActiveRoute(item.route)">
-              {{ isShortcut(item.id) || isActiveRoute(item.route) ? 'star' : 'star_border' }}
-            </mat-icon>
-          </button>
-        </a>
+        <ng-container *ngFor="let item of menu">
+          <a
+            mat-list-item
+            *ngIf="!item.children?.length"
+            class="menu-item"
+            [routerLink]="item.route"
+            [class.active]="isActiveRoute(item.route)">
+            <mat-icon class="menu-icon">{{ item.icon }}</mat-icon>
+            <span class="menu-label">{{ item.label }}</span>
+            <button
+              mat-icon-button
+              class="pin-button"
+              (click)="toggleShortcut(item); $event.preventDefault(); $event.stopPropagation();"
+              [attr.aria-pressed]="isShortcut(item.id)"
+              aria-label="Fixar ou desfazer atalho">
+              <mat-icon class="star-icon" [class.active-star]="isShortcut(item.id)">star</mat-icon>
+            </button>
+          </a>
+
+          <div class="menu-group" *ngIf="item.children?.length">
+            <button
+              mat-button
+              type="button"
+              class="menu-group-header"
+              (click)="toggleGroup(item)"
+              [attr.aria-expanded]="isGroupExpanded(item)"
+              [class.active-group]="hasActiveChild(item)"
+              [class.with-bg]="true">
+              <span class="menu-left">
+                <mat-icon class="menu-icon">{{ item.icon }}</mat-icon>
+                <span class="menu-label" [attr.title]="item.label">{{ getMenuLabel(item) }}</span>
+              </span>
+              <span class="count" *ngIf="item.children?.length > 1">{{ item.children.length }}</span>
+              <mat-icon class="menu-chevron" [class.open]="isGroupExpanded(item)">
+                {{ isGroupExpanded(item) ? 'expand_more' : 'chevron_right' }}
+              </mat-icon>
+            </button>
+            <div class="menu-group-items" [class.open]="isGroupExpanded(item)" [attr.aria-hidden]="!isGroupExpanded(item)">
+              <a
+                mat-list-item
+                *ngFor="let child of item.children"
+                class="menu-item child"
+                [routerLink]="child.route"
+                [class.active]="isActiveRoute(child.route)">
+                <span class="tree-dot" aria-hidden="true"></span>
+                <mat-icon class="menu-icon">{{ child.icon }}</mat-icon>
+                <span class="menu-label" [attr.title]="child.label">{{ getMenuLabel(child) }}</span>
+                <button
+                  mat-icon-button
+                  class="pin-button"
+                  (click)="toggleShortcut(child); $event.preventDefault(); $event.stopPropagation();"
+                  [attr.aria-pressed]="isShortcut(child.id)"
+                  aria-label="Fixar ou desfazer atalho">
+                  <mat-icon class="star-icon" [class.active-star]="isShortcut(child.id)">star</mat-icon>
+                </button>
+              </a>
+            </div>
+          </div>
+        </ng-container>
       </mat-nav-list>
     </mat-sidenav>
 

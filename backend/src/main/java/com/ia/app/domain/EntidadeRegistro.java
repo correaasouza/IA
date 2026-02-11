@@ -30,6 +30,9 @@ public class EntidadeRegistro extends AuditableEntity {
   @Column(name = "cpf_cnpj", nullable = false, length = 20)
   private String cpfCnpj;
 
+  @Column(name = "tipo_pessoa", nullable = false, length = 20)
+  private String tipoPessoa = "FISICA";
+
   @Column(name = "ativo", nullable = false)
   private boolean ativo = true;
 
@@ -78,6 +81,14 @@ public class EntidadeRegistro extends AuditableEntity {
 
   public void setCpfCnpj(String cpfCnpj) {
     this.cpfCnpj = cpfCnpj;
+  }
+
+  public String getTipoPessoa() {
+    return tipoPessoa;
+  }
+
+  public void setTipoPessoa(String tipoPessoa) {
+    this.tipoPessoa = tipoPessoa;
   }
 
   public boolean isAtivo() {

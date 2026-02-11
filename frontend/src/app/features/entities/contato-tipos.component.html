@@ -95,9 +95,8 @@
       <ng-container matColumnDef="acoes">
         <th mat-header-cell *matHeaderCellDef>Ações</th>
         <td mat-cell *matCellDef="let row" class="actions">
-          <button mat-stroked-button (click)="save(row)" [disabled]="savingIds.has(row.id)" [attr.aria-label]="'Salvar tipo ' + row.codigo">
+          <button mat-icon-button matTooltip="Salvar" (click)="save(row)" [disabled]="savingIds.has(row.id)" [attr.aria-label]="'Salvar tipo ' + row.codigo">
             <mat-icon>save</mat-icon>
-            Salvar
           </button>
           <span class="feedback ok" *ngIf="savedIds.has(row.id)">
             <mat-icon>check_circle</mat-icon>

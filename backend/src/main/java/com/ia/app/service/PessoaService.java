@@ -50,15 +50,18 @@ public class PessoaService {
 
   public Pessoa create(PessoaRequest request) {
     Long tenantId = requireTenant();
-    validateDocumento(request);
-    ensureUniqueDocumento(tenantId, null, request);
+    String tipoPessoa = resolveTipoPessoa(request);
+    DocumentoInfo documento = normalizeDocumento(request, tipoPessoa);
+    validateDocumento(tipoPessoa, documento);
+    ensureUniqueDocumento(tenantId, null, documento);
     Pessoa entity = new Pessoa();
     entity.setTenantId(tenantId);
     entity.setNome(request.nome());
     entity.setApelido(request.apelido());
-    entity.setCpf(normalize(request.cpf()));
-    entity.setCnpj(normalize(request.cnpj()));
-    entity.setIdEstrangeiro(request.idEstrangeiro());
+    entity.setCpf(documento.cpf);
+    entity.setCnpj(documento.cnpj);
+    entity.setIdEstrangeiro(documento.idEstrangeiro);
+    entity.setTipoPessoa(tipoPessoa);
     entity.setAtivo(request.ativo());
     entity.setVersao(1);
     return repository.save(entity);
@@ -66,45 +69,112 @@ public class PessoaService {
 
   public Pessoa update(Long id, PessoaRequest request) {
     Long tenantId = requireTenant();
-    validateDocumento(request);
-    ensureUniqueDocumento(tenantId, id, request);
+    String tipoPessoa = resolveTipoPessoa(request);
+    DocumentoInfo documento = normalizeDocumento(request, tipoPessoa);
+    validateDocumento(tipoPessoa, documento);
+    ensureUniqueDocumento(tenantId, id, documento);
     Pessoa entity = repository.findByIdAndTenantId(id, tenantId)
       .orElseThrow(() -> new EntityNotFoundException("pessoa_not_found"));
     entity.setNome(request.nome());
     entity.setApelido(request.apelido());
-    entity.setCpf(normalize(request.cpf()));
-    entity.setCnpj(normalize(request.cnpj()));
-    entity.setIdEstrangeiro(request.idEstrangeiro());
+    entity.setCpf(documento.cpf);
+    entity.setCnpj(documento.cnpj);
+    entity.setIdEstrangeiro(documento.idEstrangeiro);
+    entity.setTipoPessoa(tipoPessoa);
     entity.setAtivo(request.ativo());
     entity.setVersao(entity.getVersao() + 1);
     return repository.save(entity);
   }
 
-  private void validateDocumento(PessoaRequest request) {
-    if (isBlank(request.cpf()) && isBlank(request.cnpj()) && isBlank(request.idEstrangeiro())) {
-      throw new IllegalArgumentException("documento_required");
+  private void validateDocumento(String tipoPessoa, DocumentoInfo documento) {
+    if ("FISICA".equals(tipoPessoa)) {
+      if (isBlank(documento.cpf)) {
+        throw new IllegalArgumentException("cpf_required");
+      }
+      if (!CpfCnpjValidator.isValid(documento.cpf)) {
+        throw new IllegalArgumentException("cpf_invalido");
+      }
+      return;
     }
-    if (!isBlank(request.cpf()) && !CpfCnpjValidator.isValid(request.cpf())) {
-      throw new IllegalArgumentException("cpf_invalido");
+    if ("JURIDICA".equals(tipoPessoa)) {
+      if (isBlank(documento.cnpj)) {
+        throw new IllegalArgumentException("cnpj_required");
+      }
+      if (!CpfCnpjValidator.isValid(documento.cnpj)) {
+        throw new IllegalArgumentException("cnpj_invalido");
+      }
+      return;
     }
-    if (!isBlank(request.cnpj()) && !CpfCnpjValidator.isValid(request.cnpj())) {
-      throw new IllegalArgumentException("cnpj_invalido");
+    if ("ESTRANGEIRA".equals(tipoPessoa)) {
+      if (isBlank(documento.idEstrangeiro)) {
+        throw new IllegalArgumentException("id_estrangeiro_required");
+      }
+      return;
+    }
+    throw new IllegalArgumentException("tipo_pessoa_invalido");
+  }
+
+  private void ensureUniqueDocumento(Long tenantId, Long currentId, DocumentoInfo documento) {
+    if (!isBlank(documento.cpf)) {
+      repository.findByTenantIdAndCpf(tenantId, documento.cpf)
+        .filter(p -> currentId == null || !p.getId().equals(currentId))
+        .ifPresent(p -> { throw new IllegalArgumentException("cpf_duplicado"); });
+    }
+    if (!isBlank(documento.cnpj)) {
+      repository.findByTenantIdAndCnpj(tenantId, documento.cnpj)
+        .filter(p -> currentId == null || !p.getId().equals(currentId))
+        .ifPresent(p -> { throw new IllegalArgumentException("cnpj_duplicado"); });
+    }
+    if (!isBlank(documento.idEstrangeiro)) {
+      repository.findByTenantIdAndIdEstrangeiro(tenantId, documento.idEstrangeiro)
+        .filter(p -> currentId == null || !p.getId().equals(currentId))
+        .ifPresent(p -> { throw new IllegalArgumentException("id_estrangeiro_duplicado"); });
     }
   }
 
-  private void ensureUniqueDocumento(Long tenantId, Long currentId, PessoaRequest request) {
+  private DocumentoInfo normalizeDocumento(PessoaRequest request, String tipoPessoa) {
     String cpf = normalize(request.cpf());
     String cnpj = normalize(request.cnpj());
-    String idEstrangeiro = request.idEstrangeiro();
-    repository.findByTenantIdAndCpf(tenantId, cpf)
-      .filter(p -> currentId == null || !p.getId().equals(currentId))
-      .ifPresent(p -> { throw new IllegalArgumentException("cpf_duplicado"); });
-    repository.findByTenantIdAndCnpj(tenantId, cnpj)
-      .filter(p -> currentId == null || !p.getId().equals(currentId))
-      .ifPresent(p -> { throw new IllegalArgumentException("cnpj_duplicado"); });
-    repository.findByTenantIdAndIdEstrangeiro(tenantId, idEstrangeiro)
-      .filter(p -> currentId == null || !p.getId().equals(currentId))
-      .ifPresent(p -> { throw new IllegalArgumentException("id_estrangeiro_duplicado"); });
+    String idEstrangeiro = trimToNull(request.idEstrangeiro());
+    if ("FISICA".equals(tipoPessoa)) {
+      cnpj = null;
+      idEstrangeiro = null;
+    } else if ("JURIDICA".equals(tipoPessoa)) {
+      cpf = null;
+      idEstrangeiro = null;
+    } else if ("ESTRANGEIRA".equals(tipoPessoa)) {
+      cpf = null;
+      cnpj = null;
+    }
+    return new DocumentoInfo(cpf, cnpj, idEstrangeiro);
+  }
+
+  private String resolveTipoPessoa(PessoaRequest request) {
+    if (request.tipoPessoa() != null) {
+      String tipo = normalizeTipoPessoa(request.tipoPessoa());
+      if (tipo == null) {
+        throw new IllegalArgumentException("tipo_pessoa_invalido");
+      }
+      return tipo;
+    }
+    if (!isBlank(request.cnpj())) return "JURIDICA";
+    if (!isBlank(request.idEstrangeiro())) return "ESTRANGEIRA";
+    return "FISICA";
+  }
+
+  private String normalizeTipoPessoa(String value) {
+    if (value == null) return null;
+    String upper = value.trim().toUpperCase();
+    if (upper.equals("FISICA") || upper.equals("JURIDICA") || upper.equals("ESTRANGEIRA")) {
+      return upper;
+    }
+    return null;
+  }
+
+  private String trimToNull(String value) {
+    if (value == null) return null;
+    String trimmed = value.trim();
+    return trimmed.isEmpty() ? null : trimmed;
   }
 
   private String normalize(String value) {
@@ -115,6 +185,8 @@ public class PessoaService {
   private boolean isBlank(String value) {
     return value == null || value.isBlank();
   }
+
+  private record DocumentoInfo(String cpf, String cnpj, String idEstrangeiro) {}
 
   private Long requireTenant() {
     Long tenantId = TenantContext.getTenantId();

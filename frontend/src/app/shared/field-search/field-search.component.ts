@@ -1,4 +1,4 @@
-﻿import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -7,6 +7,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
+import { combineLatest, Subject } from 'rxjs';
+import { debounceTime, startWith, takeUntil } from 'rxjs/operators';
 
 export interface FieldSearchOption {
   key: string;
@@ -34,38 +36,53 @@ export interface FieldSearchValue {
   templateUrl: './field-search.component.html',
   styleUrls: ['./field-search.component.css']
 })
-export class FieldSearchComponent {
+export class FieldSearchComponent implements OnInit, OnDestroy {
   @Input() options: FieldSearchOption[] = [];
   @Input() label = 'Buscar';
   @Input() placeholder = 'Digite para buscar';
   @Input() defaultFields: string[] = [];
+  @Input() showActions = true;
+  @Input() actionLabel = 'Buscar';
   @Output() searchChange = new EventEmitter<FieldSearchValue>();
 
   termControl = new FormControl('', { nonNullable: true });
   fieldsControl = new FormControl<string[]>([], { nonNullable: true });
 
+  private destroy$ = new Subject<void>();
+
   ngOnInit(): void {
     if (this.defaultFields.length) {
       this.fieldsControl.setValue([...this.defaultFields]);
     }
+
+    if (!this.showActions) {
+      combineLatest([
+        this.termControl.valueChanges.pipe(startWith(this.termControl.value)),
+        this.fieldsControl.valueChanges.pipe(startWith(this.fieldsControl.value))
+      ])
+        .pipe(debounceTime(200), takeUntil(this.destroy$))
+        .subscribe(([term, fields]) => this.emitChange(term, fields));
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   apply() {
-    const term = this.termControl.value.trim();
-    const fields = this.fieldsControl.value.length
-      ? this.fieldsControl.value
-      : this.options.map(o => o.key);
-    this.searchChange.emit({ term, fields });
+    this.emitChange(this.termControl.value, this.fieldsControl.value);
   }
 
   clear() {
     this.termControl.setValue('');
     this.fieldsControl.setValue(this.defaultFields.length ? [...this.defaultFields] : []);
-    this.searchChange.emit({
-      term: '',
-      fields: this.fieldsControl.value.length ? this.fieldsControl.value : this.options.map(o => o.key)
-    });
+    this.emitChange('', this.fieldsControl.value);
+  }
+
+  private emitChange(term: string, fields: string[]) {
+    const normalizedTerm = (term || '').trim();
+    const normalizedFields = fields.length ? fields : this.options.map(o => o.key);
+    this.searchChange.emit({ term: normalizedTerm, fields: normalizedFields });
   }
 }
-
-

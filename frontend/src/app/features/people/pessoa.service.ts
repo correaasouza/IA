@@ -10,6 +10,7 @@ export interface Pessoa {
   cpf?: string;
   cnpj?: string;
   idEstrangeiro?: string;
+  tipoPessoa?: string;
   ativo: boolean;
 }
 

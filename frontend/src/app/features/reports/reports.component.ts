@@ -12,7 +12,7 @@ import { finalize } from 'rxjs/operators';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 
 import { RelatorioService } from './relatorio.service';
-import { EntidadeService, EntidadeDefinicao } from '../entities/entidade.service';
+import { TipoEntidadeService, TipoEntidade } from '../entities/tipo-entidade.service';
 import { environment } from '../../../environments/environment';
 import { toIsoDate } from '../../shared/date-utils';
 
@@ -34,8 +34,8 @@ export class ReportsComponent implements OnInit {
   contColumns = ['tipo', 'total'];
   pendColumns = ['entidade', 'tipoContato'];
 
-  definicoes: EntidadeDefinicao[] = [];
-  entidadeDefinicaoId: number | null = null;
+  tipos: TipoEntidade[] = [];
+  tipoEntidadeId: number | null = null;
   criadoDe = '';
   criadoAte = '';
   criadoDe1 = '';
@@ -48,10 +48,10 @@ export class ReportsComponent implements OnInit {
   loadingEntidades = false;
   loadingComparativo = false;
 
-  constructor(private service: RelatorioService, private entidadeService: EntidadeService) {}
+  constructor(private service: RelatorioService, private tipoService: TipoEntidadeService) {}
 
   ngOnInit(): void {
-    this.entidadeService.listDef(0, 50).subscribe({ next: data => this.definicoes = data.content || [] });
+    this.tipoService.list(0, 50).subscribe({ next: data => this.tipos = data.content || [] });
     this.loadEntidades();
     this.loadComparativo();
     this.service.contatos().subscribe({ next: data => { this.contatos = data; this.maxContatos = this.max(data); } });
@@ -62,7 +62,7 @@ export class ReportsComponent implements OnInit {
   loadEntidades() {
     this.loadingEntidades = true;
     this.service.entidades({
-      entidadeDefinicaoId: this.entidadeDefinicaoId || undefined,
+      tipoEntidadeId: this.tipoEntidadeId || undefined,
       criadoDe: this.criadoDe ? toIsoDate(this.criadoDe) : undefined,
       criadoAte: this.criadoAte ? toIsoDate(this.criadoAte) : undefined
     }).pipe(finalize(() => this.loadingEntidades = false)).subscribe({ next: data => { this.entidades = data; this.maxEntidades = this.max(data); } });
@@ -70,7 +70,7 @@ export class ReportsComponent implements OnInit {
 
   downloadEntidadesCsv() {
     const qs = new URLSearchParams();
-    if (this.entidadeDefinicaoId) qs.set('entidadeDefinicaoId', String(this.entidadeDefinicaoId));
+    if (this.tipoEntidadeId) qs.set('tipoEntidadeId', String(this.tipoEntidadeId));
     if (this.criadoDe) qs.set('criadoDe', toIsoDate(this.criadoDe));
     if (this.criadoAte) qs.set('criadoAte', toIsoDate(this.criadoAte));
     const q = qs.toString();
@@ -79,11 +79,20 @@ export class ReportsComponent implements OnInit {
 
   downloadEntidadesXlsx() {
     const qs = new URLSearchParams();
-    if (this.entidadeDefinicaoId) qs.set('entidadeDefinicaoId', String(this.entidadeDefinicaoId));
+    if (this.tipoEntidadeId) qs.set('tipoEntidadeId', String(this.tipoEntidadeId));
     if (this.criadoDe) qs.set('criadoDe', toIsoDate(this.criadoDe));
     if (this.criadoAte) qs.set('criadoAte', toIsoDate(this.criadoAte));
     const q = qs.toString();
     window.open(`${environment.apiBaseUrl}/api/relatorios/entidades.xlsx${q ? '?' + q : ''}`, '_blank');
+  }
+
+  downloadEntidadesPdf() {
+    const qs = new URLSearchParams();
+    if (this.tipoEntidadeId) qs.set('tipoEntidadeId', String(this.tipoEntidadeId));
+    if (this.criadoDe) qs.set('criadoDe', toIsoDate(this.criadoDe));
+    if (this.criadoAte) qs.set('criadoAte', toIsoDate(this.criadoAte));
+    const q = qs.toString();
+    window.open(`${environment.apiBaseUrl}/api/relatorios/entidades.pdf${q ? '?' + q : ''}`, '_blank');
   }
 
   downloadContatosCsv() {
@@ -94,12 +103,20 @@ export class ReportsComponent implements OnInit {
     window.open(`${environment.apiBaseUrl}/api/relatorios/contatos.xlsx`, '_blank');
   }
 
+  downloadContatosPdf() {
+    window.open(`${environment.apiBaseUrl}/api/relatorios/contatos.pdf`, '_blank');
+  }
+
   downloadPendenciasCsv() {
     window.open(`${environment.apiBaseUrl}/api/relatorios/pendencias-contato.csv`, '_blank');
   }
 
   downloadPendenciasXlsx() {
     window.open(`${environment.apiBaseUrl}/api/relatorios/pendencias-contato.xlsx`, '_blank');
+  }
+
+  downloadPendenciasPdf() {
+    window.open(`${environment.apiBaseUrl}/api/relatorios/pendencias-contato.pdf`, '_blank');
   }
 
   loadComparativo() {
@@ -120,6 +137,16 @@ export class ReportsComponent implements OnInit {
     if (this.criadoAte2) qs.set('criadoAte2', toIsoDate(this.criadoAte2));
     const q = qs.toString();
     window.open(`${environment.apiBaseUrl}/api/relatorios/entidades-comparativo.xlsx${q ? '?' + q : ''}`, '_blank');
+  }
+
+  downloadComparativoPdf() {
+    const qs = new URLSearchParams();
+    if (this.criadoDe1) qs.set('criadoDe1', toIsoDate(this.criadoDe1));
+    if (this.criadoAte1) qs.set('criadoAte1', toIsoDate(this.criadoAte1));
+    if (this.criadoDe2) qs.set('criadoDe2', toIsoDate(this.criadoDe2));
+    if (this.criadoAte2) qs.set('criadoAte2', toIsoDate(this.criadoAte2));
+    const q = qs.toString();
+    window.open(`${environment.apiBaseUrl}/api/relatorios/entidades-comparativo.pdf${q ? '?' + q : ''}`, '_blank');
   }
 
   max(rows: any[]): number {

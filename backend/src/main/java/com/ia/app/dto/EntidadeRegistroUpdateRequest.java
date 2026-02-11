@@ -7,5 +7,6 @@ public record EntidadeRegistroUpdateRequest(
   @NotBlank String nome,
   String apelido,
   @NotBlank String cpfCnpj,
+  String tipoPessoa,
   @NotNull Boolean ativo
 ) {}

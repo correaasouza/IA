@@ -9,6 +9,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs/operators';
 
 import { ContatoService, Contato } from './contato.service';
@@ -33,6 +34,7 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     MatSelectModule,
     MatSlideToggleModule,
     MatIconModule,
+    MatTooltipModule,
     TelefoneMaskDirective,
     CustomMaskDirective,
     InlineLoaderComponent,

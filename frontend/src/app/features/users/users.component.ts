@@ -7,6 +7,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatMenuModule } from '@angular/material/menu';
 import { finalize } from 'rxjs/operators';
 
 import { UsuarioService, UsuarioResponse } from './usuario.service';
@@ -26,6 +28,8 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     MatTableModule,
     MatDialogModule,
     MatIconModule,
+    MatTooltipModule,
+    MatMenuModule,
     InlineLoaderComponent,
     FieldSearchComponent
   ],

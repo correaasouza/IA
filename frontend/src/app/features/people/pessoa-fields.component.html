@@ -10,19 +10,28 @@
     <input matInput formControlName="apelido" />
   </mat-form-field>
 
-  <mat-form-field appearance="outline" *ngIf="isVisible('cpf')">
+  <mat-form-field appearance="outline">
+    <mat-label>Tipo de pessoa</mat-label>
+    <mat-select formControlName="tipoPessoa">
+      <mat-option value="FISICA">Pessoa física</mat-option>
+      <mat-option value="JURIDICA">Pessoa jurídica</mat-option>
+      <mat-option value="ESTRANGEIRA">Pessoa estrangeira</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" *ngIf="isDocVisible('cpf')">
     <mat-label>{{ labelFor('cpf', 'CPF') }}</mat-label>
     <input matInput formControlName="cpf" />
     <mat-error *ngIf="form.get('cpf')?.hasError('required')">Informe o CPF.</mat-error>
   </mat-form-field>
 
-  <mat-form-field appearance="outline" *ngIf="isVisible('cnpj')">
+  <mat-form-field appearance="outline" *ngIf="isDocVisible('cnpj')">
     <mat-label>{{ labelFor('cnpj', 'CNPJ') }}</mat-label>
     <input matInput formControlName="cnpj" />
     <mat-error *ngIf="form.get('cnpj')?.hasError('required')">Informe o CNPJ.</mat-error>
   </mat-form-field>
 
-  <mat-form-field appearance="outline" *ngIf="isVisible('idEstrangeiro')">
+  <mat-form-field appearance="outline" *ngIf="isDocVisible('idEstrangeiro')">
     <mat-label>{{ labelFor('idEstrangeiro', 'ID estrangeiro') }}</mat-label>
     <input matInput formControlName="idEstrangeiro" />
     <mat-error *ngIf="form.get('idEstrangeiro')?.hasError('required')">Informe o documento estrangeiro.</mat-error>

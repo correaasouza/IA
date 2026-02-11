@@ -9,9 +9,9 @@ export class RelatorioService {
 
   constructor(private http: HttpClient) {}
 
-  entidades(params?: { entidadeDefinicaoId?: number; criadoDe?: string; criadoAte?: string }): Observable<any> {
+  entidades(params?: { tipoEntidadeId?: number; criadoDe?: string; criadoAte?: string }): Observable<any> {
     const qs = new URLSearchParams();
-    if (params?.entidadeDefinicaoId) qs.set('entidadeDefinicaoId', String(params.entidadeDefinicaoId));
+    if (params?.tipoEntidadeId) qs.set('tipoEntidadeId', String(params.tipoEntidadeId));
     if (params?.criadoDe) qs.set('criadoDe', params.criadoDe);
     if (params?.criadoAte) qs.set('criadoAte', params.criadoAte);
     const q = qs.toString();

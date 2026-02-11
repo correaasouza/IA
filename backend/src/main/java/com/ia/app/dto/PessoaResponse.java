@@ -7,5 +7,6 @@ public record PessoaResponse(
   String cpf,
   String cnpj,
   String idEstrangeiro,
+  String tipoPessoa,
   boolean ativo
 ) {}

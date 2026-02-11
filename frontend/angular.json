@@ -19,6 +19,15 @@
             "assets": ["src/favicon.ico", "src/assets"],
             "styles": ["src/styles.css"],
             "scripts": []
+          },
+          "configurations": {
+            "production": {
+              "optimization": true,
+              "buildOptimizer": true,
+              "sourceMap": false,
+              "extractLicenses": true,
+              "outputHashing": "all"
+            }
           }
         },
         "serve": {

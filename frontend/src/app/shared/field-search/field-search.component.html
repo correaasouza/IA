@@ -1,4 +1,4 @@
-﻿<div class="field-search">
+<div class="field-search filter-bar" [class.no-actions]="!showActions">
   <mat-form-field appearance="outline" class="term">
     <mat-label>{{ label }}</mat-label>
     <input
@@ -15,16 +15,14 @@
     </mat-select>
   </mat-form-field>
 
-  <div class="actions">
+  <div class="actions" *ngIf="showActions">
     <button mat-stroked-button type="button" (click)="clear()" aria-label="Limpar busca">
       <mat-icon>close</mat-icon>
       Limpar
     </button>
     <button mat-flat-button color="primary" type="button" (click)="apply()" aria-label="Aplicar busca">
       <mat-icon>search</mat-icon>
-      Buscar
+      {{ actionLabel }}
     </button>
   </div>
 </div>
-
-
