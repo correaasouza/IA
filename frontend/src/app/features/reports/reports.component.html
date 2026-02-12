@@ -1,10 +1,10 @@
-﻿<div class="page">
-  <header class="page-header">
-    <div class="title-block">
-      <h1>Relatórios</h1>
-      <p>Indicadores e exportações rápidas</p>
+﻿<div class="grid gap-3">
+  <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+    <div>
+      <h1 class="m-0 text-lg font-bold">Relatórios</h1>
+      <p class="mt-1 text-xs text-[var(--muted)]">Indicadores e exportações rápidas</p>
     </div>
-    <div class="header-actions">
+    <div class="flex flex-wrap gap-2">
       <button mat-stroked-button type="button" (click)="loadEntidades()">
         <mat-icon>refresh</mat-icon>
         Atualizar dados
@@ -12,17 +12,17 @@
     </div>
   </header>
 
-  <section class="panel">
-    <div class="panel-header">
-      <div class="panel-title">Filtros gerais</div>
-      <div class="panel-meta">Defina o recorte e exporte em CSV ou XLSX</div>
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="mb-2.5 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Filtros gerais</div>
+      <div class="text-xs text-[var(--muted)]">Defina o recorte e exporte em CSV ou XLSX</div>
     </div>
 
-    <div class="panel-loader" *ngIf="loadingEntidades">
+    <div class="flex justify-end pb-2" *ngIf="loadingEntidades">
       <app-inline-loader label="Atualizando relatórios"></app-inline-loader>
     </div>
 
-    <div class="filters">
+    <div class="grid grid-cols-1 items-end gap-2 md:grid-cols-2 lg:grid-cols-4">
       <mat-form-field appearance="outline">
         <mat-label>Tipo de entidade</mat-label>
         <mat-select [(ngModel)]="tipoEntidadeId">
@@ -38,235 +38,120 @@
         <mat-label>Até</mat-label>
         <input matInput [(ngModel)]="criadoAte" placeholder="DD/MM/AAAA" appDateMask />
       </mat-form-field>
-      <button mat-flat-button color="primary" (click)="loadEntidades()">
+      <button mat-flat-button color="primary" (click)="loadEntidades()" class="w-full md:w-auto">
         <mat-icon>search</mat-icon>
         Aplicar
       </button>
     </div>
 
-    <div class="actions">
-      <button mat-stroked-button (click)="downloadEntidadesCsv()" aria-label="Exportar entidades em CSV">
-        <mat-icon>download</mat-icon>
-        Entidades CSV
-      </button>
-      <button mat-stroked-button (click)="downloadEntidadesXlsx()" aria-label="Exportar entidades em XLSX">
-        <mat-icon>download</mat-icon>
-        Entidades XLSX
-      </button>
-      <button mat-stroked-button (click)="downloadEntidadesPdf()" aria-label="Exportar entidades em PDF">
-        <mat-icon>download</mat-icon>
-        Entidades PDF
-      </button>
-      <button mat-stroked-button (click)="downloadContatosCsv()" aria-label="Exportar contatos em CSV">
-        <mat-icon>download</mat-icon>
-        Contatos CSV
-      </button>
-      <button mat-stroked-button (click)="downloadContatosXlsx()" aria-label="Exportar contatos em XLSX">
-        <mat-icon>download</mat-icon>
-        Contatos XLSX
-      </button>
-      <button mat-stroked-button (click)="downloadContatosPdf()" aria-label="Exportar contatos em PDF">
-        <mat-icon>download</mat-icon>
-        Contatos PDF
-      </button>
-      <button mat-stroked-button (click)="downloadPendenciasCsv()" aria-label="Exportar pendências em CSV">
-        <mat-icon>download</mat-icon>
-        Pendências CSV
-      </button>
-      <button mat-stroked-button (click)="downloadPendenciasXlsx()" aria-label="Exportar pendências em XLSX">
-        <mat-icon>download</mat-icon>
-        Pendências XLSX
-      </button>
-      <button mat-stroked-button (click)="downloadPendenciasPdf()" aria-label="Exportar pendências em PDF">
-        <mat-icon>download</mat-icon>
-        Pendências PDF
-      </button>
+    <div class="mt-2 flex flex-wrap gap-2">
+      <button mat-stroked-button (click)="downloadEntidadesCsv()" aria-label="Exportar entidades em CSV"><mat-icon>download</mat-icon>Entidades CSV</button>
+      <button mat-stroked-button (click)="downloadEntidadesXlsx()" aria-label="Exportar entidades em XLSX"><mat-icon>download</mat-icon>Entidades XLSX</button>
+      <button mat-stroked-button (click)="downloadEntidadesPdf()" aria-label="Exportar entidades em PDF"><mat-icon>download</mat-icon>Entidades PDF</button>
+      <button mat-stroked-button (click)="downloadContatosCsv()" aria-label="Exportar contatos em CSV"><mat-icon>download</mat-icon>Contatos CSV</button>
+      <button mat-stroked-button (click)="downloadContatosXlsx()" aria-label="Exportar contatos em XLSX"><mat-icon>download</mat-icon>Contatos XLSX</button>
+      <button mat-stroked-button (click)="downloadContatosPdf()" aria-label="Exportar contatos em PDF"><mat-icon>download</mat-icon>Contatos PDF</button>
+      <button mat-stroked-button (click)="downloadPendenciasCsv()" aria-label="Exportar pendências em CSV"><mat-icon>download</mat-icon>Pendências CSV</button>
+      <button mat-stroked-button (click)="downloadPendenciasXlsx()" aria-label="Exportar pendências em XLSX"><mat-icon>download</mat-icon>Pendências XLSX</button>
+      <button mat-stroked-button (click)="downloadPendenciasPdf()" aria-label="Exportar pendências em PDF"><mat-icon>download</mat-icon>Pendências PDF</button>
     </div>
   </section>
 
-  <section class="panel">
-    <div class="panel-header">
-      <div class="panel-title">Resumo de locatários</div>
-      <div class="panel-meta">Visão geral do status</div>
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="mb-2.5 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Resumo de locatários</div>
+      <div class="text-xs text-[var(--muted)]">Visão geral do status</div>
     </div>
-    <div *ngIf="locatarios" class="metrics">
-      <div class="metric">
-        <div class="label">Total</div>
-        <div class="value">{{ locatarios.total }}</div>
-      </div>
-      <div class="metric">
-        <div class="label">Ativos</div>
-        <div class="value">{{ locatarios.ativos }}</div>
-      </div>
-      <div class="metric">
-        <div class="label">Bloqueados</div>
-        <div class="value">{{ locatarios.bloqueados }}</div>
-      </div>
+    <div *ngIf="locatarios" class="grid grid-cols-1 gap-2 md:grid-cols-3">
+      <div class="rounded-[10px] border border-[var(--border)] bg-[var(--surface-muted)] p-2.5"><div class="text-[11px] uppercase tracking-[0.4px] text-[var(--muted)]">Total</div><div class="text-2xl font-semibold">{{ locatarios.total }}</div></div>
+      <div class="rounded-[10px] border border-[var(--border)] bg-[var(--surface-muted)] p-2.5"><div class="text-[11px] uppercase tracking-[0.4px] text-[var(--muted)]">Ativos</div><div class="text-2xl font-semibold">{{ locatarios.ativos }}</div></div>
+      <div class="rounded-[10px] border border-[var(--border)] bg-[var(--surface-muted)] p-2.5"><div class="text-[11px] uppercase tracking-[0.4px] text-[var(--muted)]">Bloqueados</div><div class="text-2xl font-semibold">{{ locatarios.bloqueados }}</div></div>
     </div>
   </section>
 
-  <section class="grid two">
-    <div class="panel">
-    <div class="panel-header">
-      <div class="panel-title">Entidades por tipo</div>
-      <div class="panel-meta">Ranking por volume</div>
-    </div>
-      <div class="panel-loader" *ngIf="loadingEntidades">
-        <app-inline-loader label="Carregando entidades"></app-inline-loader>
-      </div>
-      <div class="bars">
-        <div *ngFor="let row of entidades" class="bar-row">
-          <div class="bar-label">{{ row.nome }}</div>
-          <div class="bar-track">
-            <div class="bar" [style.width.%]="barWidth(row.total, maxEntidades)"></div>
-          </div>
-          <div class="bar-value">{{ row.total }}</div>
+  <section class="grid grid-cols-1 gap-3 xl:grid-cols-2">
+    <div class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+      <div class="mb-2.5 flex items-center justify-between gap-2"><div class="text-sm font-semibold">Entidades por tipo</div><div class="text-xs text-[var(--muted)]">Ranking por volume</div></div>
+      <div class="flex justify-end pb-2" *ngIf="loadingEntidades"><app-inline-loader label="Carregando entidades"></app-inline-loader></div>
+      <div class="mb-2 grid gap-1.5">
+        <div *ngFor="let row of entidades" class="grid grid-cols-1 items-center gap-2 md:grid-cols-[140px_minmax(0,1fr)_60px]">
+          <div class="text-xs text-[var(--muted-strong)]">{{ row.nome }}</div>
+          <div class="h-2.5 overflow-hidden rounded-full bg-[#edf2f5]"><div class="h-full bg-[#0f766e]" [style.width.%]="barWidth(row.total, maxEntidades)"></div></div>
+          <div class="text-left text-xs text-[var(--muted)] md:text-right">{{ row.total }}</div>
         </div>
       </div>
-      <div class="table-wrap">
-        <table mat-table [dataSource]="entidades" class="table-dense">
-          <ng-container matColumnDef="nome">
-            <th mat-header-cell *matHeaderCellDef>Tipo</th>
-            <td mat-cell *matCellDef="let row">{{ row.nome }}</td>
-          </ng-container>
-          <ng-container matColumnDef="total">
-            <th mat-header-cell *matHeaderCellDef>Total</th>
-            <td mat-cell *matCellDef="let row">{{ row.total }}</td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="entColumns; sticky: true"></tr>
-          <tr mat-row *matRowDef="let row; columns: entColumns;"></tr>
+      <div class="overflow-auto border-t border-[var(--border-light)]">
+        <table mat-table [dataSource]="entidades" class="w-full">
+          <ng-container matColumnDef="nome"><th mat-header-cell *matHeaderCellDef>Tipo</th><td mat-cell *matCellDef="let row">{{ row.nome }}</td></ng-container>
+          <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef>Total</th><td mat-cell *matCellDef="let row">{{ row.total }}</td></ng-container>
+          <tr mat-header-row *matHeaderRowDef="entColumns; sticky: true"></tr><tr mat-row *matRowDef="let row; columns: entColumns;"></tr>
         </table>
       </div>
     </div>
 
-    <div class="panel">
-      <div class="panel-header">
-        <div class="panel-title">Contatos por tipo</div>
-        <div class="panel-meta">Distribuição de contatos</div>
-      </div>
-      <div class="bars">
-        <div *ngFor="let row of contatos" class="bar-row">
-          <div class="bar-label">{{ row.tipo }}</div>
-          <div class="bar-track">
-            <div class="bar" [style.width.%]="barWidth(row.total, maxContatos)"></div>
-          </div>
-          <div class="bar-value">{{ row.total }}</div>
+    <div class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+      <div class="mb-2.5 flex items-center justify-between gap-2"><div class="text-sm font-semibold">Contatos por tipo</div><div class="text-xs text-[var(--muted)]">Distribuição de contatos</div></div>
+      <div class="mb-2 grid gap-1.5">
+        <div *ngFor="let row of contatos" class="grid grid-cols-1 items-center gap-2 md:grid-cols-[140px_minmax(0,1fr)_60px]">
+          <div class="text-xs text-[var(--muted-strong)]">{{ row.tipo }}</div>
+          <div class="h-2.5 overflow-hidden rounded-full bg-[#edf2f5]"><div class="h-full bg-[#0f766e]" [style.width.%]="barWidth(row.total, maxContatos)"></div></div>
+          <div class="text-left text-xs text-[var(--muted)] md:text-right">{{ row.total }}</div>
         </div>
       </div>
-      <div class="table-wrap">
-        <table mat-table [dataSource]="contatos" class="table-dense">
-          <ng-container matColumnDef="tipo">
-            <th mat-header-cell *matHeaderCellDef>Tipo</th>
-            <td mat-cell *matCellDef="let row">{{ row.tipo }}</td>
-          </ng-container>
-          <ng-container matColumnDef="total">
-            <th mat-header-cell *matHeaderCellDef>Total</th>
-            <td mat-cell *matCellDef="let row">{{ row.total }}</td>
-          </ng-container>
-          <tr mat-header-row *matHeaderRowDef="contColumns; sticky: true"></tr>
-          <tr mat-row *matRowDef="let row; columns: contColumns;"></tr>
+      <div class="overflow-auto border-t border-[var(--border-light)]">
+        <table mat-table [dataSource]="contatos" class="w-full">
+          <ng-container matColumnDef="tipo"><th mat-header-cell *matHeaderCellDef>Tipo</th><td mat-cell *matCellDef="let row">{{ row.tipo }}</td></ng-container>
+          <ng-container matColumnDef="total"><th mat-header-cell *matHeaderCellDef>Total</th><td mat-cell *matCellDef="let row">{{ row.total }}</td></ng-container>
+          <tr mat-header-row *matHeaderRowDef="contColumns; sticky: true"></tr><tr mat-row *matRowDef="let row; columns: contColumns;"></tr>
         </table>
       </div>
     </div>
   </section>
 
-  <section class="panel">
-    <div class="panel-header">
-      <div class="panel-title">Comparativo de entidades</div>
-      <div class="panel-meta">Compare dois períodos</div>
-    </div>
-    <div class="panel-loader" *ngIf="loadingComparativo">
-      <app-inline-loader label="Carregando comparativo"></app-inline-loader>
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="mb-2.5 flex items-center justify-between gap-2"><div class="text-sm font-semibold">Comparativo de entidades</div><div class="text-xs text-[var(--muted)]">Compare dois períodos</div></div>
+    <div class="flex justify-end pb-2" *ngIf="loadingComparativo"><app-inline-loader label="Carregando comparativo"></app-inline-loader></div>
+
+    <div class="grid grid-cols-1 items-end gap-2 md:grid-cols-2 xl:grid-cols-5">
+      <mat-form-field appearance="outline"><mat-label>Período 1 - De</mat-label><input matInput [(ngModel)]="criadoDe1" placeholder="DD/MM/AAAA" appDateMask /></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>Período 1 - Até</mat-label><input matInput [(ngModel)]="criadoAte1" placeholder="DD/MM/AAAA" appDateMask /></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>Período 2 - De</mat-label><input matInput [(ngModel)]="criadoDe2" placeholder="DD/MM/AAAA" appDateMask /></mat-form-field>
+      <mat-form-field appearance="outline"><mat-label>Período 2 - Até</mat-label><input matInput [(ngModel)]="criadoAte2" placeholder="DD/MM/AAAA" appDateMask /></mat-form-field>
+      <button mat-flat-button color="primary" (click)="loadComparativo()" class="w-full xl:w-auto"><mat-icon>compare_arrows</mat-icon>Comparar</button>
     </div>
 
-    <div class="filters two">
-      <mat-form-field appearance="outline">
-        <mat-label>Período 1 - De</mat-label>
-        <input matInput [(ngModel)]="criadoDe1" placeholder="DD/MM/AAAA" appDateMask />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Período 1 - Até</mat-label>
-        <input matInput [(ngModel)]="criadoAte1" placeholder="DD/MM/AAAA" appDateMask />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Período 2 - De</mat-label>
-        <input matInput [(ngModel)]="criadoDe2" placeholder="DD/MM/AAAA" appDateMask />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Período 2 - Até</mat-label>
-        <input matInput [(ngModel)]="criadoAte2" placeholder="DD/MM/AAAA" appDateMask />
-      </mat-form-field>
-      <button mat-flat-button color="primary" (click)="loadComparativo()">
-        <mat-icon>compare_arrows</mat-icon>
-        Comparar
-      </button>
+    <div class="mt-2 flex flex-wrap gap-2">
+      <button mat-stroked-button (click)="downloadComparativoXlsx()" aria-label="Exportar comparativo em XLSX"><mat-icon>download</mat-icon>Exportar comparativo</button>
+      <button mat-stroked-button (click)="downloadComparativoPdf()" aria-label="Exportar comparativo em PDF"><mat-icon>download</mat-icon>Exportar comparativo PDF</button>
     </div>
 
-    <div class="actions">
-      <button mat-stroked-button (click)="downloadComparativoXlsx()" aria-label="Exportar comparativo em XLSX">
-        <mat-icon>download</mat-icon>
-        Exportar comparativo
-      </button>
-      <button mat-stroked-button (click)="downloadComparativoPdf()" aria-label="Exportar comparativo em PDF">
-        <mat-icon>download</mat-icon>
-        Exportar comparativo PDF
-      </button>
-    </div>
-
-    <div class="table-wrap">
-      <table mat-table [dataSource]="comparativo" class="table-dense">
-        <ng-container matColumnDef="nome">
-          <th mat-header-cell *matHeaderCellDef>Tipo</th>
-          <td mat-cell *matCellDef="let row">{{ row.nome }}</td>
-        </ng-container>
-        <ng-container matColumnDef="p1">
-          <th mat-header-cell *matHeaderCellDef>Período 1</th>
-          <td mat-cell *matCellDef="let row">{{ row.totalPeriodo1 }}</td>
-        </ng-container>
-        <ng-container matColumnDef="p2">
-          <th mat-header-cell *matHeaderCellDef>Período 2</th>
-          <td mat-cell *matCellDef="let row">{{ row.totalPeriodo2 }}</td>
-        </ng-container>
-        <ng-container matColumnDef="delta">
-          <th mat-header-cell *matHeaderCellDef>Variação</th>
-          <td mat-cell *matCellDef="let row">
-            <span [class.positive]="row.totalPeriodo2 - row.totalPeriodo1 >= 0" [class.negative]="row.totalPeriodo2 - row.totalPeriodo1 < 0">
-              {{ row.totalPeriodo2 - row.totalPeriodo1 }}
-            </span>
-          </td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="compColumns; sticky: true"></tr>
-        <tr mat-row *matRowDef="let row; columns: compColumns;"></tr>
+    <div class="mt-2 overflow-auto border-t border-[var(--border-light)]">
+      <table mat-table [dataSource]="comparativo" class="w-full">
+        <ng-container matColumnDef="nome"><th mat-header-cell *matHeaderCellDef>Tipo</th><td mat-cell *matCellDef="let row">{{ row.nome }}</td></ng-container>
+        <ng-container matColumnDef="p1"><th mat-header-cell *matHeaderCellDef>Período 1</th><td mat-cell *matCellDef="let row">{{ row.totalPeriodo1 }}</td></ng-container>
+        <ng-container matColumnDef="p2"><th mat-header-cell *matHeaderCellDef>Período 2</th><td mat-cell *matCellDef="let row">{{ row.totalPeriodo2 }}</td></ng-container>
+        <ng-container matColumnDef="delta"><th mat-header-cell *matHeaderCellDef>Variação</th><td mat-cell *matCellDef="let row"><span [ngClass]="row.totalPeriodo2 - row.totalPeriodo1 >= 0 ? 'font-semibold text-[#0f766e]' : 'font-semibold text-[#b42318]'">{{ row.totalPeriodo2 - row.totalPeriodo1 }}</span></td></ng-container>
+        <tr mat-header-row *matHeaderRowDef="compColumns; sticky: true"></tr><tr mat-row *matRowDef="let row; columns: compColumns;"></tr>
       </table>
     </div>
   </section>
 
-  <section class="panel">
-    <div class="panel-header">
-      <div class="panel-title">Pendências de contato obrigatório</div>
-      <div class="panel-meta">Entidades que precisam de contato</div>
-    </div>
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="mb-2.5 flex items-center justify-between gap-2"><div class="text-sm font-semibold">Pendências de contato obrigatório</div><div class="text-xs text-[var(--muted)]">Entidades que precisam de contato</div></div>
 
-    <div class="table-wrap">
-      <table mat-table [dataSource]="pendencias" class="table-dense">
-        <ng-container matColumnDef="entidade">
-          <th mat-header-cell *matHeaderCellDef>Entidade</th>
-          <td mat-cell *matCellDef="let row">{{ row.entidadeNome }}</td>
-        </ng-container>
-        <ng-container matColumnDef="tipoContato">
-          <th mat-header-cell *matHeaderCellDef>Contato</th>
-          <td mat-cell *matCellDef="let row">{{ row.tipoContato }}</td>
-        </ng-container>
-        <tr mat-header-row *matHeaderRowDef="pendColumns; sticky: true"></tr>
-        <tr mat-row *matRowDef="let row; columns: pendColumns;"></tr>
+    <div class="overflow-auto border-t border-[var(--border-light)]">
+      <table mat-table [dataSource]="pendencias" class="w-full">
+        <ng-container matColumnDef="entidade"><th mat-header-cell *matHeaderCellDef>Entidade</th><td mat-cell *matCellDef="let row">{{ row.entidadeNome }}</td></ng-container>
+        <ng-container matColumnDef="tipoContato"><th mat-header-cell *matHeaderCellDef>Contato</th><td mat-cell *matCellDef="let row">{{ row.tipoContato }}</td></ng-container>
+        <tr mat-header-row *matHeaderRowDef="pendColumns; sticky: true"></tr><tr mat-row *matRowDef="let row; columns: pendColumns;"></tr>
       </table>
     </div>
 
-    <section class="empty-state" *ngIf="pendencias.length === 0" role="status" aria-live="polite">
-      <mat-icon>task_alt</mat-icon>
+    <section class="flex items-center gap-3 pt-3 text-[var(--muted)]" *ngIf="pendencias.length === 0" role="status" aria-live="polite">
+      <mat-icon class="!h-7 !w-7 !text-[28px]">task_alt</mat-icon>
       <div>
-        <div class="empty-title">Sem pendências</div>
-        <div class="empty-subtitle">Nenhuma entidade com contato obrigatório pendente.</div>
+        <div class="font-semibold text-[var(--ink)]">Sem pendências</div>
+        <div class="text-xs">Nenhuma entidade com contato obrigatório pendente.</div>
       </div>
     </section>
   </section>

@@ -1,5 +1,5 @@
-﻿<div class="grid">
-  <mat-card class="card">
+﻿<div class="grid gap-3 lg:grid-cols-[320px_minmax(0,1fr)]">
+  <mat-card class="rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-xs)]">
     <mat-card-title>Cadastros</mat-card-title>
     <mat-card-content>
       <mat-form-field appearance="outline">
@@ -8,7 +8,7 @@
           <mat-option *ngFor="let d of definicoes" [value]="d.id">{{ d.nome }}</mat-option>
         </mat-select>
       </mat-form-field>
-      <form [formGroup]="form" (ngSubmit)="save()" class="form">
+      <form [formGroup]="form" (ngSubmit)="save()" class="grid gap-2">
         <mat-form-field appearance="outline" *ngIf="visible.nome">
           <mat-label>{{ labels.nome }}</mat-label>
           <input matInput formControlName="nome" [readonly]="!editable.nome" aria-describedby="ent-nome-err" />
@@ -45,10 +45,10 @@
     </mat-card-content>
   </mat-card>
 
-  <mat-card class="card">
+  <mat-card class="rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-xs)]">
     <mat-card-title>Tipos e permissões</mat-card-title>
     <mat-card-content>
-      <table mat-table [dataSource]="definicoes" class="table-dense">
+      <table mat-table [dataSource]="definicoes" class="w-full">
         <ng-container matColumnDef="nome">
           <th mat-header-cell *matHeaderCellDef>Nome</th>
           <td mat-cell *matCellDef="let row">{{ row.nome }}</td>
@@ -77,10 +77,10 @@
     </mat-card-content>
   </mat-card>
 
-  <mat-card class="card">
+  <mat-card class="rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-[var(--shadow-xs)] lg:col-span-2">
     <mat-card-title>Registros</mat-card-title>
     <mat-card-content>
-      <form [formGroup]="filters" class="filters" role="search">
+      <form [formGroup]="filters" class="mb-2 grid grid-cols-1 items-end gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_160px_120px_auto]" role="search">
         <mat-form-field appearance="outline">
           <mat-label>Nome</mat-label>
           <input matInput formControlName="nome" aria-label="Filtrar por nome" />
@@ -109,66 +109,68 @@
         <button mat-stroked-button type="button" (click)="applyFilters()" aria-label="Aplicar filtros">Filtrar</button>
       </form>
 
-      <table mat-table [dataSource]="registros" class="table-dense">
-        <ng-container matColumnDef="nome">
-          <th mat-header-cell *matHeaderCellDef>{{ labels.nome }}</th>
-          <td mat-cell *matCellDef="let row">
-            <ng-container *ngIf="editingRowId === row.id; else nomeView">
-              <input matInput [(ngModel)]="editingRow.nome" aria-label="Nome" />
-            </ng-container>
-            <ng-template #nomeView>{{ row.nome }}</ng-template>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="apelido" *ngIf="visible.apelido">
-          <th mat-header-cell *matHeaderCellDef>{{ labels.apelido }}</th>
-          <td mat-cell *matCellDef="let row">
-            <ng-container *ngIf="editingRowId === row.id; else apelidoView">
-              <input matInput [(ngModel)]="editingRow.apelido" aria-label="Apelido" />
-            </ng-container>
-            <ng-template #apelidoView>{{ row.apelido }}</ng-template>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="cpfCnpj">
-          <th mat-header-cell *matHeaderCellDef>{{ labels.cpfCnpj }}</th>
-          <td mat-cell *matCellDef="let row">
-            <ng-container *ngIf="editingRowId === row.id; else cpfView">
-              <ng-container *ngIf="(editingRow.tipoPessoa || resolveTipoPessoa(editingRow.cpfCnpj)) !== 'ESTRANGEIRA'; else docForeign">
-                <input matInput [(ngModel)]="editingRow.cpfCnpj" appCpfCnpjMask aria-label="Documento" />
+      <div class="overflow-auto">
+        <table mat-table [dataSource]="registros" class="w-full">
+          <ng-container matColumnDef="nome">
+            <th mat-header-cell *matHeaderCellDef>{{ labels.nome }}</th>
+            <td mat-cell *matCellDef="let row">
+              <ng-container *ngIf="editingRowId === row.id; else nomeView">
+                <input matInput [(ngModel)]="editingRow.nome" aria-label="Nome" />
               </ng-container>
-              <ng-template #docForeign>
-                <input matInput [(ngModel)]="editingRow.cpfCnpj" aria-label="Documento estrangeiro" />
-              </ng-template>
-            </ng-container>
-            <ng-template #cpfView>{{ row.cpfCnpj }}</ng-template>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="ativo">
-          <th mat-header-cell *matHeaderCellDef>Status</th>
-          <td mat-cell *matCellDef="let row">
-            <ng-container *ngIf="editingRowId === row.id; else ativoView">
-              <mat-slide-toggle [(ngModel)]="editingRow.ativo" aria-label="Ativo"></mat-slide-toggle>
-            </ng-container>
-            <ng-template #ativoView>{{ row.ativo ? 'Ativo' : 'Inativo' }}</ng-template>
-          </td>
-        </ng-container>
-        <ng-container matColumnDef="acoes">
-          <th mat-header-cell *matHeaderCellDef>Ações</th>
-          <td mat-cell *matCellDef="let row">
-            <button mat-stroked-button *ngIf="editingRowId !== row.id" (click)="editRow(row)" [attr.aria-label]="'Editar ' + row.nome">Editar</button>
-            <button mat-stroked-button *ngIf="editingRowId === row.id" (click)="saveRow()" aria-label="Salvar edição">Salvar</button>
-            <button mat-button *ngIf="editingRowId === row.id" (click)="cancelEdit()" aria-label="Cancelar edição">Cancelar</button>
-          </td>
-        </ng-container>
+              <ng-template #nomeView>{{ row.nome }}</ng-template>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="apelido" *ngIf="visible.apelido">
+            <th mat-header-cell *matHeaderCellDef>{{ labels.apelido }}</th>
+            <td mat-cell *matCellDef="let row">
+              <ng-container *ngIf="editingRowId === row.id; else apelidoView">
+                <input matInput [(ngModel)]="editingRow.apelido" aria-label="Apelido" />
+              </ng-container>
+              <ng-template #apelidoView>{{ row.apelido }}</ng-template>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="cpfCnpj">
+            <th mat-header-cell *matHeaderCellDef>{{ labels.cpfCnpj }}</th>
+            <td mat-cell *matCellDef="let row">
+              <ng-container *ngIf="editingRowId === row.id; else cpfView">
+                <ng-container *ngIf="(editingRow.tipoPessoa || resolveTipoPessoa(editingRow.cpfCnpj)) !== 'ESTRANGEIRA'; else docForeign">
+                  <input matInput [(ngModel)]="editingRow.cpfCnpj" appCpfCnpjMask aria-label="Documento" />
+                </ng-container>
+                <ng-template #docForeign>
+                  <input matInput [(ngModel)]="editingRow.cpfCnpj" aria-label="Documento estrangeiro" />
+                </ng-template>
+              </ng-container>
+              <ng-template #cpfView>{{ row.cpfCnpj }}</ng-template>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="ativo">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let row">
+              <ng-container *ngIf="editingRowId === row.id; else ativoView">
+                <mat-slide-toggle [(ngModel)]="editingRow.ativo" aria-label="Ativo"></mat-slide-toggle>
+              </ng-container>
+              <ng-template #ativoView>{{ row.ativo ? 'Ativo' : 'Inativo' }}</ng-template>
+            </td>
+          </ng-container>
+          <ng-container matColumnDef="acoes">
+            <th mat-header-cell *matHeaderCellDef>Ações</th>
+            <td mat-cell *matCellDef="let row">
+              <button mat-stroked-button *ngIf="editingRowId !== row.id" (click)="editRow(row)" [attr.aria-label]="'Editar ' + row.nome">Editar</button>
+              <button mat-stroked-button *ngIf="editingRowId === row.id" (click)="saveRow()" aria-label="Salvar edição">Salvar</button>
+              <button mat-button *ngIf="editingRowId === row.id" (click)="cancelEdit()" aria-label="Cancelar edição">Cancelar</button>
+            </td>
+          </ng-container>
 
-        <tr mat-header-row *matHeaderRowDef="columns"></tr>
-        <tr mat-row *matRowDef="let row; columns: columns;" (click)="selectRegistro(row)" tabindex="0" (keydown.enter)="selectRegistro(row)"></tr>
-      </table>
+          <tr mat-header-row *matHeaderRowDef="columns"></tr>
+          <tr mat-row *matRowDef="let row; columns: columns;" (click)="selectRegistro(row)" tabindex="0" (keydown.enter)="selectRegistro(row)"></tr>
+        </table>
+      </div>
       <mat-paginator [length]="totalElements" [pageSize]="pageSize" [pageIndex]="pageIndex"
         [pageSizeOptions]="[10,25,50]" (page)="pageChange($event)"></mat-paginator>
     </mat-card-content>
   </mat-card>
 
-  <app-contato-tipos></app-contato-tipos>
-  <app-contato-tipos-por-entidade [entidadeDefinicaoId]="selectedDefId"></app-contato-tipos-por-entidade>
-  <app-contatos [entidadeRegistroId]="selectedRegistroId"></app-contatos>
+  <app-contato-tipos class="lg:col-span-2"></app-contato-tipos>
+  <app-contato-tipos-por-entidade class="lg:col-span-2" [entidadeDefinicaoId]="selectedDefId"></app-contato-tipos-por-entidade>
+  <app-contatos class="lg:col-span-2" [entidadeRegistroId]="selectedRegistroId"></app-contatos>
 </div>

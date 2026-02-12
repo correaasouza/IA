@@ -33,8 +33,7 @@ export interface FieldSearchValue {
     MatIconModule,
     MatChipsModule
   ],
-  templateUrl: './field-search.component.html',
-  styleUrls: ['./field-search.component.css']
+  templateUrl: './field-search.component.html'
 })
 export class FieldSearchComponent implements OnInit, OnDestroy {
   @Input() options: FieldSearchOption[] = [];

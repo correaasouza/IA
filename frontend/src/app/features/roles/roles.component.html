@@ -1,21 +1,21 @@
-﻿<mat-drawer-container class="drawer-container">
+﻿<mat-drawer-container class="relative block min-h-full">
   <mat-drawer
-    class="drawer"
+    class="w-[360px] border-l border-[var(--border)] bg-[var(--surface)] p-4"
     position="end"
     mode="over"
     [opened]="!!editingRole"
     (closedStart)="closeEditRole()">
-    <div class="drawer-header">
+    <div class="mb-3 flex items-center justify-between">
       <div>
-        <div class="drawer-title">Editar papel</div>
-        <div class="drawer-subtitle" *ngIf="editingRole">ID {{ editingRole.id }}</div>
+        <div class="text-sm font-semibold">Editar papel</div>
+        <div class="text-xs text-[var(--muted)]" *ngIf="editingRole">ID {{ editingRole.id }}</div>
       </div>
       <button mat-icon-button type="button" (click)="closeEditRole()" aria-label="Fechar edição">
         <mat-icon>close</mat-icon>
       </button>
     </div>
 
-    <form [formGroup]="roleEditForm" class="drawer-form">
+    <form [formGroup]="roleEditForm" class="grid gap-2.5">
       <mat-form-field appearance="outline">
         <mat-label>Nome</mat-label>
         <input matInput formControlName="nome" aria-describedby="role-edit-nome-err" />
@@ -25,27 +25,27 @@
         <mat-label>Descrição</mat-label>
         <input matInput formControlName="descricao" />
       </mat-form-field>
-      <div class="drawer-actions">
+      <div class="flex justify-end gap-2">
         <button mat-stroked-button type="button" (click)="closeEditRole()">Cancelar</button>
         <button mat-flat-button color="primary" type="button" (click)="saveRoleEdit()" [disabled]="savingRole">
           <mat-icon>save</mat-icon>
           Salvar
         </button>
       </div>
-      <div class="inline-status" *ngIf="savingRole" role="status" aria-live="polite">
+      <div class="flex justify-end" *ngIf="savingRole" role="status" aria-live="polite">
         <app-inline-loader label="Salvando papel"></app-inline-loader>
       </div>
     </form>
   </mat-drawer>
 
-  <mat-drawer-content class="drawer-content">
-    <div class="page">
-      <header class="page-header">
-        <div class="title-block">
-          <h1>Papéis e permissões</h1>
-          <p>Crie papéis, controle permissões e catálogo</p>
+  <mat-drawer-content>
+    <div class="grid gap-3">
+      <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+        <div>
+          <h1 class="m-0 text-lg font-bold">Papéis e permissões</h1>
+          <p class="mt-1 text-xs text-[var(--muted)]">Crie papéis, controle permissões e catálogo</p>
         </div>
-        <div class="header-actions">
+        <div class="flex flex-wrap gap-2">
           <button mat-stroked-button type="button" (click)="load()" aria-label="Atualizar papéis">
             <mat-icon>refresh</mat-icon>
             Atualizar
@@ -53,12 +53,12 @@
         </div>
       </header>
 
-      <section class="panel">
-        <div class="panel-header">
-          <div class="panel-title">Novo papel</div>
-          <div class="panel-meta">Crie um papel para o tenant</div>
+      <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+        <div class="mb-2.5 flex items-center justify-between gap-2">
+          <div class="text-sm font-semibold">Novo papel</div>
+          <div class="text-xs text-[var(--muted)]">Crie um papel para o tenant</div>
         </div>
-        <form [formGroup]="form" (ngSubmit)="create()" class="form-grid">
+        <form [formGroup]="form" (ngSubmit)="create()" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
           <mat-form-field appearance="outline">
             <mat-label>Nome</mat-label>
             <input matInput formControlName="nome" aria-describedby="role-nome-err" />
@@ -68,39 +68,43 @@
             <mat-label>Descrição</mat-label>
             <input matInput formControlName="descricao" />
           </mat-form-field>
-          <div class="actions">
+          <div class="flex flex-wrap items-center gap-2 md:col-span-2">
             <button mat-flat-button color="primary" type="submit" [disabled]="creatingRole">
               <mat-icon>add</mat-icon>
               Criar papel
             </button>
           </div>
-          <div class="inline-status" *ngIf="creatingRole" role="status" aria-live="polite">
+          <div class="col-span-full flex justify-end" *ngIf="creatingRole" role="status" aria-live="polite">
             <app-inline-loader label="Criando papel"></app-inline-loader>
           </div>
         </form>
       </section>
 
-      <section class="panel table-panel">
-        <div class="panel-header">
-          <div class="panel-title">Papéis</div>
-          <div class="panel-meta">Selecione para editar permissões</div>
+      <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]">
+        <div class="px-3 pt-2.5">
+          <div class="mb-1 flex items-center justify-between gap-2">
+            <div class="text-sm font-semibold">Papéis</div>
+            <div class="text-xs text-[var(--muted)]">Selecione para editar permissões</div>
+          </div>
         </div>
-        <div class="panel-loader" *ngIf="rolesLoading">
+        <div class="flex justify-end px-3" *ngIf="rolesLoading">
           <app-inline-loader label="Carregando papéis"></app-inline-loader>
         </div>
 
-        <div class="panel-content">
-          <app-field-search
-            [options]="roleSearchOptions"
-            label="Buscar papéis"
-            placeholder="Digite e selecione os campos"
-            [defaultFields]="roleSearchFields"
-            (searchChange)="onRoleSearchChange($event)">
-          </app-field-search>
+        <div class="grid gap-2 px-3 pb-2.5 pt-1.5 xl:max-w-[34%]">
+          <div class="min-w-0">
+            <app-field-search
+              [options]="roleSearchOptions"
+              label="Buscar papéis"
+              placeholder="Digite e selecione os campos"
+              [defaultFields]="roleSearchFields"
+              (searchChange)="onRoleSearchChange($event)">
+            </app-field-search>
+          </div>
         </div>
 
-        <div class="table-wrap" *ngIf="filteredPapeis.length > 0">
-          <table mat-table [dataSource]="filteredPapeis" class="table-dense">
+        <div class="hidden overflow-auto border-t border-[var(--border-light)] md:block" *ngIf="filteredPapeis.length > 0">
+          <table mat-table [dataSource]="filteredPapeis" class="w-full">
             <ng-container matColumnDef="nome">
               <th mat-header-cell *matHeaderCellDef>Nome</th>
               <td mat-cell *matCellDef="let row">
@@ -114,12 +118,13 @@
             <ng-container matColumnDef="ativo">
               <th mat-header-cell *matHeaderCellDef>Status</th>
               <td mat-cell *matCellDef="let row">
-                <span class="status" [class.off]="!row.ativo">{{ statusLabel(row) }}</span>
+                <span class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold"
+                  [ngClass]="row.ativo ? 'bg-[var(--success-bg)] text-[var(--success-ink)]' : 'bg-[var(--warning-bg)] text-[var(--warning-ink)]'">{{ statusLabel(row) }}</span>
               </td>
             </ng-container>
             <ng-container matColumnDef="acoes">
               <th mat-header-cell *matHeaderCellDef>Ações</th>
-              <td mat-cell *matCellDef="let row" class="actions">
+              <td mat-cell *matCellDef="let row" class="flex flex-wrap gap-1.5">
                 <button mat-icon-button matTooltip="Editar" (click)="openEditRole(row)" [attr.aria-label]="'Editar ' + row.nome">
                   <mat-icon>edit</mat-icon>
                 </button>
@@ -129,20 +134,21 @@
               </td>
             </ng-container>
             <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="data-row"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
           </table>
         </div>
 
-        <div class="cards" *ngIf="filteredPapeis.length > 0">
-          <article class="card-row" *ngFor="let row of filteredPapeis">
-            <div class="card-row-header">
+        <div class="grid gap-2.5 p-3 pt-2.5 md:hidden" *ngIf="filteredPapeis.length > 0">
+          <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]" *ngFor="let row of filteredPapeis">
+            <div class="flex items-center justify-between gap-2">
               <div>
-                <div class="card-row-title">{{ row.nome }}</div>
-                <div class="card-row-subtitle">{{ row.descricao || 'Sem descrição' }}</div>
+                <div class="text-sm font-semibold">{{ row.nome }}</div>
+                <div class="text-xs text-[var(--muted)]">{{ row.descricao || 'Sem descrição' }}</div>
               </div>
-              <span class="status" [class.off]="!row.ativo">{{ statusLabel(row) }}</span>
+              <span class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold"
+                [ngClass]="row.ativo ? 'bg-[var(--success-bg)] text-[var(--success-ink)]' : 'bg-[var(--warning-bg)] text-[var(--warning-ink)]'">{{ statusLabel(row) }}</span>
             </div>
-            <div class="card-row-actions">
+            <div class="flex justify-end gap-1.5">
               <button mat-icon-button [matMenuTriggerFor]="roleMenu" aria-label="Ações do papel">
                 <mat-icon>more_vert</mat-icon>
               </button>
@@ -164,20 +170,18 @@
           </article>
         </div>
 
-        <section class="empty-state" *ngIf="filteredPapeis.length === 0" role="status" aria-live="polite">
-          <div>
-            <div class="empty-title">Nenhum papel cadastrado</div>
-            <div class="empty-subtitle">Crie um papel para começar.</div>
-          </div>
+        <section class="px-3 py-2.5 text-sm text-[var(--muted)]" *ngIf="filteredPapeis.length === 0" role="status" aria-live="polite">
+          <div class="font-semibold text-[var(--ink)]">Nenhum papel cadastrado</div>
+          <div class="text-xs">Crie um papel para começar.</div>
         </section>
       </section>
 
-      <section class="panel">
-        <div class="panel-header">
-          <div class="panel-title">Permissões (catálogo)</div>
-          <div class="panel-meta">Adicione novas permissões globais</div>
+      <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+        <div class="mb-2.5 flex items-center justify-between gap-2">
+          <div class="text-sm font-semibold">Permissões (catálogo)</div>
+          <div class="text-xs text-[var(--muted)]">Adicione novas permissões globais</div>
         </div>
-        <form [formGroup]="permForm" (ngSubmit)="createPerm()" class="form-grid">
+        <form [formGroup]="permForm" (ngSubmit)="createPerm()" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
           <mat-form-field appearance="outline">
             <mat-label>Código</mat-label>
             <input matInput formControlName="codigo" aria-describedby="perm-codigo-err" />
@@ -188,32 +192,34 @@
             <input matInput formControlName="label" aria-describedby="perm-label-err" />
             <mat-error id="perm-label-err" *ngIf="permForm.get('label')?.hasError('required')">Informe o label.</mat-error>
           </mat-form-field>
-          <div class="actions">
+          <div class="flex flex-wrap items-center gap-2 md:col-span-2">
             <button mat-flat-button color="primary" type="submit" [disabled]="creatingPerm">
               <mat-icon>add</mat-icon>
               Adicionar permissão
             </button>
           </div>
-          <div class="inline-status" *ngIf="creatingPerm" role="status" aria-live="polite">
+          <div class="col-span-full flex justify-end" *ngIf="creatingPerm" role="status" aria-live="polite">
             <app-inline-loader label="Criando permissão"></app-inline-loader>
           </div>
         </form>
 
-        <div class="panel-content">
-          <app-field-search
-            [options]="permSearchOptions"
-            label="Buscar permissões"
-            placeholder="Digite e selecione os campos"
-            [defaultFields]="permSearchFields"
-            (searchChange)="onPermSearchChange($event)">
-          </app-field-search>
+        <div class="grid gap-2 pb-2.5 pt-1.5 xl:max-w-[34%]">
+          <div class="min-w-0">
+            <app-field-search
+              [options]="permSearchOptions"
+              label="Buscar permissões"
+              placeholder="Digite e selecione os campos"
+              [defaultFields]="permSearchFields"
+              (searchChange)="onPermSearchChange($event)">
+            </app-field-search>
+          </div>
         </div>
 
-        <div class="panel-loader" *ngIf="catalogLoading">
+        <div class="flex justify-end" *ngIf="catalogLoading">
           <app-inline-loader label="Carregando catálogo"></app-inline-loader>
         </div>
-        <div class="table-wrap" *ngIf="filteredCatalog.length > 0">
-          <table mat-table [dataSource]="filteredCatalog" class="table-dense">
+        <div class="overflow-auto border-t border-[var(--border-light)]" *ngIf="filteredCatalog.length > 0">
+          <table mat-table [dataSource]="filteredCatalog" class="w-full">
             <ng-container matColumnDef="codigo">
               <th mat-header-cell *matHeaderCellDef>Código</th>
               <td mat-cell *matCellDef="let row">{{ row.codigo }}</td>
@@ -222,7 +228,7 @@
               <th mat-header-cell *matHeaderCellDef>Label</th>
               <td mat-cell *matCellDef="let row">
                 <div *ngIf="editingPermId !== row.id">{{ row.label }}</div>
-                <mat-form-field appearance="outline" class="inline-edit" *ngIf="editingPermId === row.id">
+                <mat-form-field appearance="outline" class="w-full" *ngIf="editingPermId === row.id">
                   <mat-label>Label</mat-label>
                   <input matInput [formControl]="editingPermLabelControl" aria-label="Editar label" />
                 </mat-form-field>
@@ -230,7 +236,7 @@
             </ng-container>
             <ng-container matColumnDef="acoes">
               <th mat-header-cell *matHeaderCellDef>Ações</th>
-              <td mat-cell *matCellDef="let row" class="actions">
+              <td mat-cell *matCellDef="let row" class="flex flex-wrap gap-1.5">
                 <button *ngIf="editingPermId !== row.id" mat-icon-button matTooltip="Editar" (click)="editPerm(row)" [attr.aria-label]="'Editar permissão ' + row.codigo">
                   <mat-icon>edit</mat-icon>
                 </button>
@@ -248,38 +254,39 @@
         </div>
       </section>
 
-      <section class="panel">
-        <div class="panel-header">
-          <div class="panel-title">Permissões do papel</div>
-          <div class="panel-meta">Selecione um papel para editar</div>
+      <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+        <div class="mb-2.5 flex items-center justify-between gap-2">
+          <div class="text-sm font-semibold">Permissões do papel</div>
+          <div class="text-xs text-[var(--muted)]">Selecione um papel para editar</div>
         </div>
-        <div *ngIf="!selected" class="empty-state" role="status" aria-live="polite">
+        <div *ngIf="!selected" class="text-sm text-[var(--muted)]" role="status" aria-live="polite">
           Selecione um papel para editar permissões.
         </div>
         <div *ngIf="selected">
-          <div class="selected">
-            <div class="name">{{ selected.nome }}</div>
-            <div class="desc">{{ selected.descricao || 'Sem descrição' }}</div>
+          <div class="mb-2 flex items-center gap-2">
+            <div class="font-semibold">{{ selected.nome }}</div>
+            <div class="text-xs text-[var(--muted)]">{{ selected.descricao || 'Sem descrição' }}</div>
           </div>
-          <div class="perm-list" aria-live="polite">
+          <div class="grid gap-2" aria-live="polite">
             <app-inline-loader *ngIf="permsLoading" label="Carregando permissões"></app-inline-loader>
             <mat-selection-list
               *ngIf="!permsLoading"
               #permList
+              class="max-h-[300px] overflow-auto rounded-[10px] border border-[var(--border-light)]"
               (selectionChange)="onPermChange(permList.selectedOptions.selected)"
               aria-label="Selecionar permissões do papel">
               <mat-list-option *ngFor="let p of catalog" [value]="p.codigo" [selected]="selectedPerms.has(p.codigo)">
-                {{ p.codigo }} — {{ p.label }}
+                {{ p.codigo }} - {{ p.label }}
               </mat-list-option>
             </mat-selection-list>
           </div>
-          <div class="actions">
+          <div class="mt-2 flex flex-wrap items-center gap-2">
             <button mat-flat-button color="primary" (click)="savePerms()" [disabled]="savingPerms">
               <mat-icon>save</mat-icon>
               Salvar permissões
             </button>
           </div>
-          <div class="inline-status" *ngIf="savingPerms" role="status" aria-live="polite">
+          <div class="mt-2 flex justify-end" *ngIf="savingPerms" role="status" aria-live="polite">
             <app-inline-loader label="Salvando permissões"></app-inline-loader>
           </div>
         </div>
@@ -287,5 +294,3 @@
     </div>
   </mat-drawer-content>
 </mat-drawer-container>
-
-

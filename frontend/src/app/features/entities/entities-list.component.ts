@@ -48,8 +48,7 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     InlineLoaderComponent,
     FieldSearchComponent
   ],
-  templateUrl: './entities-list.component.html',
-  styleUrls: ['./entities-list.component.css']
+  templateUrl: './entities-list.component.html'
 })
 export class EntitiesListComponent implements OnInit {
   tipos: TipoEntidade[] = [];
@@ -241,3 +240,5 @@ export class EntitiesListComponent implements OnInit {
     });
   }
 }
+
+

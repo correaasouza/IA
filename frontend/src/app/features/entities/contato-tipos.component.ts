@@ -20,7 +20,7 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, FormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatTableModule, MatSlideToggleModule, MatIconModule, MatTooltipModule, InlineLoaderComponent, FieldSearchComponent],
   templateUrl: './contato-tipos.component.html',
-  styleUrls: ['./contato-tipos.component.css']
+  
 })
 export class ContatoTiposComponent implements OnInit {
   tipos: ContatoTipo[] = [];

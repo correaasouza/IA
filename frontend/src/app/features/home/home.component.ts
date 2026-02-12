@@ -16,8 +16,7 @@ import { TenantService, LocatarioResponse } from '../tenants/tenant.service';
   selector: 'app-home',
   standalone: true,
   imports: [CommonModule, MatButtonModule, MatFormFieldModule, MatInputModule, FormsModule, MatSelectModule, MatIconModule],
-  templateUrl: './home.component.html',
-  styleUrls: ['./home.component.css']
+  templateUrl: './home.component.html'
 })
 export class HomeComponent implements OnInit {
   me: any = null;

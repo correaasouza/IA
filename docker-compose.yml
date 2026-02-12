@@ -44,8 +44,8 @@
       DB_URL: jdbc:postgresql://postgres:5432/ia
       DB_USER: ia
       DB_PASSWORD: ia
-      # NOTE: Access the UI via http://host.docker.internal:8080 so Keycloak tokens have a matching "iss".
-      KEYCLOAK_ISSUER_URI: http://192.168.0.243:8081/realms/ia
+      # NOTE: Access the UI via http://host.docker.internal:5000 so Keycloak tokens have a matching "iss".
+      KEYCLOAK_ISSUER_URI: http://localhost:8081/realms/ia
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/ia/protocol/openid-connect/certs
       KEYCLOAK_ADMIN_URL: http://keycloak:8080
       KEYCLOAK_REALM: ia
@@ -54,7 +54,7 @@
       KEYCLOAK_ADMIN_CLIENT_ID: admin-cli
       KEYCLOAK_ADMIN_USERNAME: admin
       KEYCLOAK_ADMIN_PASSWORD: admin123
-      CORS_ALLOWED_ORIGINS: http://localhost:8080,http://host.docker.internal:8080,http://192.168.0.243:8080
+      CORS_ALLOWED_ORIGINS: http://localhost:5000,http://host.docker.internal:5000
       TENANT_SEED_ADMIN_ENABLED: "true"
       TENANT_SEED_ADMIN_USERNAME: "admin-{tenantId}"
       TENANT_SEED_ADMIN_EMAIL: "admin{tenantId}@local"
@@ -70,7 +70,7 @@
       - backend
       - keycloak
     ports:
-      - "0.0.0.0:8080:80"
+      - "0.0.0.0:5000:80"
 
 volumes:
   pg_data:

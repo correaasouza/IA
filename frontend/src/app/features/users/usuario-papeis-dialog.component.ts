@@ -14,8 +14,7 @@ import { InlineLoaderComponent } from '../../shared/inline-loader.component';
   selector: 'app-usuario-papeis-dialog',
   standalone: true,
   imports: [CommonModule, MatDialogModule, MatListModule, MatButtonModule, InlineLoaderComponent],
-  templateUrl: './usuario-papeis-dialog.component.html',
-  styleUrls: ['./usuario-papeis-dialog.component.css']
+  templateUrl: './usuario-papeis-dialog.component.html'
 })
 export class UsuarioPapeisDialogComponent implements OnInit {
   papeis: Papel[] = [];

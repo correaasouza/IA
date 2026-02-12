@@ -1,14 +1,17 @@
-﻿<div class="blocked">
-  <div class="card" role="alert" aria-live="assertive">
-    <div class="icon-wrap" aria-hidden="true">
-      <mat-icon>lock</mat-icon>
+<div class="grid min-h-[calc(100vh-52px)] place-items-center px-4 py-6">
+  <div
+    class="grid w-full max-w-[420px] gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 text-center shadow-[var(--shadow-sm)]"
+    role="alert"
+    aria-live="assertive">
+    <div class="mx-auto grid h-12 w-12 place-items-center rounded-[14px] bg-[var(--surface-muted)]" aria-hidden="true">
+      <mat-icon class="h-7 w-7 text-[28px] text-[var(--warning-ink)]">lock</mat-icon>
     </div>
-    <div class="title">Acesso bloqueado</div>
-    <div class="subtitle">Seu locatário está com acesso bloqueado por vencimento.</div>
-    <div class="details">
+    <div class="text-lg font-bold">Acesso bloqueado</div>
+    <div class="text-[12.5px] text-[var(--muted-strong)]">Seu locatário está com acesso bloqueado por vencimento.</div>
+    <div class="text-xs text-[var(--muted)]">
       Entre em contato com o suporte para regularização.
     </div>
-    <div class="actions">
+    <div class="mt-1.5 flex flex-wrap justify-center gap-2">
       <button mat-stroked-button>
         <mat-icon>support_agent</mat-icon>
         Contatar suporte

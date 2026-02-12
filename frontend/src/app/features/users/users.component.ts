@@ -33,8 +33,7 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     InlineLoaderComponent,
     FieldSearchComponent
   ],
-  templateUrl: './users.component.html',
-  styleUrls: ['./users.component.css']
+  templateUrl: './users.component.html'
 })
 export class UsersComponent implements OnInit {
   usuarios: UsuarioResponse[] = [];

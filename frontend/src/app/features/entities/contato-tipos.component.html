@@ -1,14 +1,14 @@
-﻿<div class="panel">
-  <div class="panel-header">
-    <div class="panel-title">Tipos de contato</div>
-    <div class="panel-meta">Cadastre máscaras e validações</div>
+﻿<div class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+  <div class="mb-2.5 flex items-center justify-between gap-2">
+    <div class="text-sm font-semibold">Tipos de contato</div>
+    <div class="text-xs text-[var(--muted)]">Cadastre máscaras e validações</div>
   </div>
 
-  <div class="panel-loader" *ngIf="loading">
+  <div class="flex justify-end pb-2" *ngIf="loading">
     <app-inline-loader label="Carregando tipos"></app-inline-loader>
   </div>
 
-  <form [formGroup]="form" (ngSubmit)="create()" class="form-grid">
+  <form [formGroup]="form" (ngSubmit)="create()" class="mb-2.5 grid grid-cols-1 gap-2.5 md:grid-cols-2">
     <mat-form-field appearance="outline">
       <mat-label>Código</mat-label>
       <input matInput formControlName="codigo" placeholder="EMAIL" aria-label="Código do tipo" aria-describedby="ct-codigo-err" />
@@ -27,20 +27,17 @@
       <mat-label>Regex validação</mat-label>
       <input matInput formControlName="regexValidacao" placeholder="^.+@.+\\..+$" aria-label="Regex de validação" />
     </mat-form-field>
-    <div class="toggles">
+    <div class="flex flex-wrap gap-2 md:col-span-2">
       <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
       <mat-slide-toggle formControlName="obrigatorio">Obrigatório</mat-slide-toggle>
       <mat-slide-toggle formControlName="principalUnico">Principal único</mat-slide-toggle>
     </div>
-    <div class="actions">
-      <button mat-flat-button color="primary" type="submit">
-        <mat-icon>add</mat-icon>
-        Criar
-      </button>
+    <div class="flex flex-wrap items-center gap-2 md:col-span-2">
+      <button mat-flat-button color="primary" type="submit"><mat-icon>add</mat-icon>Criar</button>
     </div>
   </form>
 
-  <div class="filters-row">
+  <div class="grid gap-2 pb-2">
     <app-field-search
       [options]="searchOptions"
       label="Buscar tipos"
@@ -50,62 +47,21 @@
     </app-field-search>
   </div>
 
-  <div class="table-wrap" *ngIf="filteredTipos.length > 0">
-    <table mat-table [dataSource]="filteredTipos" class="table-dense">
-      <ng-container matColumnDef="codigo">
-        <th mat-header-cell *matHeaderCellDef>Código</th>
-        <td mat-cell *matCellDef="let row">{{ row.codigo }}</td>
-      </ng-container>
-      <ng-container matColumnDef="nome">
-        <th mat-header-cell *matHeaderCellDef>Nome</th>
-        <td mat-cell *matCellDef="let row">
-          <input matInput [(ngModel)]="row.nome" aria-label="Nome do tipo" />
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="mascara">
-        <th mat-header-cell *matHeaderCellDef>Máscara</th>
-        <td mat-cell *matCellDef="let row">
-          <input matInput [(ngModel)]="row.mascara" aria-label="Máscara do tipo" />
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="regex">
-        <th mat-header-cell *matHeaderCellDef>Regex</th>
-        <td mat-cell *matCellDef="let row">
-          <input matInput [(ngModel)]="row.regexValidacao" aria-label="Regex de validação" />
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="ativo">
-        <th mat-header-cell *matHeaderCellDef>Ativo</th>
-        <td mat-cell *matCellDef="let row">
-          <mat-slide-toggle [(ngModel)]="row.ativo"></mat-slide-toggle>
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="obrigatorio">
-        <th mat-header-cell *matHeaderCellDef>Obrigatório</th>
-        <td mat-cell *matCellDef="let row">
-          <mat-slide-toggle [(ngModel)]="row.obrigatorio"></mat-slide-toggle>
-        </td>
-      </ng-container>
-      <ng-container matColumnDef="principalUnico">
-        <th mat-header-cell *matHeaderCellDef>Principal único</th>
-        <td mat-cell *matCellDef="let row">
-          <mat-slide-toggle [(ngModel)]="row.principalUnico"></mat-slide-toggle>
-        </td>
-      </ng-container>
+  <div class="overflow-auto border-t border-[var(--border-light)]" *ngIf="filteredTipos.length > 0">
+    <table mat-table [dataSource]="filteredTipos" class="w-full">
+      <ng-container matColumnDef="codigo"><th mat-header-cell *matHeaderCellDef>Código</th><td mat-cell *matCellDef="let row">{{ row.codigo }}</td></ng-container>
+      <ng-container matColumnDef="nome"><th mat-header-cell *matHeaderCellDef>Nome</th><td mat-cell *matCellDef="let row"><input matInput [(ngModel)]="row.nome" aria-label="Nome do tipo" /></td></ng-container>
+      <ng-container matColumnDef="mascara"><th mat-header-cell *matHeaderCellDef>Máscara</th><td mat-cell *matCellDef="let row"><input matInput [(ngModel)]="row.mascara" aria-label="Máscara do tipo" /></td></ng-container>
+      <ng-container matColumnDef="regex"><th mat-header-cell *matHeaderCellDef>Regex</th><td mat-cell *matCellDef="let row"><input matInput [(ngModel)]="row.regexValidacao" aria-label="Regex de validação" /></td></ng-container>
+      <ng-container matColumnDef="ativo"><th mat-header-cell *matHeaderCellDef>Ativo</th><td mat-cell *matCellDef="let row"><mat-slide-toggle [(ngModel)]="row.ativo"></mat-slide-toggle></td></ng-container>
+      <ng-container matColumnDef="obrigatorio"><th mat-header-cell *matHeaderCellDef>Obrigatório</th><td mat-cell *matCellDef="let row"><mat-slide-toggle [(ngModel)]="row.obrigatorio"></mat-slide-toggle></td></ng-container>
+      <ng-container matColumnDef="principalUnico"><th mat-header-cell *matHeaderCellDef>Principal único</th><td mat-cell *matCellDef="let row"><mat-slide-toggle [(ngModel)]="row.principalUnico"></mat-slide-toggle></td></ng-container>
       <ng-container matColumnDef="acoes">
         <th mat-header-cell *matHeaderCellDef>Ações</th>
-        <td mat-cell *matCellDef="let row" class="actions">
-          <button mat-icon-button matTooltip="Salvar" (click)="save(row)" [disabled]="savingIds.has(row.id)" [attr.aria-label]="'Salvar tipo ' + row.codigo">
-            <mat-icon>save</mat-icon>
-          </button>
-          <span class="feedback ok" *ngIf="savedIds.has(row.id)">
-            <mat-icon>check_circle</mat-icon>
-            Salvo
-          </span>
-          <span class="feedback error" *ngIf="errorIds.has(row.id)">
-            <mat-icon>error</mat-icon>
-            Erro
-          </span>
+        <td mat-cell *matCellDef="let row" class="flex flex-wrap items-center gap-1.5">
+          <button mat-icon-button matTooltip="Salvar" (click)="save(row)" [disabled]="savingIds.has(row.id)" [attr.aria-label]="'Salvar tipo ' + row.codigo"><mat-icon>save</mat-icon></button>
+          <span class="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--success-ink)]" *ngIf="savedIds.has(row.id)"><mat-icon>check_circle</mat-icon>Salvo</span>
+          <span class="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[#b42318]" *ngIf="errorIds.has(row.id)"><mat-icon>error</mat-icon>Erro</span>
         </td>
       </ng-container>
       <tr mat-header-row *matHeaderRowDef="columns; sticky: true"></tr>
@@ -113,12 +69,11 @@
     </table>
   </div>
 
-  <section class="empty-state" *ngIf="filteredTipos.length === 0" role="status" aria-live="polite">
-    <mat-icon>contacts</mat-icon>
+  <section class="flex items-center gap-3 pt-3 text-[var(--muted)]" *ngIf="filteredTipos.length === 0" role="status" aria-live="polite">
+    <mat-icon class="!h-7 !w-7 !text-[28px]">contacts</mat-icon>
     <div>
-      <div class="empty-title">Nenhum tipo cadastrado</div>
-      <div class="empty-subtitle">Crie o primeiro tipo de contato.</div>
+      <div class="font-semibold text-[var(--ink)]">Nenhum tipo cadastrado</div>
+      <div class="text-xs">Crie o primeiro tipo de contato.</div>
     </div>
   </section>
 </div>
-

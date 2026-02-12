@@ -39,7 +39,6 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     FieldSearchComponent
   ],
   templateUrl: './tenants.component.html',
-  styleUrls: ['./tenants.component.css']
 })
 export class TenantsComponent implements OnInit {
   locatarios: LocatarioResponse[] = [];

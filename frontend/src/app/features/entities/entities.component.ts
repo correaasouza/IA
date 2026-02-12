@@ -44,8 +44,7 @@ import { ContatoService, Contato } from './contato.service';
     ContatoTiposComponent,
     ContatoTiposPorEntidadeComponent
   ],
-  templateUrl: './entities.component.html',
-  styleUrls: ['./entities.component.css']
+  templateUrl: './entities.component.html'
 })
 export class EntitiesComponent implements OnInit {
   definicoes: EntidadeDefinicao[] = [];
@@ -391,3 +390,5 @@ export class EntitiesComponent implements OnInit {
     };
   }
 }
+
+

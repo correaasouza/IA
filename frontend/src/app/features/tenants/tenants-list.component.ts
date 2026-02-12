@@ -43,7 +43,6 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     FieldSearchComponent
   ],
   templateUrl: './tenants-list.component.html',
-  styleUrls: ['./tenants-list.component.css']
 })
 export class TenantsListComponent implements OnInit {
   locatarios: LocatarioResponse[] = [];
@@ -129,12 +128,6 @@ export class TenantsListComponent implements OnInit {
     if (!row.ativo) return 'Inativo';
     if (row.bloqueado) return 'Bloqueado';
     return 'Ativo';
-  }
-
-  statusClass(row: LocatarioResponse) {
-    if (!row.ativo) return 'off';
-    if (row.bloqueado) return 'warn';
-    return '';
   }
 
   renew(row: LocatarioResponse) {

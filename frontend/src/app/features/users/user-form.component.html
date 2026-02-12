@@ -1,10 +1,10 @@
-﻿<div class="page">
-  <header class="page-header">
-    <div class="title-block">
-      <h1>{{ title }}</h1>
-      <p *ngIf="user">ID {{ user.id }} • {{ user.username }}</p>
+﻿<div class="grid gap-3">
+  <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+    <div>
+      <h1 class="m-0 text-lg font-bold">{{ title }}</h1>
+      <p class="mt-1 text-xs text-[var(--muted)]" *ngIf="user">ID {{ user.id }} • {{ user.username }}</p>
     </div>
-    <div class="header-actions">
+    <div class="flex flex-wrap gap-2">
       <button mat-stroked-button type="button" (click)="back()">
         <mat-icon>arrow_back</mat-icon>
         Voltar
@@ -24,16 +24,19 @@
     </div>
   </header>
 
-  <section class="panel">
-    <div class="panel-header">
-      <div class="panel-title">Dados do usuário</div>
-      <div class="panel-meta" *ngIf="mode !== 'new'">
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="mb-2.5 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Dados do usuário</div>
+      <div class="inline-flex items-center gap-1.5 text-xs text-[var(--muted)]" *ngIf="mode !== 'new'">
         Status
-        <span class="status" [class.off]="!form.value.ativo">{{ form.value.ativo ? 'Ativo' : 'Inativo' }}</span>
+        <span class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold"
+          [ngClass]="form.value.ativo ? 'bg-[var(--success-bg)] text-[var(--success-ink)]' : 'bg-[var(--warning-bg)] text-[var(--warning-ink)]'">
+          {{ form.value.ativo ? 'Ativo' : 'Inativo' }}
+        </span>
       </div>
     </div>
 
-    <form [formGroup]="form" class="form-grid">
+    <form [formGroup]="form" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
       <mat-form-field appearance="outline">
         <mat-label>Username</mat-label>
         <input matInput formControlName="username" aria-describedby="username-err" />
@@ -57,41 +60,40 @@
         <mat-hint id="roles-hint">Use vírgula para múltiplos papéis.</mat-hint>
       </mat-form-field>
 
-      <div class="status-toggle">
+      <div class="flex items-center gap-3 py-1 md:col-span-2">
         <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
-        <span class="status-hint">Desative para bloquear acesso imediato.</span>
+        <span class="text-xs text-[var(--muted)]">Desative para bloquear acesso imediato.</span>
       </div>
 
-      <div class="inline-status" *ngIf="loading" role="status" aria-live="polite">
+      <div class="col-span-full flex justify-end" *ngIf="loading" role="status" aria-live="polite">
         <app-inline-loader label="Carregando dados"></app-inline-loader>
       </div>
-      <div class="inline-status" *ngIf="saving" role="status" aria-live="polite">
+      <div class="col-span-full flex justify-end" *ngIf="saving" role="status" aria-live="polite">
         <app-inline-loader label="Salvando"></app-inline-loader>
       </div>
-      <div class="inline-status" *ngIf="deleting" role="status" aria-live="polite">
+      <div class="col-span-full flex justify-end" *ngIf="deleting" role="status" aria-live="polite">
         <app-inline-loader label="Excluindo"></app-inline-loader>
       </div>
     </form>
   </section>
 
-  <section class="panel" *ngIf="mode !== 'new'">
-    <div class="panel-header">
-      <div class="panel-title">Segurança</div>
-      <div class="panel-meta">Reset de senha</div>
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="mode !== 'new'">
+    <div class="mb-2.5 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Segurança</div>
+      <div class="text-xs text-[var(--muted)]">Reset de senha</div>
     </div>
-    <div class="security-grid">
+    <div class="grid grid-cols-1 items-end gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
       <mat-form-field appearance="outline">
         <mat-label>Nova senha</mat-label>
         <input matInput type="password" [(ngModel)]="resetPasswordValue" name="resetPasswordValue" />
       </mat-form-field>
-      <button mat-stroked-button type="button" (click)="resetPassword()" [disabled]="!resetPasswordValue || resetting">
+      <button mat-stroked-button type="button" (click)="resetPassword()" [disabled]="!resetPasswordValue || resetting" class="w-full md:w-auto">
         <mat-icon>lock_reset</mat-icon>
         Aplicar nova senha
       </button>
     </div>
-    <div class="inline-status" *ngIf="resetting" role="status" aria-live="polite">
+    <div class="mt-2 flex justify-end" *ngIf="resetting" role="status" aria-live="polite">
       <app-inline-loader label="Atualizando senha"></app-inline-loader>
     </div>
   </section>
 </div>
-

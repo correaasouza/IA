@@ -9,7 +9,6 @@ import { RouterLink } from '@angular/router';
   selector: 'app-help',
   standalone: true,
   imports: [CommonModule, MatIconModule, MatButtonModule, MatChipsModule, RouterLink],
-  templateUrl: './help.component.html',
-  styleUrls: ['./help.component.css']
+  templateUrl: './help.component.html'
 })
 export class HelpComponent {}

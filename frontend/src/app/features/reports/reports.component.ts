@@ -20,8 +20,7 @@ import { toIsoDate } from '../../shared/date-utils';
   selector: 'app-reports',
   standalone: true,
 imports: [CommonModule, MatTableModule, MatFormFieldModule, MatInputModule, MatSelectModule, MatButtonModule, MatIconModule, FormsModule, DateMaskDirective, InlineLoaderComponent],
-  templateUrl: './reports.component.html',
-  styleUrls: ['./reports.component.css']
+  templateUrl: './reports.component.html'
 })
 export class ReportsComponent implements OnInit {
   entidades: any[] = [];

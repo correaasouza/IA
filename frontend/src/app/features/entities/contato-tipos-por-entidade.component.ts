@@ -18,8 +18,7 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
   selector: 'app-contato-tipos-por-entidade',
   standalone: true,
   imports: [CommonModule, FormsModule, MatTableModule, MatSelectModule, MatSlideToggleModule, MatButtonModule, MatIconModule, MatTooltipModule, InlineLoaderComponent, FieldSearchComponent],
-  templateUrl: './contato-tipos-por-entidade.component.html',
-  styleUrls: ['./contato-tipos-por-entidade.component.css']
+  templateUrl: './contato-tipos-por-entidade.component.html'
 })
 export class ContatoTiposPorEntidadeComponent implements OnChanges {
   @Input() entidadeDefinicaoId: number | null = null;

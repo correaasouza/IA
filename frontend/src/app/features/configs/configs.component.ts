@@ -13,8 +13,7 @@ import { ConfigService } from './config.service';
   selector: 'app-configs',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatSelectModule, MatIconModule],
-  templateUrl: './configs.component.html',
-  styleUrls: ['./configs.component.css']
+  templateUrl: './configs.component.html'
 })
 export class ConfigsComponent {
   statusColunas: 'idle' | 'ok' | 'error' = 'idle';

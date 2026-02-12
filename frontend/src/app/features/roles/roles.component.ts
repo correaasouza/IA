@@ -42,7 +42,6 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     FieldSearchComponent
   ],
   templateUrl: './roles.component.html',
-  styleUrls: ['./roles.component.css']
 })
 export class RolesComponent implements OnInit {
   papeis: Papel[] = [];

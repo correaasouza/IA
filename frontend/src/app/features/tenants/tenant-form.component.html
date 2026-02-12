@@ -1,10 +1,10 @@
-﻿<div class="page">
-  <header class="page-header">
-    <div class="title-block">
-      <h1>{{ title }}</h1>
-      <p *ngIf="locatario">ID {{ locatario.id }} • Vencimento {{ locatario.dataLimiteAcesso | date:'dd/MM/yyyy' }}</p>
+﻿<div class="grid gap-3">
+  <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+    <div>
+      <h1 class="m-0 text-lg font-bold">{{ title }}</h1>
+      <p class="mt-1 text-xs text-[var(--muted)]" *ngIf="locatario">ID {{ locatario.id }} • Vencimento {{ locatario.dataLimiteAcesso | date:'dd/MM/yyyy' }}</p>
     </div>
-    <div class="header-actions">
+    <div class="flex flex-wrap gap-2">
       <button mat-stroked-button type="button" (click)="back()">
         <mat-icon>arrow_back</mat-icon>
         Voltar
@@ -24,18 +24,19 @@
     </div>
   </header>
 
-  <section class="panel">
-    <div class="panel-header">
-      <div class="panel-title">Dados do locatário</div>
-      <div class="panel-meta" *ngIf="locatario">
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="mb-2.5 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Dados do locatário</div>
+      <div class="inline-flex items-center gap-1.5 text-xs text-[var(--muted)]" *ngIf="locatario">
         Status
-        <span class="status" [class.off]="!locatario.ativo" [class.warn]="locatario.ativo && locatario.bloqueado">
+        <span class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold"
+          [ngClass]="!locatario.ativo ? 'bg-[var(--warning-bg)] text-[var(--warning-ink)]' : (locatario.bloqueado ? 'bg-[#fde7e9] text-[#a10f1a]' : 'bg-[var(--success-bg)] text-[var(--success-ink)]')">
           {{ statusLabel() }}
         </span>
       </div>
     </div>
 
-    <form [formGroup]="form" class="form-grid">
+    <form [formGroup]="form" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
       <mat-form-field appearance="outline">
         <mat-label>Nome</mat-label>
         <input matInput formControlName="nome" aria-describedby="nome-err" />
@@ -49,29 +50,29 @@
         <mat-error id="data-err" *ngIf="form.get('dataLimiteAcesso')?.hasError('required')">Informe a data limite.</mat-error>
       </mat-form-field>
 
-      <div class="status-toggle">
+      <div class="flex items-center gap-3 py-1 md:col-span-2">
         <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
-        <span class="status-hint">Desative para bloquear acesso imediato.</span>
+        <span class="text-xs text-[var(--muted)]">Desative para bloquear acesso imediato.</span>
       </div>
 
-      <div class="inline-status" *ngIf="loading" role="status" aria-live="polite">
+      <div class="col-span-full flex justify-end" *ngIf="loading" role="status" aria-live="polite">
         <app-inline-loader label="Carregando dados"></app-inline-loader>
       </div>
-      <div class="inline-status" *ngIf="saving" role="status" aria-live="polite">
+      <div class="col-span-full flex justify-end" *ngIf="saving" role="status" aria-live="polite">
         <app-inline-loader label="Salvando"></app-inline-loader>
       </div>
-      <div class="inline-status" *ngIf="deleting" role="status" aria-live="polite">
+      <div class="col-span-full flex justify-end" *ngIf="deleting" role="status" aria-live="polite">
         <app-inline-loader label="Excluindo"></app-inline-loader>
       </div>
     </form>
   </section>
 
-  <section class="panel" *ngIf="mode !== 'new'">
-    <div class="panel-header">
-      <div class="panel-title">Ações rápidas</div>
-      <div class="panel-meta">Renovação e status</div>
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="mode !== 'new'">
+    <div class="mb-2.5 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Ações rápidas</div>
+      <div class="text-xs text-[var(--muted)]">Renovação e status</div>
     </div>
-    <div class="quick-actions">
+    <div class="flex flex-wrap gap-2">
       <button mat-stroked-button type="button" (click)="renew()" [disabled]="renewing">
         <mat-icon>event_repeat</mat-icon>
         Renovar +30 dias
@@ -80,12 +81,11 @@
         {{ form.value.ativo ? 'Desativar' : 'Ativar' }}
       </button>
     </div>
-    <div class="inline-status" *ngIf="renewing" role="status" aria-live="polite">
+    <div class="mt-2 flex justify-end" *ngIf="renewing" role="status" aria-live="polite">
       <app-inline-loader label="Renovando acesso"></app-inline-loader>
     </div>
-    <div class="inline-status" *ngIf="toggling" role="status" aria-live="polite">
+    <div class="mt-2 flex justify-end" *ngIf="toggling" role="status" aria-live="polite">
       <app-inline-loader label="Atualizando status"></app-inline-loader>
     </div>
   </section>
 </div>
-

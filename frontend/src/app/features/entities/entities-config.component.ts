@@ -28,8 +28,7 @@ import { InlineLoaderComponent } from '../../shared/inline-loader.component';
     ContatoTiposComponent,
     InlineLoaderComponent
   ],
-  templateUrl: './entities-config.component.html',
-  styleUrls: ['./entities-config.component.css']
+  templateUrl: './entities-config.component.html'
 })
 export class EntitiesConfigComponent implements OnInit {
   tipos: TipoEntidade[] = [];
@@ -65,3 +64,4 @@ export class EntitiesConfigComponent implements OnInit {
     });
   }
 }
+

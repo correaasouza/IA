@@ -32,7 +32,6 @@ import { NotificationService } from '../../core/notifications/notification.servi
     InlineLoaderComponent
   ],
   templateUrl: './user-form.component.html',
-  styleUrls: ['./user-form.component.css']
 })
 export class UserFormComponent implements OnInit {
   mode: 'new' | 'view' | 'edit' = 'new';

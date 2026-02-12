@@ -9,27 +9,74 @@
 }
 
 :root {
-  --bg: #f2f5f7;
+  --bg: #edf2f7;
   --surface: #ffffff;
-  --surface-muted: #f7f9fb;
-  --ink: #0f1720;
-  --muted: #5a6675;
-  --muted-strong: #3b4a5a;
-  --brand: #0b3a4a;
-  --brand-ink: #0b3d91;
-  --brand-tint: #e2f1f4;
-  --on-brand: #f2fbfc;
-  --border: #d9e2ec;
-  --border-light: #e6edf3;
-  --hover: #f0f5f7;
-  --success-bg: #e6f6ee;
-  --success-ink: #1f7a3b;
-  --warning-bg: #fff3d6;
+  --surface-muted: #f4f7fb;
+  --ink: #0f172a;
+  --muted: #5f6f85;
+  --muted-strong: #31435c;
+  --brand: #123763;
+  --brand-ink: #1e40af;
+  --brand-tint: #dbe7f6;
+  --on-brand: #f8fafc;
+  --border: #cfdae7;
+  --border-light: #dfe7f0;
+  --hover: #eaf1f8;
+  --success-bg: #e9f7ef;
+  --success-ink: #166534;
+  --warning-bg: #fff5dd;
   --warning-ink: #9a5a00;
-  --shadow-xs: 0 1px 0 rgba(8, 16, 28, 0.05);
-  --shadow-sm: 0 6px 16px rgba(8, 16, 28, 0.08);
-  --shadow: 0 10px 32px rgba(8, 16, 28, 0.12);
+  --shadow-xs: 0 1px 0 rgba(15, 23, 42, 0.06);
+  --shadow-sm: 0 8px 18px rgba(15, 23, 42, 0.1);
+  --shadow: 0 14px 36px rgba(15, 23, 42, 0.14);
+  --header-grad-start: #0f2747;
+  --header-grad-mid: #1b3d6f;
+  --header-grad-end: #315e88;
+  --header-btn-bg: rgba(248, 250, 252, 0.1);
+  --header-btn-bg-hover: rgba(248, 250, 252, 0.18);
+  --header-btn-border: rgba(248, 250, 252, 0.32);
+  --filter-flat-bg: #1e4d8f;
+  --filter-flat-bg-hover: #1a437f;
+  --filter-flat-ink: #f8fafc;
+  --filter-outlined-bg: #f8fbff;
+  --filter-outlined-border: #b8c7db;
+  --filter-outlined-ink: #234367;
   font-family: 'IBM Plex Sans', sans-serif;
+}
+
+/* Variação 1 (Padrão): Azul Profissional */
+body.theme-zeta-slate {
+  --header-grad-start: #0f2747;
+  --header-grad-mid: #1b3d6f;
+  --header-grad-end: #315e88;
+  --filter-flat-bg: #1e4d8f;
+  --filter-flat-bg-hover: #1a437f;
+}
+
+/* Variação 2: Azul Grafite (mais sóbria) */
+body.theme-zeta-graphite {
+  --bg: #edf1f5;
+  --surface-muted: #f2f5f9;
+  --header-grad-start: #162238;
+  --header-grad-mid: #24344f;
+  --header-grad-end: #37506f;
+  --header-btn-bg: rgba(248, 250, 252, 0.12);
+  --filter-flat-bg: #284a72;
+  --filter-flat-bg-hover: #223f61;
+  --filter-outlined-border: #aebed2;
+}
+
+/* Variação 3: Azul Aço (mais moderna) */
+body.theme-zeta-steel {
+  --bg: #edf3f8;
+  --surface-muted: #f3f7fb;
+  --header-grad-start: #17345a;
+  --header-grad-mid: #24527f;
+  --header-grad-end: #2e6d8e;
+  --header-btn-bg: rgba(248, 250, 252, 0.14);
+  --filter-flat-bg: #235f96;
+  --filter-flat-bg-hover: #1f5484;
+  --filter-outlined-border: #afc6db;
 }
 
 html, body {
@@ -38,7 +85,7 @@ html, body {
 
 body {
   margin: 0;
-  background: radial-gradient(880px 460px at 12% -10%, #e0edf2, transparent), var(--bg);
+  background: radial-gradient(980px 520px at 8% -16%, #d4e2f3, transparent), var(--bg);
   color: var(--ink);
   font-family: 'IBM Plex Sans', sans-serif;
   font-size: 13px;
@@ -53,7 +100,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid rgba(11, 58, 74, 0.5);
+  outline: 2px solid rgba(30, 58, 138, 0.45);
   outline-offset: 2px;
 }
 
@@ -64,7 +111,7 @@ body {
 .mat-mdc-form-field input:focus-visible,
 .mat-mdc-form-field textarea:focus-visible,
 .mat-mdc-select:focus-visible {
-  outline: 2px solid rgba(15, 118, 110, 0.55);
+  outline: 2px solid rgba(29, 78, 216, 0.5);
   outline-offset: 2px;
 }
 
@@ -72,6 +119,29 @@ body {
   background: var(--brand);
   color: var(--on-brand);
   box-shadow: var(--shadow-sm);
+}
+
+.app-header {
+  background: linear-gradient(120deg, var(--header-grad-start) 0%, var(--header-grad-mid) 55%, var(--header-grad-end) 100%) !important;
+}
+
+.app-header .mat-mdc-button,
+.app-header .mat-mdc-icon-button,
+.app-header .mat-mdc-outlined-button,
+.app-header .mat-mdc-unelevated-button {
+  color: #f8fafc !important;
+}
+
+.app-header .mat-mdc-outlined-button {
+  border-color: var(--header-btn-border) !important;
+  background: var(--header-btn-bg);
+}
+
+.app-header .mat-mdc-button:hover,
+.app-header .mat-mdc-icon-button:hover,
+.app-header .mat-mdc-outlined-button:hover,
+.app-header .mat-mdc-unelevated-button:hover {
+  background: var(--header-btn-bg-hover) !important;
 }
 
 .mat-mdc-toolbar .mat-mdc-icon-button {
@@ -147,76 +217,79 @@ body {
   --mdc-filled-text-field-container-height: 36px;
 }
 
-.filters .mat-mdc-form-field,
-.filter-bar .mat-mdc-form-field {
+:where(form[role='search'], .filters, .filter-bar, .filters-row) {
+  --filter-h: 34px;
+  --mdc-outlined-text-field-container-height: var(--filter-h);
+  --mdc-filled-text-field-container-height: var(--filter-h);
+  gap: 8px;
+}
+
+:where(form[role='search'], .filters, .filter-bar, .filters-row) .mat-mdc-form-field {
   margin-bottom: 0;
 }
 
-.filters .mat-mdc-text-field-wrapper,
-.filter-bar .mat-mdc-text-field-wrapper {
-  padding: 0 6px;
-  min-height: 36px;
+:where(form[role='search'], .filters, .filter-bar, .filters-row) .mdc-text-field--outlined {
+  background: #ffffff;
+  border-radius: 9px;
 }
 
-.filters .mat-mdc-form-field-flex,
-.filter-bar .mat-mdc-form-field-flex {
-  align-items: center;
+:where(form[role='search'], .filters, .filter-bar, .filters-row) .mat-mdc-text-field-wrapper {
+  padding: 0 8px;
+  min-height: var(--filter-h);
 }
 
-.filters .mat-mdc-form-field-infix,
-.filter-bar .mat-mdc-form-field-infix {
+:where(form[role='search'], .filters, .filter-bar, .filters-row) .mat-mdc-form-field-infix {
+  min-height: 26px;
   padding-top: 4px;
   padding-bottom: 4px;
-  min-height: 26px;
-  display: flex;
-  align-items: center;
 }
 
-.filters .mdc-text-field,
-.filter-bar .mdc-text-field {
-  height: 36px;
+:where(form[role='search'], .filters, .filter-bar, .filters-row) .mat-mdc-select-trigger,
+:where(form[role='search'], .filters, .filter-bar, .filters-row) .mat-mdc-input-element {
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--ink);
+  height: auto;
 }
 
-.filters .mat-mdc-form-field-subscript-wrapper,
-.filter-bar .mat-mdc-form-field-subscript-wrapper {
+:where(form[role='search'], .filters, .filter-bar, .filters-row) .mat-mdc-input-element {
+  display: block;
+  margin: 0;
+}
+
+:where(form[role='search'], .filters, .filter-bar, .filters-row) .mat-mdc-form-field-subscript-wrapper {
   display: none;
 }
 
-.filters .mat-mdc-select-trigger,
-.filters .mat-mdc-input-element,
-.filter-bar .mat-mdc-select-trigger,
-.filter-bar .mat-mdc-input-element {
-  font-size: 11.5px;
-  line-height: 18px;
-  height: 22px;
-  padding-top: 0;
-  padding-bottom: 0;
-}
-
-.filters .mat-mdc-select-trigger,
-.filter-bar .mat-mdc-select-trigger {
-  display: flex;
-  align-items: center;
-}
-
-.filters .mat-mdc-select-value,
-.filter-bar .mat-mdc-select-value {
-  display: flex;
-  align-items: center;
-}
-
-.filters .mat-mdc-input-element,
-.filter-bar .mat-mdc-input-element {
-  display: flex;
-  align-items: center;
-}
-
-.filters .mat-mdc-button-base,
-.filter-bar .mat-mdc-button-base {
-  align-self: center;
-  height: 32px;
+:where(form[role='search'], .filters, .filter-bar, .filters-row) .mat-mdc-button-base {
   min-height: 32px;
-  padding: 0 12px;
+  align-self: center;
+}
+
+:where(form[role='search'], .filters, .filter-bar, .filters-row) .mat-mdc-unelevated-button {
+  background: var(--filter-flat-bg) !important;
+  color: var(--filter-flat-ink) !important;
+}
+
+:where(form[role='search'], .filters, .filter-bar, .filters-row) .mat-mdc-unelevated-button:hover {
+  background: var(--filter-flat-bg-hover) !important;
+}
+
+:where(form[role='search'], .filters, .filter-bar, .filters-row) .mat-mdc-outlined-button {
+  border-color: var(--filter-outlined-border) !important;
+  color: var(--filter-outlined-ink) !important;
+  background: var(--filter-outlined-bg);
+}
+
+@media (max-width: 900px) {
+  :where(form[role='search'], .filters, .filter-bar, .filters-row) {
+    --filter-h: 36px;
+    gap: 6px;
+  }
+
+  :where(form[role='search'], .filters, .filter-bar, .filters-row) .mat-mdc-button-base {
+    width: 100%;
+  }
 }
 
 .mat-mdc-form-field-subscript-wrapper {

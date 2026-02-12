@@ -39,8 +39,7 @@ import { ConfigService } from '../configs/config.service';
     PessoaFieldsComponent,
     InlineLoaderComponent
   ],
-  templateUrl: './entity-form.component.html',
-  styleUrls: ['./entity-form.component.css']
+  templateUrl: './entity-form.component.html'
 })
 export class EntityFormComponent implements OnInit {
   mode: 'new' | 'view' | 'edit' = 'new';
@@ -455,3 +454,4 @@ export class EntityFormComponent implements OnInit {
     this.applyValidators();
   }
 }
+

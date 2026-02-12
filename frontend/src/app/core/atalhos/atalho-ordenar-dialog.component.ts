@@ -8,8 +8,7 @@ import { CommonModule } from '@angular/common';
   selector: 'app-atalho-ordenar-dialog',
   standalone: true,
   imports: [CommonModule, MatDialogModule, MatButtonModule, DragDropModule],
-  templateUrl: './atalho-ordenar-dialog.component.html',
-  styleUrls: ['./atalho-ordenar-dialog.component.css']
+  templateUrl: './atalho-ordenar-dialog.component.html'
 })
 export class AtalhoOrdenarDialogComponent {
   items: any[] = [];

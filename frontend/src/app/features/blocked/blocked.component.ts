@@ -8,7 +8,6 @@ import { RouterLink } from '@angular/router';
   selector: 'app-blocked',
   standalone: true,
   imports: [MatCardModule, MatIconModule, MatButtonModule, RouterLink],
-  templateUrl: './blocked.component.html',
-  styleUrls: ['./blocked.component.css']
+  templateUrl: './blocked.component.html'
 })
 export class BlockedComponent {}

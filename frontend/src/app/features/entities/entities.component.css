@@ -1,4 +1,0 @@
-﻿.grid { display: grid; gap: 12px; grid-template-columns: 320px 1fr; }
-.form { display: grid; gap: 8px; }
-.filters { display: grid; gap: 8px; grid-template-columns: 1fr 1fr 160px 120px; align-items: end; margin-bottom: 8px; }
-@media (max-width: 900px) { .grid { grid-template-columns: 1fr; } .filters { grid-template-columns: 1fr; } }

@@ -1,5 +1,8 @@
-<div class="field-search filter-bar" [class.no-actions]="!showActions">
-  <mat-form-field appearance="outline" class="term">
+<div
+  class="filter-bar grid items-center gap-2 max-[900px]:grid-cols-1"
+  [class.grid-cols-[1.4fr_1fr_auto]]="showActions"
+  [class.grid-cols-[1.4fr_1fr]]="!showActions">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="term min-w-0">
     <mat-label>{{ label }}</mat-label>
     <input
       matInput
@@ -8,19 +11,19 @@
       aria-label="Texto da busca" />
   </mat-form-field>
 
-  <mat-form-field appearance="outline" class="fields">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="fields min-w-0">
     <mat-label>Campos</mat-label>
     <mat-select [formControl]="fieldsControl" multiple aria-label="Campos da busca">
       <mat-option *ngFor="let opt of options" [value]="opt.key">{{ opt.label }}</mat-option>
     </mat-select>
   </mat-form-field>
 
-  <div class="actions" *ngIf="showActions">
-    <button mat-stroked-button type="button" (click)="clear()" aria-label="Limpar busca">
+  <div class="flex w-full flex-wrap items-center gap-1.5" *ngIf="showActions">
+    <button class="min-w-24" mat-stroked-button type="button" (click)="clear()" aria-label="Limpar busca">
       <mat-icon>close</mat-icon>
       Limpar
     </button>
-    <button mat-flat-button color="primary" type="button" (click)="apply()" aria-label="Aplicar busca">
+    <button class="min-w-24" mat-flat-button color="primary" type="button" (click)="apply()" aria-label="Aplicar busca">
       <mat-icon>search</mat-icon>
       {{ actionLabel }}
     </button>

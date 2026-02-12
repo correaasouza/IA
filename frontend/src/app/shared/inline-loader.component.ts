@@ -5,8 +5,7 @@ import { CommonModule } from '@angular/common';
   selector: 'app-inline-loader',
   standalone: true,
   imports: [CommonModule],
-  templateUrl: './inline-loader.component.html',
-  styleUrls: ['./inline-loader.component.css']
+  templateUrl: './inline-loader.component.html'
 })
 export class InlineLoaderComponent {
   @Input() label = 'Carregando...';

@@ -32,7 +32,6 @@ import { NotificationService } from '../../core/notifications/notification.servi
     InlineLoaderComponent
   ],
   templateUrl: './tenant-form.component.html',
-  styleUrls: ['./tenant-form.component.css']
 })
 export class TenantFormComponent implements OnInit {
   mode: 'new' | 'view' | 'edit' = 'new';

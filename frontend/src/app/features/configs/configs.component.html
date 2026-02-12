@@ -1,10 +1,10 @@
-﻿<div class="page">
-  <header class="page-header">
-    <div class="title-block">
-      <h1>Configurações dinâmicas</h1>
-      <p>Controle de colunas e formulários por usuário, role e tenant</p>
+﻿<div class="grid gap-3">
+  <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+    <div>
+      <h1 class="m-0 text-lg font-bold">Configurações dinâmicas</h1>
+      <p class="mt-1 text-xs text-[var(--muted)]">Controle de colunas e formulários por usuário, role e tenant</p>
     </div>
-    <div class="header-actions">
+    <div class="flex flex-wrap gap-2">
       <button mat-stroked-button type="button">
         <mat-icon>info</mat-icon>
         Guia rápido
@@ -12,13 +12,13 @@
     </div>
   </header>
 
-  <section class="panel">
-    <div class="panel-header">
-      <div class="panel-title">Configurar colunas</div>
-      <div class="panel-meta">Defina visibilidade, ordem e labels por tela</div>
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="mb-2.5 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Configurar colunas</div>
+      <div class="text-xs text-[var(--muted)]">Defina visibilidade, ordem e labels por tela</div>
     </div>
 
-    <form [formGroup]="formColunas" (ngSubmit)="saveColunas()" class="form-grid">
+    <form [formGroup]="formColunas" (ngSubmit)="saveColunas()" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
       <mat-form-field appearance="outline">
         <mat-label>Screen ID</mat-label>
         <input matInput formControlName="screenId" placeholder="entities-1" aria-label="Screen ID" aria-describedby="cfg-col-screen cfg-col-screen-err" />
@@ -41,29 +41,29 @@
         <input matInput formControlName="scopeValor" placeholder="userId ou role" aria-label="Scope valor" aria-describedby="cfg-col-scope" />
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="json-field">
+      <mat-form-field appearance="outline" class="md:col-span-2">
         <mat-label>Config JSON</mat-label>
         <textarea matInput rows="6" formControlName="configJson" aria-label="Config JSON" aria-describedby="cfg-col-json cfg-col-json-err"></textarea>
         <mat-error id="cfg-col-json-err" *ngIf="formColunas.get('configJson')?.hasError('required')">Informe o JSON.</mat-error>
       </mat-form-field>
 
-      <div class="hint-block">
-        <div class="hint-title">Exemplo</div>
-        <pre class="code">{{ '{' }}
+      <div class="rounded-[10px] border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 md:col-span-2">
+        <div class="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--muted-strong)]">Exemplo</div>
+        <pre class="m-0 whitespace-pre-wrap font-['IBM_Plex_Mono',monospace] text-[11.5px] text-[#1f2933]">{{ '{' }}
   "columns": ["nome", "cpfCnpj", "ativo", "acoes"]
 {{ '}' }}</pre>
       </div>
 
-      <div class="actions">
+      <div class="flex flex-wrap items-center gap-2 md:col-span-2">
         <button mat-flat-button color="primary" type="submit" aria-label="Salvar configuração de colunas">
           <mat-icon>save</mat-icon>
           Salvar colunas
         </button>
-        <span class="feedback ok" *ngIf="statusColunas === 'ok'">
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-1 text-xs text-[var(--success-ink)]" *ngIf="statusColunas === 'ok'">
           <mat-icon>check_circle</mat-icon>
           Salvo
         </span>
-        <span class="feedback error" *ngIf="statusColunas === 'error'">
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-1 text-xs text-[#b42318]" *ngIf="statusColunas === 'error'">
           <mat-icon>error</mat-icon>
           Erro ao salvar
         </span>
@@ -71,13 +71,13 @@
     </form>
   </section>
 
-  <section class="panel">
-    <div class="panel-header">
-      <div class="panel-title">Configurar formulário</div>
-      <div class="panel-meta">Defina visibilidade, edição e labels</div>
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="mb-2.5 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Configurar formulário</div>
+      <div class="text-xs text-[var(--muted)]">Defina visibilidade, edição e labels</div>
     </div>
 
-    <form [formGroup]="formForm" (ngSubmit)="saveForm()" class="form-grid">
+    <form [formGroup]="formForm" (ngSubmit)="saveForm()" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
       <mat-form-field appearance="outline">
         <mat-label>Screen ID</mat-label>
         <input matInput formControlName="screenId" placeholder="entities-1" aria-label="Screen ID" aria-describedby="cfg-form-screen cfg-form-screen-err" />
@@ -100,15 +100,15 @@
         <input matInput formControlName="scopeValor" placeholder="userId ou role" aria-label="Scope valor" aria-describedby="cfg-form-scope" />
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="json-field">
+      <mat-form-field appearance="outline" class="md:col-span-2">
         <mat-label>Config JSON</mat-label>
         <textarea matInput rows="6" formControlName="configJson" aria-label="Config JSON" aria-describedby="cfg-form-json cfg-form-json-err"></textarea>
         <mat-error id="cfg-form-json-err" *ngIf="formForm.get('configJson')?.hasError('required')">Informe o JSON.</mat-error>
       </mat-form-field>
 
-      <div class="hint-block">
-        <div class="hint-title">Exemplo</div>
-        <pre class="code">{{ '{' }}
+      <div class="rounded-[10px] border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 md:col-span-2">
+        <div class="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.3px] text-[var(--muted-strong)]">Exemplo</div>
+        <pre class="m-0 whitespace-pre-wrap font-['IBM_Plex_Mono',monospace] text-[11.5px] text-[#1f2933]">{{ '{' }}
   "fields": {{ '{' }}
     "nome": {{ '{' }}"label": "Razão social", "visible": true, "editable": true{{ '}' }},
     "cpfCnpj": {{ '{' }}"label": "Documento", "visible": true, "editable": false{{ '}' }}
@@ -116,16 +116,16 @@
 {{ '}' }}</pre>
       </div>
 
-      <div class="actions">
+      <div class="flex flex-wrap items-center gap-2 md:col-span-2">
         <button mat-flat-button color="primary" type="submit" aria-label="Salvar configuração de formulário">
           <mat-icon>save</mat-icon>
           Salvar formulário
         </button>
-        <span class="feedback ok" *ngIf="statusForm === 'ok'">
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-1 text-xs text-[var(--success-ink)]" *ngIf="statusForm === 'ok'">
           <mat-icon>check_circle</mat-icon>
           Salvo
         </span>
-        <span class="feedback error" *ngIf="statusForm === 'error'">
+        <span class="inline-flex items-center gap-1.5 rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-1 text-xs text-[#b42318]" *ngIf="statusForm === 'error'">
           <mat-icon>error</mat-icon>
           Erro ao salvar
         </span>
@@ -133,5 +133,3 @@
     </form>
   </section>
 </div>
-
-

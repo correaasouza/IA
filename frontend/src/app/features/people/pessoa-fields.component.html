@@ -1,4 +1,4 @@
-<div class="form-grid" [formGroup]="form">
+﻿<div class="grid grid-cols-1 gap-2.5 md:grid-cols-2" [formGroup]="form">
   <mat-form-field appearance="outline" *ngIf="isVisible('nome')">
     <mat-label>{{ labelFor('nome', 'Nome') }}</mat-label>
     <input matInput formControlName="nome" [attr.aria-required]="isRequired('nome')" />
@@ -37,8 +37,8 @@
     <mat-error *ngIf="form.get('idEstrangeiro')?.hasError('required')">Informe o documento estrangeiro.</mat-error>
   </mat-form-field>
 
-  <div class="status-toggle" *ngIf="showStatus">
+  <div class="flex items-center gap-2 pt-1 md:col-span-2" *ngIf="showStatus">
     <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
-    <span class="status-hint">Desative para bloquear o uso desta pessoa.</span>
+    <span class="text-xs text-[var(--muted)]">Desative para bloquear o uso desta pessoa.</span>
   </div>
 </div>

@@ -41,7 +41,7 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     FieldSearchComponent
   ],
   templateUrl: './contatos.component.html',
-  styleUrls: ['./contatos.component.css']
+  
 })
 export class ContatosComponent implements OnChanges {
   @Input() entidadeRegistroId: number | null = null;

@@ -1,4 +1,9 @@
-﻿<div class="inline-loader" role="status" aria-live="polite">
-  <span class="spinner" aria-hidden="true"></span>
-  <span class="label">{{ label }}</span>
+<div
+  class="inline-flex items-center gap-2 rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2.5 py-1.5 text-[11.5px] text-[var(--muted-strong)]"
+  role="status"
+  aria-live="polite">
+  <span
+    class="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[rgba(15,118,110,0.2)] border-t-[#0f766e]"
+    aria-hidden="true"></span>
+  <span>{{ label }}</span>
 </div>

@@ -8,8 +8,7 @@ import { CommonModule } from '@angular/common';
   selector: 'app-confirm-dialog',
   standalone: true,
   imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule],
-  templateUrl: './confirm-dialog.component.html',
-  styleUrls: ['./confirm-dialog.component.css']
+  templateUrl: './confirm-dialog.component.html'
 })
 export class ConfirmDialogComponent {
   constructor(

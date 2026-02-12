@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+Ôªøimport { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -31,7 +31,6 @@ import { NotificationService } from '../../core/notifications/notification.servi
     InlineLoaderComponent
   ],
   templateUrl: './metadata-form.component.html',
-  styleUrls: ['./metadata-form.component.css']
 })
 export class MetadataFormComponent implements OnInit {
   tipoId: number | null = null;
@@ -89,7 +88,7 @@ export class MetadataFormComponent implements OnInit {
       next: data => {
         const found = (data.content || []).find((t: TipoEntidade) => t.id === id) || null;
         if (!found) {
-          this.notify.error('Tipo n„o encontrado.');
+          this.notify.error('Tipo n√£o encontrado.');
           this.router.navigate(['/metadata']);
           return;
         }
@@ -101,7 +100,7 @@ export class MetadataFormComponent implements OnInit {
         });
       },
       error: () => {
-        this.notify.error('N„o foi possÌvel carregar o tipo.');
+        this.notify.error('N√£o foi poss√≠vel carregar o tipo.');
       }
     });
   }
@@ -114,7 +113,7 @@ export class MetadataFormComponent implements OnInit {
       next: data => this.campos = data || [],
       error: () => {
         this.campos = [];
-        this.notify.error('N„o foi possÌvel carregar os campos.');
+        this.notify.error('N√£o foi poss√≠vel carregar os campos.');
       }
     });
   }
@@ -137,7 +136,7 @@ export class MetadataFormComponent implements OnInit {
           this.tipo = data;
           this.notify.success('Tipo atualizado.');
         },
-        error: () => this.notify.error('N„o foi possÌvel salvar o tipo.')
+        error: () => this.notify.error('N√£o foi poss√≠vel salvar o tipo.')
       });
       return;
     }
@@ -147,7 +146,7 @@ export class MetadataFormComponent implements OnInit {
         this.notify.success('Tipo criado.');
         this.router.navigate(['/metadata', data.id, 'edit'], { state: { tipo: data } });
       },
-      error: () => this.notify.error('N„o foi possÌvel criar o tipo.')
+      error: () => this.notify.error('N√£o foi poss√≠vel criar o tipo.')
     });
   }
 
@@ -163,8 +162,8 @@ export class MetadataFormComponent implements OnInit {
     }));
     this.savingCampos = true;
     this.service.saveCampos(this.tipoId, payload).pipe(finalize(() => this.savingCampos = false)).subscribe({
-      next: () => this.notify.success('ConfiguraÁıes salvas.'),
-      error: () => this.notify.error('N„o foi possÌvel salvar as configuraÁıes.')
+      next: () => this.notify.success('Configura√ß√µes salvas.'),
+      error: () => this.notify.error('N√£o foi poss√≠vel salvar as configura√ß√µes.')
     });
   }
 
@@ -172,3 +171,4 @@ export class MetadataFormComponent implements OnInit {
     this.router.navigate(['/metadata']);
   }
 }
+

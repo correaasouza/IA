@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+﻿import { Component } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { MatToolbarModule } from '@angular/material/toolbar';
@@ -37,7 +37,7 @@ import { environment } from '../environments/environment';
     MatTooltipModule
   ],
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.css']
+  
 })
 export class AppComponent {
   sidebarOpen = true;
@@ -70,6 +70,11 @@ export class AppComponent {
     private http: HttpClient,
     private router: Router
   ) {
+    if (typeof document !== 'undefined') {
+      document.body.classList.remove('theme-zeta-graphite', 'theme-zeta-steel');
+      document.body.classList.add('theme-zeta-slate');
+    }
+
     const cachedExpanded = localStorage.getItem(this.expandedKey);
     if (cachedExpanded) {
       try {
@@ -323,3 +328,4 @@ export class AppComponent {
     return this.menuLabelAliases[item.id] || item.label;
   }
 }
+

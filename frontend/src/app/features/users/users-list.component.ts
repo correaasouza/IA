@@ -36,7 +36,6 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     FieldSearchComponent
   ],
   templateUrl: './users-list.component.html',
-  styleUrls: ['./users-list.component.css']
 })
 export class UsersListComponent implements OnInit {
   usuarios: UsuarioResponse[] = [];
@@ -108,10 +107,6 @@ export class UsersListComponent implements OnInit {
       const matchPapeis = this.searchFields.includes('papeis') && has((u.papeis || []).join(' '));
       return matchUsername || matchEmail || matchPapeis;
     });
-  }
-
-  statusClass(row: UsuarioResponse) {
-    return row.ativo ? '' : 'off';
   }
 
   statusLabel(row: UsuarioResponse) {

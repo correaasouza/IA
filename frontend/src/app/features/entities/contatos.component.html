@@ -1,14 +1,14 @@
-﻿<div class="panel">
-  <div class="panel-header">
-    <div class="panel-title">Contatos</div>
-    <div class="panel-meta">Telefones, e-mails e canais adicionais</div>
+﻿<div class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+  <div class="mb-2.5 flex items-center justify-between gap-2">
+    <div class="text-sm font-semibold">Contatos</div>
+    <div class="text-xs text-[var(--muted)]">Telefones, e-mails e canais adicionais</div>
   </div>
 
-  <div class="panel-loader" *ngIf="loading">
+  <div class="flex justify-end pb-2" *ngIf="loading">
     <app-inline-loader label="Carregando contatos"></app-inline-loader>
   </div>
 
-  <form [formGroup]="form" (ngSubmit)="save()" class="form-grid">
+  <form [formGroup]="form" (ngSubmit)="save()" class="mb-2.5 grid grid-cols-1 gap-2.5 md:grid-cols-2">
     <mat-form-field appearance="outline">
       <mat-label>Tipo</mat-label>
       <mat-select formControlName="tipo" aria-label="Tipo de contato">
@@ -34,11 +34,11 @@
       <mat-error id="contato-err-regex" *ngIf="form.get('valor')?.hasError('regex')">Valor inválido</mat-error>
     </mat-form-field>
 
-    <div class="toggles">
+    <div class="flex items-center gap-3 md:col-span-2">
       <mat-slide-toggle formControlName="principal">Principal</mat-slide-toggle>
     </div>
 
-    <div class="actions">
+    <div class="flex flex-wrap items-center gap-2 md:col-span-2">
       <button mat-flat-button color="primary" type="submit" [disabled]="saving">
         <mat-icon>save</mat-icon>
         {{ editingId ? 'Atualizar' : 'Salvar' }}
@@ -50,7 +50,7 @@
     </div>
   </form>
 
-  <div class="filters-row">
+  <div class="grid gap-2 pb-2">
     <app-field-search
       [options]="searchOptions"
       label="Buscar contatos"
@@ -60,8 +60,8 @@
     </app-field-search>
   </div>
 
-  <div class="table-wrap" *ngIf="filteredContatos.length > 0">
-    <table mat-table [dataSource]="filteredContatos" class="table-dense">
+  <div class="overflow-auto border-t border-[var(--border-light)]" *ngIf="filteredContatos.length > 0">
+    <table mat-table [dataSource]="filteredContatos" class="w-full">
       <ng-container matColumnDef="tipo">
         <th mat-header-cell *matHeaderCellDef>Tipo</th>
         <td mat-cell *matCellDef="let row">{{ row.tipo }}</td>
@@ -73,18 +73,14 @@
       <ng-container matColumnDef="principal">
         <th mat-header-cell *matHeaderCellDef>Principal</th>
         <td mat-cell *matCellDef="let row">
-          <span class="status" [class.off]="!row.principal">{{ row.principal ? 'Sim' : 'Não' }}</span>
+          <span class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold" [ngClass]="row.principal ? 'bg-[var(--success-bg)] text-[var(--success-ink)]' : 'bg-[#e6e8ec] text-[#4b5563]'">{{ row.principal ? 'Sim' : 'Não' }}</span>
         </td>
       </ng-container>
       <ng-container matColumnDef="acoes">
         <th mat-header-cell *matHeaderCellDef>Ações</th>
-        <td mat-cell *matCellDef="let row" class="actions">
-          <button mat-icon-button matTooltip="Editar" (click)="edit(row)" [attr.aria-label]="'Editar contato ' + row.tipo">
-            <mat-icon>edit</mat-icon>
-          </button>
-          <button mat-icon-button color="warn" matTooltip="Remover" (click)="remove(row)" [attr.aria-label]="'Remover contato ' + row.tipo">
-            <mat-icon>delete</mat-icon>
-          </button>
+        <td mat-cell *matCellDef="let row" class="flex flex-wrap gap-1.5">
+          <button mat-icon-button matTooltip="Editar" (click)="edit(row)" [attr.aria-label]="'Editar contato ' + row.tipo"><mat-icon>edit</mat-icon></button>
+          <button mat-icon-button color="warn" matTooltip="Remover" (click)="remove(row)" [attr.aria-label]="'Remover contato ' + row.tipo"><mat-icon>delete</mat-icon></button>
         </td>
       </ng-container>
 
@@ -93,12 +89,11 @@
     </table>
   </div>
 
-  <section class="empty-state" *ngIf="filteredContatos.length === 0" role="status" aria-live="polite">
-    <mat-icon>mail</mat-icon>
+  <section class="flex items-center gap-3 pt-3 text-[var(--muted)]" *ngIf="filteredContatos.length === 0" role="status" aria-live="polite">
+    <mat-icon class="!h-7 !w-7 !text-[28px]">mail</mat-icon>
     <div>
-      <div class="empty-title">Nenhum contato informado</div>
-      <div class="empty-subtitle">Adicione um contato para este registro.</div>
+      <div class="font-semibold text-[var(--ink)]">Nenhum contato informado</div>
+      <div class="text-xs">Adicione um contato para este registro.</div>
     </div>
   </section>
 </div>
-

@@ -1,14 +1,17 @@
-﻿<div class="dialog" role="dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
-  <div class="icon">
+<div
+  class="grid grid-cols-[36px_1fr] items-center gap-2.5 px-4 pb-1.5 pt-3.5"
+  role="dialog"
+  aria-labelledby="confirm-title"
+  aria-describedby="confirm-message">
+  <div class="grid h-8 w-8 place-items-center rounded-lg bg-[#fef3c7] text-[#b45309]">
     <mat-icon>warning</mat-icon>
   </div>
-  <div class="content">
-    <div class="title" id="confirm-title">{{ data?.title || 'Confirmar' }}</div>
-    <div class="message" id="confirm-message">{{ data?.message || 'Tem certeza?' }}</div>
+  <div>
+    <div class="text-sm font-semibold" id="confirm-title">{{ data?.title || 'Confirmar' }}</div>
+    <div class="text-xs text-[var(--muted)]" id="confirm-message">{{ data?.message || 'Tem certeza?' }}</div>
   </div>
 </div>
-<div class="actions">
+<div class="flex justify-end gap-2 px-4 pb-3.5 pt-2">
   <button mat-stroked-button (click)="close(false)" aria-label="Cancelar ação">Cancelar</button>
   <button mat-flat-button color="warn" (click)="close(true)" aria-label="Confirmar exclusão">Excluir</button>
 </div>
-

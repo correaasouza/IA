@@ -22,6 +22,8 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
       "redirectUris": [
+        "http://localhost:5000/*",
+        "http://host.docker.internal:5000/*",
         "http://localhost:4200/*",
         "http://host.docker.internal:4200/*",
         "http://host.docker.internal:8080/*",
@@ -29,6 +31,8 @@
         "http://192.168.0.243:8080/*"
       ],
       "webOrigins": [
+        "http://localhost:5000",
+        "http://host.docker.internal:5000",
         "http://localhost:4200",
         "http://host.docker.internal:4200",
         "http://host.docker.internal:8080",

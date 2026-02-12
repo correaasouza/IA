@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+ï»¿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
@@ -27,7 +27,6 @@ import { NotificationService } from '../../core/notifications/notification.servi
     FieldSearchComponent
   ],
   templateUrl: './metadata-list.component.html',
-  styleUrls: ['./metadata-list.component.css']
 })
 export class MetadataListComponent implements OnInit {
   tipos: TipoEntidade[] = [];
@@ -36,7 +35,7 @@ export class MetadataListComponent implements OnInit {
   loading = false;
 
   searchOptions: FieldSearchOption[] = [
-    { key: 'codigo', label: 'Código' },
+    { key: 'codigo', label: 'CÃ³digo' },
     { key: 'nome', label: 'Nome' }
   ];
   searchTerm = '';
@@ -63,7 +62,7 @@ export class MetadataListComponent implements OnInit {
       error: () => {
         this.tipos = [];
         this.filtered = [];
-        this.notify.error('Não foi possível carregar os tipos.');
+        this.notify.error('NÃ£o foi possÃ­vel carregar os tipos.');
       }
     });
   }
@@ -96,3 +95,4 @@ export class MetadataListComponent implements OnInit {
     });
   }
 }
+

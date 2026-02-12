@@ -1,120 +1,101 @@
-﻿<div class="page">
-  <section class="panel hero">
-    <div class="hero-title">
+<div class="grid gap-3">
+  <section class="rounded-xl border border-[var(--border)] bg-[linear-gradient(135deg,rgba(11,61,145,0.08),transparent)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="inline-flex items-center gap-2 text-lg font-semibold">
       <mat-icon>support_agent</mat-icon>
       Central de Ajuda
     </div>
-    <div class="hero-sub">Guia rápido das funcionalidades atuais e do fluxo de cadastro.</div>
-    <div class="hero-actions">
+    <div class="mt-1 text-[var(--muted)]">Guia rápido das funcionalidades atuais e do fluxo de cadastro.</div>
+    <div class="mt-2.5 flex flex-wrap gap-2">
       <button mat-flat-button color="primary" routerLink="/" aria-label="Ir para Home">Ir para Home</button>
       <button mat-stroked-button routerLink="/reports" aria-label="Ir para Relatórios">Relatórios</button>
     </div>
   </section>
 
-  <div class="help-grid">
-    <section class="panel">
-      <div class="panel-header">
-        <div class="panel-title">Fluxo recomendado</div>
+  <div class="grid grid-cols-[repeat(2,minmax(280px,1fr))] gap-3 max-[900px]:grid-cols-1">
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+      <div class="mb-2.5 flex items-center justify-between">
+        <div class="text-[13px] font-semibold">Fluxo recomendado</div>
       </div>
-      <div class="step">
-        <div class="step-num">1</div>
+      <div class="grid grid-cols-[28px_1fr] gap-2.5 py-1.5">
+        <div class="grid h-7 w-7 place-items-center rounded-lg bg-[#0b3d91] text-xs font-semibold text-white">1</div>
         <div>
-          <div class="step-title">Selecione o locatário</div>
-          <div class="step-desc">O tenant define o contexto do sistema e o isolamento de dados.</div>
+          <div class="font-semibold">Selecione o locatário</div>
+          <div class="text-xs text-[var(--muted)]">O tenant define o contexto do sistema e o isolamento de dados.</div>
         </div>
       </div>
-      <div class="step">
-        <div class="step-num">2</div>
+      <div class="grid grid-cols-[28px_1fr] gap-2.5 py-1.5">
+        <div class="grid h-7 w-7 place-items-center rounded-lg bg-[#0b3d91] text-xs font-semibold text-white">2</div>
         <div>
-          <div class="step-title">Revise Tipos de Entidades</div>
-          <div class="step-desc">Cliente, Fornecedor e Funcionário já vêm semeados por tenant.</div>
+          <div class="font-semibold">Revise Tipos de Entidades</div>
+          <div class="text-xs text-[var(--muted)]">Cliente, Fornecedor e Funcionário já vêm semeados por tenant.</div>
         </div>
       </div>
-      <div class="step">
-        <div class="step-num">3</div>
+      <div class="grid grid-cols-[28px_1fr] gap-2.5 py-1.5">
+        <div class="grid h-7 w-7 place-items-center rounded-lg bg-[#0b3d91] text-xs font-semibold text-white">3</div>
         <div>
-          <div class="step-title">Configure Campos do Tipo</div>
-          <div class="step-desc">Defina quais campos fixos são habilitados/obrigatórios por tipo.</div>
+          <div class="font-semibold">Configure Campos do Tipo</div>
+          <div class="text-xs text-[var(--muted)]">Defina quais campos fixos são habilitados/obrigatórios por tipo.</div>
         </div>
       </div>
-      <div class="step">
-        <div class="step-num">4</div>
+      <div class="grid grid-cols-[28px_1fr] gap-2.5 py-1.5">
+        <div class="grid h-7 w-7 place-items-center rounded-lg bg-[#0b3d91] text-xs font-semibold text-white">4</div>
         <div>
-          <div class="step-title">Cadastre registros</div>
-          <div class="step-desc">Informe o documento para localizar a pessoa e completar os dados da entidade.</div>
+          <div class="font-semibold">Cadastre registros</div>
+          <div class="text-xs text-[var(--muted)]">Informe o documento para localizar a pessoa e completar os dados da entidade.</div>
         </div>
       </div>
     </section>
 
-    <section class="panel">
-      <div class="panel-header">
-        <div class="panel-title">Módulos principais</div>
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+      <div class="mb-2.5 flex items-center justify-between">
+        <div class="text-[13px] font-semibold">Módulos principais</div>
       </div>
-      <div class="feature">
-        <div class="feature-title"><mat-icon>domain</mat-icon> Locatários</div>
-        <div class="feature-desc">Criar, editar, ativar/desativar e renovar vencimento (+30 dias) diretamente na lista.</div>
-        <mat-chip-set>
-          <mat-chip>MASTER_ADMIN</mat-chip>
-        </mat-chip-set>
+      <div class="border-b border-dashed border-[var(--border)] py-2">
+        <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>domain</mat-icon> Locatários</div>
+        <div class="my-1 text-xs text-[var(--muted)]">Criar, editar, ativar/desativar e renovar vencimento (+30 dias) diretamente na lista.</div>
+        <mat-chip-set><mat-chip>MASTER_ADMIN</mat-chip></mat-chip-set>
       </div>
-      <div class="feature">
-        <div class="feature-title"><mat-icon>group</mat-icon> Usuários</div>
-        <div class="feature-desc">Criar usuários, desativar, resetar senha e vincular papéis.</div>
-        <mat-chip-set>
-          <mat-chip>MASTER_ADMIN</mat-chip>
-          <mat-chip>TENANT_ADMIN</mat-chip>
-        </mat-chip-set>
+      <div class="border-b border-dashed border-[var(--border)] py-2">
+        <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>group</mat-icon> Usuários</div>
+        <div class="my-1 text-xs text-[var(--muted)]">Criar usuários, desativar, resetar senha e vincular papéis.</div>
+        <mat-chip-set><mat-chip>MASTER_ADMIN</mat-chip><mat-chip>TENANT_ADMIN</mat-chip></mat-chip-set>
       </div>
-      <div class="feature">
-        <div class="feature-title"><mat-icon>security</mat-icon> Papéis e permissões</div>
-        <div class="feature-desc">Definir papéis por locatário, configurar permissões e atribuições.</div>
-        <mat-chip-set>
-          <mat-chip>MASTER_ADMIN</mat-chip>
-          <mat-chip>TENANT_ADMIN</mat-chip>
-        </mat-chip-set>
+      <div class="border-b border-dashed border-[var(--border)] py-2">
+        <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>security</mat-icon> Papéis e permissões</div>
+        <div class="my-1 text-xs text-[var(--muted)]">Definir papéis por locatário, configurar permissões e atribuições.</div>
+        <mat-chip-set><mat-chip>MASTER_ADMIN</mat-chip><mat-chip>TENANT_ADMIN</mat-chip></mat-chip-set>
       </div>
-      <div class="feature">
-        <div class="feature-title"><mat-icon>assignment</mat-icon> Cadastros</div>
-        <div class="feature-desc">Cadastro por tipo com pessoa vinculada. Documento preenche dados se já existir.</div>
-        <mat-chip-set>
-          <mat-chip>MASTER_ADMIN</mat-chip>
-          <mat-chip>TENANT_ADMIN</mat-chip>
-          <mat-chip>USER</mat-chip>
-        </mat-chip-set>
+      <div class="border-b border-dashed border-[var(--border)] py-2">
+        <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>assignment</mat-icon> Cadastros</div>
+        <div class="my-1 text-xs text-[var(--muted)]">Cadastro por tipo com pessoa vinculada. Documento preenche dados se já existir.</div>
+        <mat-chip-set><mat-chip>MASTER_ADMIN</mat-chip><mat-chip>TENANT_ADMIN</mat-chip><mat-chip>USER</mat-chip></mat-chip-set>
       </div>
-      <div class="feature">
-        <div class="feature-title"><mat-icon>view_list</mat-icon> Tipos de Entidades</div>
-        <div class="feature-desc">Gerencie os tipos por tenant (cliente, fornecedor, funcionário e outros).</div>
-        <mat-chip-set>
-          <mat-chip>MASTER_ADMIN</mat-chip>
-          <mat-chip>TENANT_ADMIN</mat-chip>
-        </mat-chip-set>
+      <div class="border-b border-dashed border-[var(--border)] py-2">
+        <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>view_list</mat-icon> Tipos de Entidades</div>
+        <div class="my-1 text-xs text-[var(--muted)]">Gerencie os tipos por tenant (cliente, fornecedor, funcionário e outros).</div>
+        <mat-chip-set><mat-chip>MASTER_ADMIN</mat-chip><mat-chip>TENANT_ADMIN</mat-chip></mat-chip-set>
       </div>
-      <div class="feature">
-        <div class="feature-title"><mat-icon>fact_check</mat-icon> Campos do Tipo</div>
-        <div class="feature-desc">Habilite, torne obrigatório e ajuste labels de campos fixos.</div>
-        <mat-chip-set>
-          <mat-chip>CONFIG_EDITOR</mat-chip>
-        </mat-chip-set>
+      <div class="border-b border-dashed border-[var(--border)] py-2">
+        <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>fact_check</mat-icon> Campos do Tipo</div>
+        <div class="my-1 text-xs text-[var(--muted)]">Habilite, torne obrigatório e ajuste labels de campos fixos.</div>
+        <mat-chip-set><mat-chip>CONFIG_EDITOR</mat-chip></mat-chip-set>
       </div>
-      <div class="feature">
-        <div class="feature-title"><mat-icon>bar_chart</mat-icon> Relatórios</div>
-        <div class="feature-desc">Indicadores e comparativos das entidades. Exportações em CSV/XLSX.</div>
-        <mat-chip-set>
-          <mat-chip>RELATORIO_VIEW</mat-chip>
-        </mat-chip-set>
+      <div class="py-2">
+        <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>bar_chart</mat-icon> Relatórios</div>
+        <div class="my-1 text-xs text-[var(--muted)]">Indicadores e comparativos das entidades. Exportações em CSV/XLSX.</div>
+        <mat-chip-set><mat-chip>RELATORIO_VIEW</mat-chip></mat-chip-set>
       </div>
     </section>
 
-    <section class="panel">
-      <div class="panel-header">
-        <div class="panel-title">Dicas e regras</div>
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+      <div class="mb-2.5 flex items-center justify-between">
+        <div class="text-[13px] font-semibold">Dicas e regras</div>
       </div>
-      <div class="tip"><mat-icon>bolt</mat-icon> Fixe telas como atalhos no topo para acesso rápido.</div>
-      <div class="tip"><mat-icon>filter_alt</mat-icon> Use o filtro por campo e a ordenação nas listagens.</div>
-      <div class="tip"><mat-icon>person_search</mat-icon> Documento da pessoa preenche automaticamente dados quando já cadastrados.</div>
-      <div class="tip"><mat-icon>lock</mat-icon> Tenant bloqueado não acessa o sistema (verifique vencimento).</div>
-      <div class="tip"><mat-icon>verified</mat-icon> Campos obrigatórios são validados conforme regras do tipo.</div>
+      <div class="inline-flex items-center gap-2 py-1.5 text-[var(--muted)]"><mat-icon>bolt</mat-icon> Fixe telas como atalhos no topo para acesso rápido.</div>
+      <div class="inline-flex items-center gap-2 py-1.5 text-[var(--muted)]"><mat-icon>filter_alt</mat-icon> Use o filtro por campo e a ordenação nas listagens.</div>
+      <div class="inline-flex items-center gap-2 py-1.5 text-[var(--muted)]"><mat-icon>person_search</mat-icon> Documento da pessoa preenche automaticamente dados quando já cadastrados.</div>
+      <div class="inline-flex items-center gap-2 py-1.5 text-[var(--muted)]"><mat-icon>lock</mat-icon> Tenant bloqueado não acessa o sistema (verifique vencimento).</div>
+      <div class="inline-flex items-center gap-2 py-1.5 text-[var(--muted)]"><mat-icon>verified</mat-icon> Campos obrigatórios são validados conforme regras do tipo.</div>
     </section>
   </div>
 </div>

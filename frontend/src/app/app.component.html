@@ -1,62 +1,51 @@
-﻿<div class="app-shell dense">
-  <mat-toolbar class="app-toolbar" role="banner">
-    <div class="toolbar-left">
-      <button mat-icon-button class="nav-toggle" *ngIf="hasTenant" (click)="toggleSidebar()" aria-label="Alternar menu lateral">
+﻿<div class="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
+  <mat-toolbar class="app-header flex h-14 items-center gap-3 border-b border-white/10 px-3 text-[var(--on-brand)] shadow-lg md:h-[68px] md:px-5" role="banner">
+    <div class="flex min-w-0 items-center gap-3">
+      <button mat-icon-button *ngIf="hasTenant" (click)="toggleSidebar()" aria-label="Alternar menu lateral">
         <mat-icon>menu</mat-icon>
       </button>
 
-      <div class="brand" aria-label="Sistema de Gestão de Negócios">
-        <span class="brand-mark" aria-hidden="true">
-          <mat-icon class="brand-icon">business</mat-icon>
+      <div class="inline-flex min-w-0 items-center gap-3" aria-label="Sistema de Gestão de Negócios">
+        <span class="grid h-10 w-10 place-items-center rounded-xl border border-white/20 bg-white/15 shadow" aria-hidden="true">
+          <mat-icon class="text-[#e7f6f8]">business</mat-icon>
         </span>
-        <div class="brand-text">
-          <span class="brand-title">Sistema de Gestão de Negócios</span>
-          <span class="brand-subtitle" *ngIf="hasTenant">Ambiente do locatário</span>
+        <div class="grid leading-tight">
+          <span class="text-sm font-semibold md:text-base">Sistema de Gestão de Negócios</span>
+          <span class="hidden text-xs text-white/80 md:block" *ngIf="hasTenant">Ambiente do locatário</span>
         </div>
       </div>
     </div>
 
-    <div class="toolbar-center" *ngIf="hasTenant">
-      <div class="header-divider"></div>
-      <button mat-button class="home-link" routerLink="/home" aria-label="Home" matTooltip="Ir para Home">
+    <div class="hidden flex-1 items-center gap-3 lg:flex" *ngIf="hasTenant">
+      <div class="h-7 w-px bg-white/20"></div>
+      <button mat-button routerLink="/home" aria-label="Home" matTooltip="Ir para Home" class="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-3 text-xs text-[#f5fbfd]">
         <mat-icon>home</mat-icon>
         <span>Home</span>
       </button>
-      <div class="quick-actions" aria-label="Navegação rápida">
+      <div class="flex min-w-0 flex-1 items-center gap-2" aria-label="Navegação rápida">
         <ng-container *ngFor="let s of atalhosTop">
-          <button mat-button class="quick-link" [routerLink]="s.route" [class.active]="isActiveRoute(s.route)">
+          <button mat-button [routerLink]="s.route" [ngClass]="isActiveRoute(s.route) ? 'bg-white/20' : ''" class="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-3 text-xs text-[#f5fbfd]">
             <mat-icon>{{ s.icon }}</mat-icon>
-            <span [attr.title]="s.label">{{ getMenuLabel(s) }}</span>
+            <span class="max-w-40 truncate" [attr.title]="s.label">{{ getMenuLabel(s) }}</span>
           </button>
         </ng-container>
-        <button
-          mat-icon-button
-          class="quick-reorder"
-          (click)="openOrdenar()"
-          aria-label="Ordenar atalhos rápidos"
-          matTooltip="Ordenar atalhos">
+        <button mat-icon-button (click)="openOrdenar()" aria-label="Ordenar atalhos rápidos" matTooltip="Ordenar atalhos" class="h-8 w-8 rounded-md bg-white/15 text-[#f5fbfd]">
           <mat-icon>reorder</mat-icon>
         </button>
       </div>
     </div>
 
-    <span class="spacer"></span>
+    <span class="flex-1"></span>
 
-    <div class="header-actions">
-      <button
-        mat-icon-button
-        class="help-btn"
-        routerLink="/help"
-        aria-label="Ajuda"
-        matTooltip="Ajuda"
-        *ngIf="hasTenant">
+    <div class="flex items-center gap-2">
+      <button mat-icon-button routerLink="/help" aria-label="Ajuda" matTooltip="Ajuda" *ngIf="hasTenant" class="h-9 w-9 rounded-xl bg-white/15 text-white">
         <mat-icon>help_outline</mat-icon>
       </button>
 
-      <div class="user-area" *ngIf="loggedIn; else loginActions">
-        <button mat-button class="user-btn" [matMenuTriggerFor]="userMenu" aria-label="Abrir menu do usuário">
-          <span class="avatar">{{ userInitials }}</span>
-          <span class="user-name">{{ userName }}</span>
+      <div *ngIf="loggedIn; else loginActions">
+        <button mat-button [matMenuTriggerFor]="userMenu" aria-label="Abrir menu do usuário" class="inline-flex min-h-9 items-center gap-2 rounded-xl bg-white/15 px-2 text-[#f2fbfc]">
+          <span class="grid h-7 w-7 place-items-center rounded-full bg-white/25 text-xs font-bold">{{ userInitials }}</span>
+          <span class="hidden max-w-36 truncate text-xs font-semibold sm:block">{{ userName }}</span>
           <mat-icon>expand_more</mat-icon>
         </button>
         <mat-menu #userMenu="matMenu">
@@ -67,84 +56,66 @@
         </mat-menu>
       </div>
       <ng-template #loginActions>
-        <div class="session-actions">
-          <button mat-stroked-button class="session-btn" (click)="login()">Login</button>
-        </div>
+        <button mat-stroked-button (click)="login()">Login</button>
       </ng-template>
     </div>
   </mat-toolbar>
 
-  <mat-sidenav-container class="layout">
-    <mat-sidenav #sidenav mode="side" [opened]="sidebarOpen" *ngIf="hasTenant" class="sidebar" role="navigation">
-      <div class="sidebar-header">
-        <span class="sidebar-title">Navegação</span>
-        <span class="sidebar-hint">Favoritos e módulos</span>
+  <mat-sidenav-container class="h-[calc(100vh-56px)] md:h-[calc(100vh-68px)]">
+    <mat-sidenav #sidenav mode="side" [opened]="sidebarOpen" *ngIf="hasTenant" class="w-60 border-r border-[var(--border)] bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)]" role="navigation">
+      <div class="grid gap-0.5 px-3.5 pb-1 pt-3">
+        <span class="text-xs font-semibold uppercase tracking-[0.6px] text-[var(--muted)]">Navegação</span>
+        <span class="text-xs text-[var(--muted-strong)]">Favoritos e módulos</span>
       </div>
-      <mat-nav-list class="menu-list">
+      <mat-nav-list class="px-2 pb-3">
         <ng-container *ngFor="let item of menu">
-          <a
-            mat-list-item
-            *ngIf="!item.children?.length"
-            class="menu-item"
-            [routerLink]="item.route"
-            [class.active]="isActiveRoute(item.route)">
-            <mat-icon class="menu-icon">{{ item.icon }}</mat-icon>
-            <span class="menu-label">{{ item.label }}</span>
-            <button
-              mat-icon-button
-              class="pin-button"
-              (click)="toggleShortcut(item); $event.preventDefault(); $event.stopPropagation();"
-              [attr.aria-pressed]="isShortcut(item.id)"
-              aria-label="Fixar ou desfazer atalho">
-              <mat-icon class="star-icon" [class.active-star]="isShortcut(item.id)">star</mat-icon>
-            </button>
-          </a>
-
-          <div class="menu-group" *ngIf="item.children?.length">
-            <button
-              mat-button
-              type="button"
-              class="menu-group-header"
-              (click)="toggleGroup(item)"
-              [attr.aria-expanded]="isGroupExpanded(item)"
-              [class.active-group]="hasActiveChild(item)"
-              [class.with-bg]="true">
-              <span class="menu-left">
-                <mat-icon class="menu-icon">{{ item.icon }}</mat-icon>
-                <span class="menu-label" [attr.title]="item.label">{{ getMenuLabel(item) }}</span>
-              </span>
-              <span class="count" *ngIf="item.children?.length > 1">{{ item.children.length }}</span>
-              <mat-icon class="menu-chevron" [class.open]="isGroupExpanded(item)">
-                {{ isGroupExpanded(item) ? 'expand_more' : 'chevron_right' }}
-              </mat-icon>
-            </button>
-            <div class="menu-group-items" [class.open]="isGroupExpanded(item)" [attr.aria-hidden]="!isGroupExpanded(item)">
-              <a
-                mat-list-item
-                *ngFor="let child of item.children"
-                class="menu-item child"
-                [routerLink]="child.route"
-                [class.active]="isActiveRoute(child.route)">
-                <span class="tree-dot" aria-hidden="true"></span>
-                <mat-icon class="menu-icon">{{ child.icon }}</mat-icon>
-                <span class="menu-label" [attr.title]="child.label">{{ getMenuLabel(child) }}</span>
-                <button
-                  mat-icon-button
-                  class="pin-button"
-                  (click)="toggleShortcut(child); $event.preventDefault(); $event.stopPropagation();"
-                  [attr.aria-pressed]="isShortcut(child.id)"
-                  aria-label="Fixar ou desfazer atalho">
-                  <mat-icon class="star-icon" [class.active-star]="isShortcut(child.id)">star</mat-icon>
-                </button>
-              </a>
+          <ng-container *ngIf="item.children?.length; else singleItem">
+            <div class="mx-2 my-2 border-t border-[var(--border-light)] pt-2">
+              <div class="px-2 text-[11px] font-semibold uppercase tracking-[0.5px] text-[var(--muted)]">{{ getMenuLabel(item) }}</div>
             </div>
-          </div>
+            <a
+              mat-list-item
+              *ngFor="let child of item.children"
+              [routerLink]="child.route"
+              [ngClass]="isActiveRoute(child.route) ? 'bg-[#dfe8f3] text-[var(--ink)]' : ''"
+              class="my-0.5 flex min-h-9 items-center gap-2 rounded-xl px-2 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--ink)]">
+              <mat-icon>{{ child.icon }}</mat-icon>
+              <span class="truncate text-sm" [attr.title]="child.label">{{ getMenuLabel(child) }}</span>
+              <button
+                mat-icon-button
+                class="ml-auto h-7 w-7"
+                (click)="toggleShortcut(child); $event.preventDefault(); $event.stopPropagation();"
+                [attr.aria-pressed]="isShortcut(child.id)"
+                aria-label="Fixar ou desfazer atalho">
+                <mat-icon [ngClass]="isShortcut(child.id) ? 'text-[#d08a00]' : ''">star</mat-icon>
+              </button>
+            </a>
+          </ng-container>
+
+          <ng-template #singleItem>
+            <a
+              mat-list-item
+              [routerLink]="item.route"
+              [ngClass]="isActiveRoute(item.route) ? 'bg-[#dfe8f3] text-[var(--ink)]' : ''"
+              class="my-0.5 flex min-h-10 items-center gap-2 rounded-xl px-3 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--ink)]">
+              <mat-icon>{{ item.icon }}</mat-icon>
+              <span class="truncate text-sm">{{ item.label }}</span>
+              <button
+                mat-icon-button
+                class="ml-auto h-7 w-7"
+                (click)="toggleShortcut(item); $event.preventDefault(); $event.stopPropagation();"
+                [attr.aria-pressed]="isShortcut(item.id)"
+                aria-label="Fixar ou desfazer atalho">
+                <mat-icon [ngClass]="isShortcut(item.id) ? 'text-[#d08a00]' : ''">star</mat-icon>
+              </button>
+            </a>
+          </ng-template>
         </ng-container>
       </mat-nav-list>
     </mat-sidenav>
 
-    <mat-sidenav-content class="content-area">
-      <div class="content">
+    <mat-sidenav-content class="bg-[var(--bg)]">
+      <div class="p-3.5">
         <router-outlet></router-outlet>
       </div>
     </mat-sidenav-content>

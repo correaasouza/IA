@@ -11,8 +11,7 @@ import { MenuService, MenuItem } from '../../core/menu/menu.service';
   selector: 'app-home-dashboard',
   standalone: true,
   imports: [CommonModule, MatButtonModule, MatIconModule, RouterLink],
-  templateUrl: './home-dashboard.component.html',
-  styleUrls: ['./home-dashboard.component.css']
+  templateUrl: './home-dashboard.component.html'
 })
 export class HomeDashboardComponent implements OnInit {
   shortcuts: MenuItem[] = [];
