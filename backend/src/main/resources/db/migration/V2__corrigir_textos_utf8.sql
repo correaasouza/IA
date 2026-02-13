@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 UPDATE permissao_catalogo
 SET label = 'Admin do Locatário'
 WHERE codigo = 'TENANT_ADMIN' AND label LIKE '%LocatÃ%';
@@ -33,3 +34,7 @@ WHERE codigo = 'FUNCIONARIO' AND nome LIKE '%FuncionÃ%';
 UPDATE entidade_definicao
 SET nome = 'Funcionário'
 WHERE codigo = 'FUNCIONARIO' AND nome LIKE '%FuncionÃ%';
+=======
+-- no-op apos reset de baseline consolidado em V1
+SELECT 1;
+>>>>>>> 4cd7063 (refactor(db): consolidar baseline e resetar migracoes V2-V5)
