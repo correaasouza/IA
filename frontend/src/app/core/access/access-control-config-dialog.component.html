@@ -1,0 +1,17 @@
+<h2 mat-dialog-title>{{ data.title }}</h2>
+<mat-dialog-content class="w-full min-w-[320px] max-w-[92vw]">
+  <div class="mb-2 text-xs text-[var(--muted)]">{{ data.controlKey }}</div>
+  <mat-form-field appearance="outline" class="w-full">
+    <mat-label>Papeis permitidos</mat-label>
+    <mat-select [(ngModel)]="selectedRoles" multiple (selectionChange)="onRolesChange()">
+      <mat-option *ngFor="let role of roleOptions" [value]="role" [disabled]="isMasterRole(role)">{{ role }}</mat-option>
+    </mat-select>
+  </mat-form-field>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="cancel()">Cancelar</button>
+  <button mat-flat-button color="primary" type="button" (click)="save()">
+    <mat-icon>save</mat-icon>
+    Salvar
+  </button>
+</mat-dialog-actions>

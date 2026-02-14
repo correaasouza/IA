@@ -50,21 +50,28 @@ public class UsuarioPapelService {
     Usuario usuario = usuarioRepository.findByIdAndTenantId(usuarioLocalId, tenantId).orElseThrow();
     String keycloakId = usuario.getKeycloakId();
     repository.deleteAllByTenantIdAndUsuarioId(tenantId, keycloakId);
-    if (papelIds != null) {
-      for (Long papelId : papelIds) {
+    List<Long> uniquePapelIds = papelIds == null
+      ? List.of()
+      : papelIds.stream()
+        .filter(java.util.Objects::nonNull)
+        .distinct()
+        .toList();
+    for (Long papelId : uniquePapelIds) {
         Papel papel = papelRepository.findById(papelId).orElseThrow();
         if (!papel.getTenantId().equals(tenantId)) {
           throw new IllegalStateException("papel_forbidden");
+        }
+        if (repository.existsByTenantIdAndUsuarioIdAndPapelId(tenantId, keycloakId, papelId)) {
+          continue;
         }
         UsuarioPapel up = new UsuarioPapel();
         up.setTenantId(tenantId);
         up.setUsuarioId(keycloakId);
         up.setPapelId(papelId);
         repository.save(up);
-      }
     }
     auditService.log(tenantId, "USUARIO_PAPEIS_ATUALIZADOS", "usuario", String.valueOf(usuarioLocalId),
-      "papeis=" + (papelIds == null ? "" : papelIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(","))));
+      "papeis=" + uniquePapelIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(",")));
     return listByUsuario(usuarioLocalId);
   }
 

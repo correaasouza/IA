@@ -29,33 +29,34 @@ public class PessoaController {
   }
 
   @GetMapping
-  @PreAuthorize("hasAnyRole('MASTER_ADMIN','TENANT_ADMIN','USER')")
+  @PreAuthorize("hasAnyRole('MASTER','ADMIN','USER')")
   public Page<PessoaResponse> list(Pageable pageable) {
     return service.list(pageable).map(PessoaMapper::toResponse);
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("hasAnyRole('MASTER_ADMIN','TENANT_ADMIN','USER')")
+  @PreAuthorize("hasAnyRole('MASTER','ADMIN','USER')")
   public ResponseEntity<PessoaResponse> get(@PathVariable Long id) {
     return ResponseEntity.ok(PessoaMapper.toResponse(service.get(id)));
   }
 
   @GetMapping("/busca")
-  @PreAuthorize("hasAnyRole('MASTER_ADMIN','TENANT_ADMIN','USER')")
+  @PreAuthorize("hasAnyRole('MASTER','ADMIN','USER')")
   public ResponseEntity<PessoaResponse> findByDocumento(@RequestParam String documento) {
     return ResponseEntity.ok(PessoaMapper.toResponse(service.findByDocumento(documento)));
   }
 
   @PostMapping
-  @PreAuthorize("hasAnyRole('MASTER_ADMIN','TENANT_ADMIN')")
+  @PreAuthorize("hasAnyRole('MASTER','ADMIN')")
   public ResponseEntity<PessoaResponse> create(@Valid @RequestBody PessoaRequest request) {
     return ResponseEntity.ok(PessoaMapper.toResponse(service.create(request)));
   }
 
   @PutMapping("/{id}")
-  @PreAuthorize("hasAnyRole('MASTER_ADMIN','TENANT_ADMIN')")
+  @PreAuthorize("hasAnyRole('MASTER','ADMIN')")
   public ResponseEntity<PessoaResponse> update(@PathVariable Long id,
       @Valid @RequestBody PessoaRequest request) {
     return ResponseEntity.ok(PessoaMapper.toResponse(service.update(id, request)));
   }
 }
+

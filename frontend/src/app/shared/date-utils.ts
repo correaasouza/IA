@@ -1,4 +1,4 @@
-export const DATE_INPUT_FORMAT = 'DD/MM/AAAA';
+﻿export const DATE_INPUT_FORMAT = 'DD/MM/AAAA';
 
 export function toIsoDate(input: string): string {
   const parts = parseDateInput(input);
@@ -43,3 +43,4 @@ function isValidDateParts(year: number, month: number, day: number): boolean {
   const dt = new Date(Date.UTC(year, month - 1, day));
   return dt.getUTCFullYear() === year && dt.getUTCMonth() === month - 1 && dt.getUTCDate() === day;
 }
+

@@ -1,4 +1,4 @@
-package com.ia.app.security;
+﻿package com.ia.app.security;
 
 import com.ia.app.domain.Locatario;
 import com.ia.app.repository.LocatarioRepository;
@@ -62,7 +62,7 @@ public class TenantAccessFilter extends OncePerRequestFilter {
     }
 
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    boolean isMaster = authentication != null && hasRole(authentication, "ROLE_MASTER_ADMIN");
+    boolean isMaster = authentication != null && hasRole(authentication, "ROLE_MASTER");
 
     String tenantIdHeader = request.getHeader("X-Tenant-Id");
     if ((tenantIdHeader == null || tenantIdHeader.isBlank()) && !isMaster) {
@@ -164,3 +164,5 @@ public class TenantAccessFilter extends OncePerRequestFilter {
     response.getWriter().write(objectMapper.writeValueAsString(body));
   }
 }
+
+

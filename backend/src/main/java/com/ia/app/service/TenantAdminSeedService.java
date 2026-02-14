@@ -60,7 +60,7 @@ public class TenantAdminSeedService {
       email,
       password,
       true,
-      List.of("TENANT_ADMIN")
+      List.of("ADMIN")
     );
 
     Usuario usuario = new Usuario();
@@ -84,3 +84,4 @@ public class TenantAdminSeedService {
     return template.replace("{tenantId}", String.valueOf(tenantId));
   }
 }
+

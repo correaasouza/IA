@@ -1,4 +1,4 @@
-package com.ia.app.service;
+﻿package com.ia.app.service;
 
 import com.ia.app.domain.PermissaoCatalogo;
 import com.ia.app.dto.PermissaoCatalogResponse;
@@ -72,8 +72,6 @@ public class PermissaoCatalogService {
   }
 
   public void seedDefaults(Long tenantId) {
-    seed(tenantId, "MASTER_ADMIN", "Master Admin");
-    seed(tenantId, "TENANT_ADMIN", "Admin do Locatário");
     seed(tenantId, "CONFIG_EDITOR", "Configurar colunas e formulários");
     seed(tenantId, "USUARIO_MANAGE", "Gerenciar usuários");
     seed(tenantId, "PAPEL_MANAGE", "Gerenciar papéis");
@@ -98,3 +96,6 @@ public class PermissaoCatalogService {
     return tenantId;
   }
 }
+
+
+

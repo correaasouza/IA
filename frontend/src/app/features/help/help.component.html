@@ -1,4 +1,4 @@
-<div class="grid gap-3">
+﻿<div class="grid gap-3">
   <section class="rounded-xl border border-[var(--border)] bg-[linear-gradient(135deg,rgba(11,61,145,0.08),transparent)] p-3 shadow-[var(--shadow-xs)]">
     <div class="inline-flex items-center gap-2 text-lg font-semibold">
       <mat-icon>support_agent</mat-icon>
@@ -53,27 +53,27 @@
       <div class="border-b border-dashed border-[var(--border)] py-2">
         <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>domain</mat-icon> Locatários</div>
         <div class="my-1 text-xs text-[var(--muted)]">Criar, editar, ativar/desativar e renovar vencimento (+30 dias) diretamente na lista.</div>
-        <mat-chip-set><mat-chip>MASTER_ADMIN</mat-chip></mat-chip-set>
+        <mat-chip-set><mat-chip>MASTER</mat-chip></mat-chip-set>
       </div>
       <div class="border-b border-dashed border-[var(--border)] py-2">
         <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>group</mat-icon> Usuários</div>
         <div class="my-1 text-xs text-[var(--muted)]">Criar usuários, desativar, resetar senha e vincular papéis.</div>
-        <mat-chip-set><mat-chip>MASTER_ADMIN</mat-chip><mat-chip>TENANT_ADMIN</mat-chip></mat-chip-set>
+        <mat-chip-set><mat-chip>MASTER</mat-chip><mat-chip>ADMIN</mat-chip></mat-chip-set>
       </div>
       <div class="border-b border-dashed border-[var(--border)] py-2">
         <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>security</mat-icon> Papéis e permissões</div>
         <div class="my-1 text-xs text-[var(--muted)]">Definir papéis por locatário, configurar permissões e atribuições.</div>
-        <mat-chip-set><mat-chip>MASTER_ADMIN</mat-chip><mat-chip>TENANT_ADMIN</mat-chip></mat-chip-set>
+        <mat-chip-set><mat-chip>MASTER</mat-chip><mat-chip>ADMIN</mat-chip></mat-chip-set>
       </div>
       <div class="border-b border-dashed border-[var(--border)] py-2">
         <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>assignment</mat-icon> Cadastros</div>
         <div class="my-1 text-xs text-[var(--muted)]">Cadastro por tipo com pessoa vinculada. Documento preenche dados se já existir.</div>
-        <mat-chip-set><mat-chip>MASTER_ADMIN</mat-chip><mat-chip>TENANT_ADMIN</mat-chip><mat-chip>USER</mat-chip></mat-chip-set>
+        <mat-chip-set><mat-chip>MASTER</mat-chip><mat-chip>ADMIN</mat-chip><mat-chip>USER</mat-chip></mat-chip-set>
       </div>
       <div class="border-b border-dashed border-[var(--border)] py-2">
         <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>view_list</mat-icon> Tipos de Entidades</div>
         <div class="my-1 text-xs text-[var(--muted)]">Gerencie os tipos por tenant (cliente, fornecedor, funcionário e outros).</div>
-        <mat-chip-set><mat-chip>MASTER_ADMIN</mat-chip><mat-chip>TENANT_ADMIN</mat-chip></mat-chip-set>
+        <mat-chip-set><mat-chip>MASTER</mat-chip><mat-chip>ADMIN</mat-chip></mat-chip-set>
       </div>
       <div class="border-b border-dashed border-[var(--border)] py-2">
         <div class="inline-flex items-center gap-1.5 font-semibold"><mat-icon>fact_check</mat-icon> Campos do Tipo</div>
@@ -99,3 +99,5 @@
     </section>
   </div>
 </div>
+
+

@@ -5,8 +5,11 @@
       <h1 class="m-0 text-lg font-bold">Usuários</h1>
       <p class="mt-1 text-xs text-[var(--muted)]">Gerencie acessos e perfis</p>
     </div>
-    <div class="flex flex-wrap gap-2" *ngIf="canManageUsers">
-      <button mat-flat-button color="primary" routerLink="/users/new">
+    <div class="flex flex-wrap gap-2">
+      <button mat-flat-button color="primary" routerLink="/users/new"
+        appAccessControl="users.create"
+        [appAccessFallbackRoles]="['MASTER']"
+        [appAccessConfigurable]="false">
         <mat-icon>add</mat-icon>
         Novo usuário
       </button>
@@ -88,13 +91,22 @@
             <button mat-icon-button matTooltip="Editar" (click)="edit(row)" [attr.aria-label]="'Editar ' + row.username">
               <mat-icon>edit</mat-icon>
             </button>
-            <button *ngIf="canManageRoles" mat-icon-button matTooltip="Papéis" (click)="editPapeis(row)" [attr.aria-label]="'Papéis de ' + row.username">
+            <button mat-icon-button matTooltip="Papéis" (click)="editPapeis(row)" [attr.aria-label]="'Papéis de ' + row.username"
+              appAccessControl="users.editRoles"
+              [appAccessFallbackRoles]="['MASTER','ADMIN']"
+              [appAccessConfigurable]="false">
               <mat-icon>security</mat-icon>
             </button>
-            <button *ngIf="canManageUsers" mat-icon-button [matTooltip]="row.ativo ? 'Desativar' : 'Ativar'" (click)="toggleStatus(row)" [disabled]="togglingUserId === row.id" [attr.aria-label]="(row.ativo ? 'Desativar ' : 'Ativar ') + row.username">
+            <button mat-icon-button [matTooltip]="row.ativo ? 'Desativar' : 'Ativar'" (click)="toggleStatus(row)" [disabled]="togglingUserId === row.id" [attr.aria-label]="(row.ativo ? 'Desativar ' : 'Ativar ') + row.username"
+              appAccessControl="users.toggleStatus"
+              [appAccessFallbackRoles]="['MASTER']"
+              [appAccessConfigurable]="false">
               <mat-icon>{{ row.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
             </button>
-            <button *ngIf="canManageUsers" mat-icon-button color="warn" matTooltip="Excluir" (click)="remove(row)" [attr.aria-label]="'Excluir ' + row.username">
+            <button mat-icon-button color="warn" matTooltip="Excluir" (click)="remove(row)" [attr.aria-label]="'Excluir ' + row.username"
+              appAccessControl="users.delete"
+              [appAccessFallbackRoles]="['MASTER']"
+              [appAccessConfigurable]="false">
               <mat-icon>delete</mat-icon>
             </button>
           </td>
@@ -139,15 +151,24 @@
               <mat-icon>edit</mat-icon>
               <span>Editar</span>
             </button>
-            <button *ngIf="canManageRoles" mat-menu-item (click)="editPapeis(row)">
+            <button mat-menu-item (click)="editPapeis(row)"
+              appAccessControl="users.editRoles"
+              [appAccessFallbackRoles]="['MASTER','ADMIN']"
+              [appAccessConfigurable]="false">
               <mat-icon>security</mat-icon>
               <span>Papéis</span>
             </button>
-            <button *ngIf="canManageUsers" mat-menu-item (click)="toggleStatus(row)">
+            <button mat-menu-item (click)="toggleStatus(row)"
+              appAccessControl="users.toggleStatus"
+              [appAccessFallbackRoles]="['MASTER']"
+              [appAccessConfigurable]="false">
               <mat-icon>{{ row.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
               <span>{{ row.ativo ? 'Desativar' : 'Ativar' }}</span>
             </button>
-            <button *ngIf="canManageUsers" mat-menu-item (click)="remove(row)">
+            <button mat-menu-item (click)="remove(row)"
+              appAccessControl="users.delete"
+              [appAccessFallbackRoles]="['MASTER']"
+              [appAccessConfigurable]="false">
               <mat-icon>delete</mat-icon>
               <span>Excluir</span>
             </button>
@@ -171,10 +192,16 @@
       <div class="font-semibold text-[var(--ink)]">Nenhum usuário encontrado</div>
       <div class="text-xs">Cadastre um novo usuário para começar.</div>
     </div>
-    <button *ngIf="canManageUsers" mat-flat-button color="primary" routerLink="/users/new">
+    <button mat-flat-button color="primary" routerLink="/users/new"
+      appAccessControl="users.create"
+      [appAccessFallbackRoles]="['MASTER']"
+      [appAccessConfigurable]="false">
       <mat-icon>add</mat-icon>
       Criar usuário
     </button>
   </section>
 </div>
+
+
+
 

@@ -1,4 +1,4 @@
-package com.ia.app.web;
+﻿package com.ia.app.web;
 
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -30,9 +30,21 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(IllegalArgumentException.class)
   public ProblemDetail handleIllegalArgument(IllegalArgumentException ex) {
-    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+    String message = ex.getMessage() == null ? "" : ex.getMessage();
+    HttpStatus status = (message.startsWith("usuario_email_duplicado")
+      || message.startsWith("usuario_username_duplicado"))
+      ? HttpStatus.CONFLICT
+      : HttpStatus.BAD_REQUEST;
+    ProblemDetail pd = ProblemDetail.forStatus(status);
     pd.setTitle("Requisição inválida");
-    pd.setDetail(ex.getMessage());
+    if (message.startsWith("usuario_email_duplicado")) {
+      pd.setDetail("E-mail já cadastrado para outro usuário.");
+    } else if (message.startsWith("usuario_username_duplicado")) {
+      pd.setDetail("Username já cadastrado para outro usuário.");
+    } else {
+      pd.setDetail(ex.getMessage());
+    }
     return pd;
   }
 }
+

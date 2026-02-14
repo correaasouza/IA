@@ -1,4 +1,4 @@
-# Padrão Global de Campos de Data (Frontend)
+﻿# Padrão Global de Campos de Data (Frontend)
 
 Este projeto adota **obrigatoriamente** o padrão de data:
 
@@ -25,3 +25,4 @@ Com máscara `appDateMask`:
 
 - `frontend/src/app/shared/date-mask.directive.ts`
 - `frontend/src/app/shared/date-utils.ts`
+

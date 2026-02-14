@@ -23,7 +23,7 @@ public class PermissaoGuard {
     if (auth == null || !auth.isAuthenticated()) {
       return false;
     }
-    if (hasAuthority(auth, "ROLE_MASTER_ADMIN") || hasAuthority(auth, "ROLE_TENANT_ADMIN")) {
+    if (hasAuthority(auth, "ROLE_MASTER") || hasAuthority(auth, "ROLE_ADMIN")) {
       return true;
     }
     if (hasAuthority(auth, "ROLE_" + codigo)) {
@@ -48,3 +48,4 @@ public class PermissaoGuard {
     return false;
   }
 }
+

@@ -1,4 +1,4 @@
-import { Component, HostListener, OnInit } from '@angular/core';
+﻿import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -171,3 +171,4 @@ export class RolesComponent implements OnInit {
     this.isMobile = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
   }
 }
+

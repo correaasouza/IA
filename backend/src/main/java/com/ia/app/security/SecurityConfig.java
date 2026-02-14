@@ -1,6 +1,7 @@
 package com.ia.app.security;
 
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -71,18 +72,22 @@ public class SecurityConfig {
   }
 
   private Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
+    LinkedHashSet<GrantedAuthority> authorities = new LinkedHashSet<>();
     Object realmAccess = jwt.getClaims().get("realm_access");
-    if (!(realmAccess instanceof Map<?, ?> realmAccessMap)) {
-      return List.of();
+    if (realmAccess instanceof Map<?, ?> realmAccessMap) {
+      Object rolesObj = realmAccessMap.get("roles");
+      if (rolesObj instanceof Collection<?> roles) {
+        authorities.addAll(roles.stream()
+          .filter(String.class::isInstance)
+          .map(String.class::cast)
+          .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+          .collect(Collectors.toSet()));
+      }
     }
-    Object rolesObj = realmAccessMap.get("roles");
-    if (!(rolesObj instanceof Collection<?> roles)) {
-      return List.of();
+    String username = jwt.getClaimAsString("preferred_username");
+    if ("master".equalsIgnoreCase(username)) {
+      authorities.add(new SimpleGrantedAuthority("ROLE_MASTER"));
     }
-    return roles.stream()
-      .filter(String.class::isInstance)
-      .map(String.class::cast)
-      .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
-      .collect(Collectors.toSet());
+    return authorities;
   }
 }

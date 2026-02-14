@@ -102,7 +102,7 @@ public class LocatarioService {
       return List.of();
     }
     boolean isMaster = authentication.getAuthorities().stream()
-      .anyMatch(a -> a.getAuthority().equals("ROLE_MASTER_ADMIN"));
+      .anyMatch(a -> a.getAuthority().equals("ROLE_MASTER"));
     if (isMaster) {
       return repository.findAll().stream().map(LocatarioMapper::toResponse).toList();
     }
@@ -132,3 +132,4 @@ public class LocatarioService {
       .toList();
   }
 }
+

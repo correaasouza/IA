@@ -60,7 +60,7 @@ public class KeycloakAdminService {
           return resp.bodyToMono(String.class)
             .defaultIfEmpty("")
             .flatMap(body -> reactor.core.publisher.Mono.error(
-              new IllegalArgumentException("keycloak_create_user_failed: " + body)
+              new IllegalArgumentException(mapCreateUserError(body))
             ));
         }
         String loc = resp.headers().asHttpHeaders().getFirst("Location");
@@ -81,6 +81,17 @@ public class KeycloakAdminService {
     assignRealmRoles(userId, roles);
 
     return userId;
+  }
+
+  private String mapCreateUserError(String body) {
+    String source = (body == null ? "" : body).toLowerCase();
+    if (source.contains("same email")) {
+      return "usuario_email_duplicado";
+    }
+    if (source.contains("same username")) {
+      return "usuario_username_duplicado";
+    }
+    return "keycloak_create_user_failed: " + body;
   }
 
   public void setPassword(String userId, String password, boolean temporary) {

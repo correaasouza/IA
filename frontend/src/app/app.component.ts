@@ -1,6 +1,7 @@
 ﻿import { Component } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -14,11 +15,14 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { HttpClient } from '@angular/common/http';
 
 import { AuthService } from './core/auth/auth.service';
+import { AccessControlService } from './core/access/access-control.service';
 import { AtalhoService, AtalhoUsuario } from './core/atalhos/atalho.service';
 import { MenuService, MenuItem } from './core/menu/menu.service';
 import { AtalhoOrdenarDialogComponent } from './core/atalhos/atalho-ordenar-dialog.component';
 import { IconService } from './core/menu/icon.service';
+import { AccessControlConfigDialogComponent } from './core/access/access-control-config-dialog.component';
 import { environment } from '../environments/environment';
+import { CompanyService, EmpresaResponse } from './features/companies/company.service';
 
 @Component({
   selector: 'app-root',
@@ -55,17 +59,23 @@ export class AppComponent {
   loggedIn = false;
   userName = '';
   userInitials = 'U';
+  empresaContextOptions: EmpresaResponse[] = [];
+  empresaContextId: number | null = null;
+  loadingEmpresaContext = false;
+  private currentTenantId = '';
   private readonly menuLabelAliases: Record<string, string> = {
     metadata: 'Tipos Ent.'
   };
 
   constructor(
     private auth: AuthService,
+    private accessControl: AccessControlService,
     private atalhoService: AtalhoService,
     private menuService: MenuService,
     private dialog: MatDialog,
     private breakpoint: BreakpointObserver,
     private iconService: IconService,
+    private companyService: CompanyService,
     private http: HttpClient,
     private router: Router
   ) {
@@ -101,6 +111,7 @@ export class AppComponent {
       if (!this.isSelectionRoute && localStorage.getItem('tenantId')) {
         this.refreshMenu();
         this.loadShortcuts();
+        this.refreshEmpresaContextIfNeeded();
       }
     });
   }
@@ -123,11 +134,18 @@ export class AppComponent {
 
   toggleShortcut(item: MenuItem) {
     if (!item.route) return;
-    const existing = this.atalhos.find(a => a.menuId === item.id);
-    if (existing) {
-      this.atalhos = this.atalhos.filter(a => a.id !== existing.id);
+    const existing = this.atalhos.filter(a => a.menuId === item.id);
+    if (existing.length > 0) {
+      this.atalhos = this.atalhos.filter(a => a.menuId !== item.id);
       this.rebuildShortcutsTop();
-      this.atalhoService.delete(existing.id).subscribe({
+      const deletions = existing
+        .filter(a => !!a.id)
+        .map(a => this.atalhoService.delete(a.id));
+      if (deletions.length === 0) {
+        this.loadShortcuts();
+        return;
+      }
+      forkJoin(deletions).subscribe({
         next: () => this.loadShortcuts()
       });
       return;
@@ -151,6 +169,7 @@ export class AppComponent {
       this.atalhos = [];
       this.atalhosTop = [];
       this.hasTenant = false;
+      this.clearEmpresaContext();
       return;
     }
     this.hasTenant = true;
@@ -210,8 +229,8 @@ export class AppComponent {
     if (!tenantId && item.id !== 'home') {
       return false;
     }
-    const roles = [...this.auth.getUserRoles(), ...this.tenantRoles];
-    const roleOk = !item.roles || item.roles.length === 0 || item.roles.some(r => roles.includes(r));
+    const roleOk = !item.roles || item.roles.length === 0
+      || this.accessControl.can(`menu.${item.id}`, item.roles);
     const permOk = !item.perms || item.perms.length === 0 || item.perms.some(p => this.permissions.includes(p));
     if (item.roles && item.roles.length > 0 && item.perms && item.perms.length > 0) {
       return roleOk || permOk;
@@ -236,9 +255,11 @@ export class AppComponent {
         if (apiTenantId && !localStorage.getItem('tenantId')) {
           localStorage.setItem('tenantId', apiTenantId);
         }
+        this.accessControl.refreshPolicies();
         this.setUserIdentity(data);
         this.refreshMenu();
         this.updateRouteFlags(this.router.url);
+        this.refreshEmpresaContextIfNeeded();
         if (!this.isSelectionRoute) {
           this.loadShortcuts();
         }
@@ -312,6 +333,99 @@ export class AppComponent {
     this.expandForRoute();
   }
 
+  private refreshEmpresaContextIfNeeded(): void {
+    const tenantId = (localStorage.getItem('tenantId') || '').trim();
+    if (!tenantId || this.isSelectionRoute) {
+      this.clearEmpresaContext();
+      return;
+    }
+    if (this.currentTenantId !== tenantId) {
+      this.currentTenantId = tenantId;
+      this.loadEmpresaContextOptions();
+      return;
+    }
+    if (!this.empresaContextOptions.length) {
+      this.loadEmpresaContextOptions();
+    }
+  }
+
+  private loadEmpresaContextOptions(): void {
+    this.loadingEmpresaContext = true;
+    this.companyService.list({ page: 0, size: 500 }).subscribe({
+      next: data => {
+        const items = (data?.content || []) as EmpresaResponse[];
+        this.empresaContextOptions = items
+          .sort((a, b) => {
+            if (a.tipo !== b.tipo) {
+              return a.tipo === 'MATRIZ' ? -1 : 1;
+            }
+            return (a.razaoSocial || '').localeCompare(b.razaoSocial || '');
+          });
+        this.restoreEmpresaContextSelection();
+        this.loadingEmpresaContext = false;
+      },
+      error: () => {
+        this.clearEmpresaContext();
+        this.loadingEmpresaContext = false;
+      }
+    });
+  }
+
+  private restoreEmpresaContextSelection(): void {
+    const savedId = Number(localStorage.getItem('empresaContextId') || 0);
+    if (!savedId) {
+      this.setEmpresaContextAll();
+      return;
+    }
+    const existing = this.empresaContextOptions.find(e => e.id === savedId);
+    const selected = existing || null;
+    if (!selected) {
+      this.setEmpresaContextAll();
+      return;
+    }
+    this.setEmpresaContext(selected.id);
+  }
+
+  onEmpresaContextChange(rawId: string): void {
+    if (rawId === 'ALL') {
+      this.setEmpresaContextAll();
+      return;
+    }
+    const id = Number(rawId || 0);
+    if (!id) return;
+    this.setEmpresaContext(id);
+  }
+
+  private setEmpresaContextAll(): void {
+    this.empresaContextId = null;
+    localStorage.removeItem('empresaContextId');
+    localStorage.removeItem('empresaContextTipo');
+    localStorage.setItem('empresaContextNome', 'Todas as empresas');
+  }
+
+  private setEmpresaContext(id: number): void {
+    const empresa = this.empresaContextOptions.find(e => e.id === id);
+    if (!empresa) return;
+    this.empresaContextId = empresa.id;
+    localStorage.setItem('empresaContextId', String(empresa.id));
+    localStorage.setItem('empresaContextTipo', empresa.tipo || '');
+    localStorage.setItem('empresaContextNome', empresa.razaoSocial || '');
+  }
+
+  private clearEmpresaContext(): void {
+    this.empresaContextOptions = [];
+    this.empresaContextId = null;
+    this.currentTenantId = '';
+    localStorage.removeItem('empresaContextId');
+    localStorage.removeItem('empresaContextTipo');
+    localStorage.removeItem('empresaContextNome');
+  }
+
+  empresaContextLabel(empresa: EmpresaResponse): string {
+    if (!empresa) return '';
+    return `${empresa.tipo === 'MATRIZ' ? 'Matriz' : 'Filial'} - ${empresa.razaoSocial}`;
+  }
+
   private setUserIdentity(data?: any) {
     const fromApi = data?.username || data?.email || '';
     const fromToken = this.auth.getUsername() || '';
@@ -330,5 +444,32 @@ export class AppComponent {
   getMenuLabel(item: MenuItem): string {
     return this.menuLabelAliases[item.id] || item.label;
   }
+
+  canConfigureAccess(): boolean {
+    return this.accessControl.canConfigure();
+  }
+
+  configureMenuAccess(item: MenuItem, event: Event): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const key = `menu.${item.id}`;
+    const current = this.accessControl.getRoles(key, item.roles || []);
+    this.dialog.open(AccessControlConfigDialogComponent, {
+      width: '460px',
+      maxWidth: '92vw',
+      data: {
+        title: `Configurar acesso do menu "${this.getMenuLabel(item)}"`,
+        controlKey: key,
+        selectedRoles: current,
+        fallbackRoles: item.roles || []
+      }
+    }).afterClosed().subscribe((roles: string[] | undefined) => {
+      if (!roles) return;
+      this.accessControl.setRoles(key, roles);
+      this.refreshMenu();
+      this.rebuildShortcutsTop();
+    });
+  }
 }
+
 

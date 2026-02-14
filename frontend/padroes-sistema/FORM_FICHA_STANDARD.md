@@ -1,4 +1,4 @@
-# Padrao Global de Fichas (Frontend)
+﻿# Padrao Global de Fichas (Frontend)
 
 Este documento define o padrao obrigatorio para fichas de cadastro/consulta/edicao.
 
@@ -18,6 +18,12 @@ Regra estrutural: formulario/ficha nao deve permanecer embutido em tela de lista
    - `padding-top` equivalente para manter o espacamento interno.
 8. O fundo opaco deve cobrir toda a area sticky para impedir vazamento visual (incluindo pseudo-elemento de cobertura).
 
+## Regras de navegacao
+
+1. Toda ficha deve ter rota dedicada para `novo`, `consultar` e `editar` quando aplicavel.
+2. A lista correspondente deve navegar para a ficha por botoes de acao (`Consultar`, `Alterar`, `Novo`).
+3. E proibido editar registro diretamente na linha da lista quando existir ficha dedicada.
+
 ## Implementacao de referencia
 
 - Classe global: `frontend/src/styles.css` (`.page-header-sticky`)
@@ -25,6 +31,7 @@ Regra estrutural: formulario/ficha nao deve permanecer embutido em tela de lista
 - Ficha de usuario: `frontend/src/app/features/users/user-form.component.html`
 - Ficha de empresa: `frontend/src/app/features/companies/company-form.component.html`
 - Ficha de papel: `frontend/src/app/features/roles/role-form.component.html`
+- Ficha de acessos UI: `frontend/src/app/features/access-controls/access-control-form.component.html`
 
 ## Observacao
 

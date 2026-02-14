@@ -18,10 +18,13 @@ export class MenuService {
       label: 'Acessos',
       icon: 'folder',
       children: [
-        { id: 'tenants', label: 'Locatários', route: '/tenants', icon: 'domain', roles: ['MASTER_ADMIN'] },
-        { id: 'users', label: 'Usuários', route: '/users', icon: 'group', roles: ['MASTER_ADMIN', 'TENANT_ADMIN'], perms: ['USUARIO_MANAGE'] },
-        { id: 'roles', label: 'Papéis', route: '/roles', icon: 'security', roles: ['MASTER_ADMIN', 'TENANT_ADMIN'], perms: ['PAPEL_MANAGE'] }
+        { id: 'tenants', label: 'Locatários', route: '/tenants', icon: 'domain', roles: ['MASTER'] },
+        { id: 'users', label: 'Usuários', route: '/users', icon: 'group', roles: ['MASTER', 'ADMIN'], perms: ['USUARIO_MANAGE'] },
+        { id: 'roles', label: 'Papéis', route: '/roles', icon: 'security', roles: ['MASTER'] },
+        { id: 'access-controls', label: 'Acessos UI', route: '/access-controls', icon: 'tune', roles: ['MASTER', 'ADMIN'] }
       ]
     },
   ];
 }
+
+

@@ -12,6 +12,8 @@ import { TenantFormComponent } from './features/tenants/tenant-form.component';
 import { HelpComponent } from './features/help/help.component';
 import { CompaniesListComponent } from './features/companies/companies-list.component';
 import { CompanyFormComponent } from './features/companies/company-form.component';
+import { AccessControlsComponent } from './features/access-controls/access-controls.component';
+import { AccessControlFormComponent } from './features/access-controls/access-control-form.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent, canActivate: [AuthGuard] },
@@ -32,6 +34,10 @@ export const routes: Routes = [
   { path: 'companies/new', component: CompanyFormComponent, canActivate: [AuthGuard] },
   { path: 'companies/:id', component: CompanyFormComponent, canActivate: [AuthGuard] },
   { path: 'companies/:id/edit', component: CompanyFormComponent, canActivate: [AuthGuard] },
+  { path: 'access-controls', component: AccessControlsComponent, canActivate: [AuthGuard] },
+  { path: 'access-controls/new', component: AccessControlFormComponent, canActivate: [AuthGuard] },
+  { path: 'access-controls/:key', component: AccessControlFormComponent, canActivate: [AuthGuard] },
+  { path: 'access-controls/:key/edit', component: AccessControlFormComponent, canActivate: [AuthGuard] },
   { path: 'help', component: HelpComponent, canActivate: [AuthGuard] },
   { path: 'blocked', component: BlockedComponent }
 ];

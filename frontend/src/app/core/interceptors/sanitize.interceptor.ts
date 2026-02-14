@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import {
   HttpEvent,
   HttpHandler,
@@ -46,6 +46,7 @@ function sanitizeDeep(value: unknown): unknown {
 
 function sanitizeText(value: string): string {
   let cleaned = value;
+
   if (cleaned.includes('\uFFFD')) {
     const patches: Array<[RegExp, string]> = [
       [/C\uFFFDdigo/gi, 'Código'],
@@ -54,21 +55,27 @@ function sanitizeText(value: string): string {
       [/Relat\uFFFDrio/gi, 'Relatório'],
       [/Pap\uFFFDis/gi, 'Papéis'],
       [/Locat\uFFFDrio/gi, 'Locatário'],
-      [/Formul\uFFFDrio/gi, 'Formulário']
+      [/Formul\uFFFDrio/gi, 'Formulário'],
+      [/A\uFFFD\uFFFDes/gi, 'Ações']
     ];
     patches.forEach(([pattern, replacement]) => {
       cleaned = cleaned.replace(pattern, replacement);
     });
     cleaned = cleaned.replace(/\uFFFD/g, '');
   }
-  if (/[ÃÂ]/.test(cleaned)) {
+
+  // Attempt UTF-8 recovery only for classic mojibake markers.
+  if (/[\u00C3\u00C2]/.test(cleaned)) {
     try {
-      const bytes = new Uint8Array([...cleaned].map(ch => ch.charCodeAt(0)));
+      const bytes = new Uint8Array([...cleaned].map(ch => ch.charCodeAt(0) & 0xff));
       const decoded = new TextDecoder('utf-8', { fatal: false }).decode(bytes);
-      return decoded;
+      if (!decoded.includes('\uFFFD')) {
+        return decoded;
+      }
     } catch {
       return cleaned;
     }
   }
+
   return cleaned;
 }

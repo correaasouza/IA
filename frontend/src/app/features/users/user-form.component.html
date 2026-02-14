@@ -2,7 +2,7 @@
   <header class="page-header-sticky flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
     <div>
       <h1 class="m-0 text-lg font-bold">{{ title }}</h1>
-      <p class="mt-1 text-xs text-[var(--muted)]" *ngIf="user">ID {{ user.id }} • {{ user.username }}</p>
+      <p class="mt-1 text-xs text-[var(--muted)]" *ngIf="user">ID {{ user.id }} . {{ user.username }}</p>
       <p class="mt-1 text-xs text-[var(--muted-strong)]">Nome: {{ form.get('username')?.value || user?.username || '-' }}</p>
     </div>
     <div class="flex flex-wrap gap-2">
@@ -14,15 +14,21 @@
         <mat-icon>edit</mat-icon>
         Editar
       </button>
-      <button mat-flat-button color="primary" *ngIf="mode !== 'view' && (mode !== 'new' || canManageUsers)" type="button" (click)="save()" [disabled]="saving">
+      <button mat-flat-button color="primary" *ngIf="mode !== 'view' && (mode !== 'new' || canCreateUser)" type="button" (click)="save()" [disabled]="saving"
+        [appAccessControl]="mode === 'new' ? 'users.create' : 'users.update'"
+        [appAccessFallbackRoles]="mode === 'new' ? ['MASTER'] : []">
         <mat-icon>save</mat-icon>
         Salvar
       </button>
-      <button mat-stroked-button *ngIf="mode !== 'new' && canManageUsers" type="button" (click)="toggleStatus()" [disabled]="toggling">
+      <button mat-stroked-button *ngIf="mode !== 'new'" type="button" (click)="toggleStatus()" [disabled]="toggling"
+        appAccessControl="users.toggleStatus"
+        [appAccessFallbackRoles]="['MASTER']">
         <mat-icon>{{ form.value.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
         {{ form.value.ativo ? 'Desativar' : 'Ativar' }}
       </button>
-      <button mat-button color="warn" *ngIf="mode !== 'new' && canManageUsers" type="button" (click)="remove()" [disabled]="deleting">
+      <button mat-button color="warn" *ngIf="mode !== 'new'" type="button" (click)="remove()" [disabled]="deleting"
+        appAccessControl="users.delete"
+        [appAccessFallbackRoles]="['MASTER']">
         <mat-icon>delete</mat-icon>
         Excluir
       </button>
@@ -61,7 +67,7 @@
 
       <mat-form-field appearance="outline" *ngIf="mode === 'new'">
         <mat-label>Roles (separadas por vírgula)</mat-label>
-        <input matInput formControlName="roles" placeholder="USER, TENANT_ADMIN" aria-describedby="roles-hint" />
+        <input matInput formControlName="roles" placeholder="USER, ADMIN" aria-describedby="roles-hint" />
         <mat-hint id="roles-hint">Use vírgula para múltiplos papéis.</mat-hint>
       </mat-form-field>
 
@@ -85,7 +91,7 @@
     </form>
   </section>
 
-  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="mode === 'new' && !canManageUsers">
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="mode === 'new' && !canCreateUser">
     <div class="text-sm font-semibold">Ação não permitida</div>
     <div class="mt-1 text-xs text-[var(--muted)]">Somente MASTER pode adicionar usuários.</div>
   </section>
@@ -102,7 +108,9 @@
           <mat-option *ngFor="let l of locatariosDisponiveis" [value]="l.id">{{ l.nome }}</mat-option>
         </mat-select>
       </mat-form-field>
-      <button mat-stroked-button type="button" (click)="saveLocatariosAcesso()" [disabled]="mode === 'view' || !canManageUsers || savingLocatarios || locatariosLoading" class="w-full md:w-auto">
+      <button mat-stroked-button type="button" (click)="saveLocatariosAcesso()" [disabled]="mode === 'view' || savingLocatarios || locatariosLoading" class="w-full md:w-auto"
+        appAccessControl="users.manageAccess"
+        [appAccessFallbackRoles]="['MASTER']">
         <mat-icon>check</mat-icon>
         Salvar acessos
       </button>
@@ -135,3 +143,6 @@
     </div>
   </section>
 </div>
+
+
+

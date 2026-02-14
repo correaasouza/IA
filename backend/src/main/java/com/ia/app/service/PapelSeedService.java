@@ -1,4 +1,4 @@
-package com.ia.app.service;
+﻿package com.ia.app.service;
 
 import com.ia.app.domain.Papel;
 import com.ia.app.domain.PapelPermissao;
@@ -29,12 +29,12 @@ public class PapelSeedService {
         return papelRepository.save(p);
       });
 
-    papelRepository.findByTenantIdAndNome(tenantId, "USUARIO")
+    papelRepository.findByTenantIdAndNome(tenantId, "MASTER")
       .orElseGet(() -> {
         Papel p = new Papel();
         p.setTenantId(tenantId);
-        p.setNome("USUARIO");
-        p.setDescricao("Usuário padrão");
+        p.setNome("MASTER");
+        p.setDescricao("Master do sistema");
         p.setAtivo(true);
         return papelRepository.save(p);
       });
@@ -58,3 +58,5 @@ public class PapelSeedService {
     }
   }
 }
+
+

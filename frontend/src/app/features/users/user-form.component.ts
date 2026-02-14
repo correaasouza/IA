@@ -15,10 +15,11 @@ import { finalize } from 'rxjs/operators';
 
 import { UsuarioService, UsuarioResponse } from './usuario.service';
 import { TenantService, LocatarioResponse } from '../tenants/tenant.service';
-import { AuthService } from '../../core/auth/auth.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { NotificationService } from '../../core/notifications/notification.service';
+import { AccessControlDirective } from '../../shared/access-control.directive';
+import { AccessControlService } from '../../core/access/access-control.service';
 
 @Component({
   selector: 'app-user-form',
@@ -34,7 +35,8 @@ import { NotificationService } from '../../core/notifications/notification.servi
     FormsModule,
     MatIconModule,
     MatDialogModule,
-    InlineLoaderComponent
+    InlineLoaderComponent,
+    AccessControlDirective
   ],
   templateUrl: './user-form.component.html',
 })
@@ -51,7 +53,7 @@ export class UserFormComponent implements OnInit {
   savingLocatarios = false;
   locatariosLoading = false;
   locatariosDisponiveis: LocatarioResponse[] = [];
-  canManageUsers = false;
+  canCreateUser = false;
 
   form = this.fb.group({
     username: ['', Validators.required],
@@ -68,7 +70,7 @@ export class UserFormComponent implements OnInit {
     private fb: FormBuilder,
     private service: UsuarioService,
     private tenantService: TenantService,
-    private auth: AuthService,
+    private accessControl: AccessControlService,
     private route: ActivatedRoute,
     private router: Router,
     private dialog: MatDialog,
@@ -76,7 +78,7 @@ export class UserFormComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.canManageUsers = this.isUserMasterOrMasterTenant();
+    this.canCreateUser = this.accessControl.can('users.create', ['MASTER']);
     const id = this.route.snapshot.paramMap.get('id');
     const isEdit = this.route.snapshot.url.some(s => s.path === 'edit');
     if (id) {
@@ -130,7 +132,7 @@ export class UserFormComponent implements OnInit {
   }
 
   save() {
-    if (this.mode === 'new' && !this.canManageUsers) return;
+    if (this.mode === 'new' && !this.accessControl.can('users.create', ['MASTER'])) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -152,7 +154,7 @@ export class UserFormComponent implements OnInit {
           this.notify.success('Usuário criado.');
           this.router.navigateByUrl('/users');
         },
-        error: () => this.notify.error('Não foi possível criar o usuário.')
+        error: (err) => this.notify.error(this.extractApiError(err, 'Não foi possível criar o usuário.'))
       });
       return;
     }
@@ -198,7 +200,7 @@ export class UserFormComponent implements OnInit {
   }
 
   remove() {
-    if (!this.canManageUsers) return;
+    if (!this.accessControl.can('users.delete', ['MASTER'])) return;
     if (!this.user) return;
     const ref = this.dialog.open(ConfirmDialogComponent, {
       data: { title: 'Excluir usuário', message: `Deseja excluir o usuário "${this.user.username}"?` }
@@ -217,7 +219,7 @@ export class UserFormComponent implements OnInit {
   }
 
   toggleStatus() {
-    if (!this.canManageUsers) return;
+    if (!this.accessControl.can('users.toggleStatus', ['MASTER'])) return;
     if (!this.user || this.mode === 'new') return;
     const nextStatus = !this.user.ativo;
     const ref = this.dialog.open(ConfirmDialogComponent, {
@@ -250,7 +252,7 @@ export class UserFormComponent implements OnInit {
   }
 
   saveLocatariosAcesso() {
-    if (!this.canManageUsers) return;
+    if (!this.accessControl.can('users.manageAccess', ['MASTER'])) return;
     if (!this.user || this.mode === 'view') return;
     const locatarioIds = this.locatariosAcessoForm.value.locatarioIds || [];
     this.savingLocatarios = true;
@@ -276,10 +278,16 @@ export class UserFormComponent implements OnInit {
     this.router.navigateByUrl('/users');
   }
 
-  private isUserMasterOrMasterTenant(): boolean {
-    const tenantId = localStorage.getItem('tenantId');
-    const username = (this.auth.getUsername() || '').toLowerCase();
-    return tenantId === '1' || username === 'master';
+  private extractApiError(err: any, fallback: string): string {
+    const detail = err?.error?.detail;
+    if (typeof detail === 'string' && detail.trim().length > 0) {
+      return detail;
+    }
+    return fallback;
   }
+
 }
+
+
+
 

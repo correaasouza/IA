@@ -10,6 +10,7 @@ public interface UsuarioPapelRepository extends JpaRepository<UsuarioPapel, Long
   List<UsuarioPapel> findAllByTenantIdAndUsuarioId(Long tenantId, String usuarioId);
   List<UsuarioPapel> findAllByTenantIdAndUsuarioIdIn(Long tenantId, List<String> usuarioIds);
   List<UsuarioPapel> findAllByUsuarioIdIn(List<String> usuarioIds);
+  boolean existsByTenantIdAndUsuarioIdAndPapelId(Long tenantId, String usuarioId, Long papelId);
   void deleteAllByUsuarioId(String usuarioId);
   void deleteAllByTenantIdAndUsuarioId(Long tenantId, String usuarioId);
 

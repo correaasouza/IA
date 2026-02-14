@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RouterLink } from '@angular/router';
@@ -160,3 +160,4 @@ export class CompanyFormComponent implements OnInit {
     this.router.navigateByUrl(this.returnTo);
   }
 }
+

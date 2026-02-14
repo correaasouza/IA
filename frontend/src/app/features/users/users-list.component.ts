@@ -12,12 +12,12 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 
 import { UsuarioService, UsuarioResponse } from './usuario.service';
-import { AuthService } from '../../core/auth/auth.service';
 import { UsuarioPapeisDialogComponent } from './usuario-papeis-dialog.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
+import { AccessControlDirective } from '../../shared/access-control.directive';
 
 @Component({
   selector: 'app-users-list',
@@ -34,7 +34,8 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     MatTooltipModule,
     MatMenuModule,
     InlineLoaderComponent,
-    FieldSearchComponent
+    FieldSearchComponent,
+    AccessControlDirective
   ],
   templateUrl: './users-list.component.html',
 })
@@ -57,20 +58,15 @@ export class UsersListComponent implements OnInit {
   searchFields = ['username', 'email'];
   mobileFiltersOpen = false;
   isMobile = false;
-  canManageUsers = false;
-  canManageRoles = false;
 
   constructor(
     private service: UsuarioService,
     private dialog: MatDialog,
     private router: Router,
-    private auth: AuthService,
     private notify: NotificationService
   ) {}
 
   ngOnInit(): void {
-    this.canManageUsers = this.isUserMasterOrMasterTenant();
-    this.canManageRoles = this.hasRolePermissionForRoles();
     this.updateViewportMode();
     this.load();
   }
@@ -166,20 +162,19 @@ export class UsersListComponent implements OnInit {
   }
 
   editPapeis(row: UsuarioResponse) {
-    if (!this.canManageRoles) {
-      this.notify.error('Sem permissão para gerenciar papéis.');
-      return;
-    }
     const ref = this.dialog.open(UsuarioPapeisDialogComponent, {
       data: { userId: row.id, username: row.username },
       width: '420px',
       maxWidth: '92vw'
     });
-    ref.afterClosed().subscribe();
+    ref.afterClosed().subscribe(saved => {
+      if (saved) {
+        this.load();
+      }
+    });
   }
 
   toggleStatus(row: UsuarioResponse) {
-    if (!this.canManageUsers) return;
     const nextStatus = !row.ativo;
     const ref = this.dialog.open(ConfirmDialogComponent, {
       data: {
@@ -208,18 +203,9 @@ export class UsersListComponent implements OnInit {
       });
     });
   }
-
-  private isUserMasterOrMasterTenant(): boolean {
-    const tenantId = localStorage.getItem('tenantId');
-    const username = (this.auth.getUsername() || '').toLowerCase();
-    return tenantId === '1' || username === 'master';
-  }
-
-  private hasRolePermissionForRoles(): boolean {
-    const roles = this.auth.getUserRoles().map(r => (r || '').toUpperCase());
-    return roles.includes('MASTER_ADMIN') || roles.includes('TENANT_ADMIN');
-  }
 }
+
+
 
 
 
