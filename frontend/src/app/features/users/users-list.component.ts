@@ -1,4 +1,4 @@
-﻿import { Component, OnInit } from '@angular/core';
+﻿import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTableModule } from '@angular/material/table';
@@ -12,6 +12,7 @@ import { Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs/operators';
 
 import { UsuarioService, UsuarioResponse } from './usuario.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { UsuarioPapeisDialogComponent } from './usuario-papeis-dialog.component';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
@@ -45,6 +46,7 @@ export class UsersListComponent implements OnInit {
   pageIndex = 0;
   pageSize = 50;
   loading = false;
+  togglingUserId: number | null = null;
 
   searchOptions: FieldSearchOption[] = [
     { key: 'username', label: 'Username' },
@@ -53,15 +55,23 @@ export class UsersListComponent implements OnInit {
   ];
   searchTerm = '';
   searchFields = ['username', 'email'];
+  mobileFiltersOpen = false;
+  isMobile = false;
+  canManageUsers = false;
+  canManageRoles = false;
 
   constructor(
     private service: UsuarioService,
     private dialog: MatDialog,
     private router: Router,
+    private auth: AuthService,
     private notify: NotificationService
   ) {}
 
   ngOnInit(): void {
+    this.canManageUsers = this.isUserMasterOrMasterTenant();
+    this.canManageRoles = this.hasRolePermissionForRoles();
+    this.updateViewportMode();
     this.load();
   }
 
@@ -92,6 +102,24 @@ export class UsersListComponent implements OnInit {
     this.searchTerm = value.term;
     this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(o => o.key);
     this.applySearch();
+  }
+
+  
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.updateViewportMode();
+  }
+
+  toggleMobileFilters() {
+    this.mobileFiltersOpen = !this.mobileFiltersOpen;
+  }
+
+  activeFiltersCount(): number {
+    return (this.searchTerm || '').trim() ? 1 : 0;
+  }
+
+  private updateViewportMode() {
+    this.isMobile = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
   }
 
   private applySearch() {
@@ -138,11 +166,60 @@ export class UsersListComponent implements OnInit {
   }
 
   editPapeis(row: UsuarioResponse) {
+    if (!this.canManageRoles) {
+      this.notify.error('Sem permissão para gerenciar papéis.');
+      return;
+    }
     const ref = this.dialog.open(UsuarioPapeisDialogComponent, {
-      data: { userId: row.id, username: row.username }
+      data: { userId: row.id, username: row.username },
+      width: '420px',
+      maxWidth: '92vw'
     });
     ref.afterClosed().subscribe();
   }
+
+  toggleStatus(row: UsuarioResponse) {
+    if (!this.canManageUsers) return;
+    const nextStatus = !row.ativo;
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: nextStatus ? 'Ativar usuário' : 'Desativar usuário',
+        message: nextStatus
+          ? `Deseja ativar o usuário "${row.username}"?`
+          : `Deseja desativar o usuário "${row.username}"?`,
+        confirmText: nextStatus ? 'Ativar' : 'Desativar',
+        confirmColor: nextStatus ? 'primary' : 'warn',
+        confirmAriaLabel: `${nextStatus ? 'Ativar' : 'Desativar'} usuário`
+      }
+    });
+    ref.afterClosed().subscribe(result => {
+      if (!result) return;
+      this.togglingUserId = row.id;
+      this.service.update(row.id, {
+        username: row.username,
+        email: row.email || undefined,
+        ativo: nextStatus
+      }).pipe(finalize(() => (this.togglingUserId = null))).subscribe({
+        next: () => {
+          row.ativo = nextStatus;
+          this.notify.success(nextStatus ? 'Usuário ativado.' : 'Usuário desativado.');
+        },
+        error: () => this.notify.error('Não foi possível atualizar o status do usuário.')
+      });
+    });
+  }
+
+  private isUserMasterOrMasterTenant(): boolean {
+    const tenantId = localStorage.getItem('tenantId');
+    const username = (this.auth.getUsername() || '').toLowerCase();
+    return tenantId === '1' || username === 'master';
+  }
+
+  private hasRolePermissionForRoles(): boolean {
+    const roles = this.auth.getUserRoles().map(r => (r || '').toUpperCase());
+    return roles.includes('MASTER_ADMIN') || roles.includes('TENANT_ADMIN');
+  }
 }
+
 
 

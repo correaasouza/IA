@@ -1,29 +1,31 @@
-<div
-  class="filter-bar grid items-center gap-2 max-[900px]:grid-cols-1"
-  [class.grid-cols-[1.4fr_1fr_auto]]="showActions"
-  [class.grid-cols-[1.4fr_1fr]]="!showActions">
-  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="term min-w-0">
-    <mat-label>{{ label }}</mat-label>
+<div class="field-search-wrap">
+  <div class="field-search-shell">
     <input
-      matInput
+      class="field-search-input"
       [formControl]="termControl"
       [placeholder]="placeholder"
-      aria-label="Texto da busca" />
-  </mat-form-field>
+      [attr.aria-label]="label" />
 
-  <mat-form-field appearance="outline" subscriptSizing="dynamic" class="fields min-w-0">
-    <mat-label>Campos</mat-label>
-    <mat-select [formControl]="fieldsControl" multiple aria-label="Campos da busca">
-      <mat-option *ngFor="let opt of options" [value]="opt.key">{{ opt.label }}</mat-option>
-    </mat-select>
-  </mat-form-field>
+    <div class="field-search-divider"></div>
 
-  <div class="flex w-full flex-wrap items-center gap-1.5" *ngIf="showActions">
-    <button class="min-w-24" mat-stroked-button type="button" (click)="clear()" aria-label="Limpar busca">
+    <div class="field-search-scope">
+      <mat-select [formControl]="fieldScopeControl" aria-label="Campo da busca">
+        <mat-option value="all">pesquisa completa</mat-option>
+        <mat-option *ngFor="let opt of options" [value]="opt.key">{{ opt.label }}</mat-option>
+      </mat-select>
+    </div>
+
+    <button class="field-search-icon-btn" type="button" (click)="apply()" aria-label="Aplicar busca">
+      <mat-icon>search</mat-icon>
+    </button>
+  </div>
+
+  <div class="field-search-actions" *ngIf="showActions">
+    <button mat-stroked-button type="button" (click)="clear()" aria-label="Limpar busca">
       <mat-icon>close</mat-icon>
       Limpar
     </button>
-    <button class="min-w-24" mat-flat-button color="primary" type="button" (click)="apply()" aria-label="Aplicar busca">
+    <button mat-flat-button color="primary" type="button" (click)="apply()" aria-label="Aplicar busca">
       <mat-icon>search</mat-icon>
       {{ actionLabel }}
     </button>

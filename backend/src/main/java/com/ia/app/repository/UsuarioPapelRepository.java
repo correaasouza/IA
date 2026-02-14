@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 public interface UsuarioPapelRepository extends JpaRepository<UsuarioPapel, Long> {
   List<UsuarioPapel> findAllByTenantIdAndUsuarioId(Long tenantId, String usuarioId);
   List<UsuarioPapel> findAllByTenantIdAndUsuarioIdIn(Long tenantId, List<String> usuarioIds);
+  List<UsuarioPapel> findAllByUsuarioIdIn(List<String> usuarioIds);
+  void deleteAllByUsuarioId(String usuarioId);
   void deleteAllByTenantIdAndUsuarioId(Long tenantId, String usuarioId);
 
   @Query("select up.papelId from UsuarioPapel up where up.tenantId = :tenantId and up.usuarioId = :usuarioId")

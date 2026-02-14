@@ -1,8 +1,9 @@
 ﻿<div class="grid gap-3">
-  <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+  <header class="page-header-sticky flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
     <div>
       <h1 class="m-0 text-lg font-bold">{{ title }}</h1>
       <p class="mt-1 text-xs text-[var(--muted)]" *ngIf="locatario">ID {{ locatario.id }} • Vencimento {{ locatario.dataLimiteAcesso | date:'dd/MM/yyyy' }}</p>
+      <p class="mt-1 text-xs text-[var(--muted-strong)]">Nome: {{ form.get('nome')?.value || locatario?.nome || '-' }}</p>
     </div>
     <div class="flex flex-wrap gap-2">
       <button mat-stroked-button type="button" (click)="back()">
@@ -48,6 +49,7 @@
         <input matInput formControlName="dataLimiteAcesso" placeholder="DD/MM/AAAA" appDateMask aria-describedby="data-hint data-err" />
         <mat-hint id="data-hint">Use DD/MM/AAAA.</mat-hint>
         <mat-error id="data-err" *ngIf="form.get('dataLimiteAcesso')?.hasError('required')">Informe a data limite.</mat-error>
+        <mat-error *ngIf="form.get('dataLimiteAcesso')?.hasError('invalidDate')">Informe uma data válida (DD/MM/AAAA).</mat-error>
       </mat-form-field>
 
       <div class="flex items-center gap-3 py-1 md:col-span-2">
@@ -86,6 +88,157 @@
     </div>
     <div class="mt-2 flex justify-end" *ngIf="toggling" role="status" aria-live="polite">
       <app-inline-loader label="Atualizando status"></app-inline-loader>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="mode !== 'new'">
+    <div class="mb-2.5 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Empresas do locatário</div>
+      <div class="flex items-center gap-2">
+        <div class="text-xs text-[var(--muted)]">{{ filteredEmpresas.length }} de {{ empresas.length }} empresa(s)</div>
+        <button
+          mat-flat-button
+          color="primary"
+          *ngIf="tenantContextMatches && locatario"
+          [routerLink]="['/companies/new']"
+          [queryParams]="{ tipo: 'FILIAL', returnTo: '/tenants/' + locatario.id }">
+          <mat-icon>add</mat-icon>
+          Incluir filial
+        </button>
+      </div>
+    </div>
+
+    <form [formGroup]="empresaFilters" class="mb-2.5 grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1.4fr)_220px_220px]" *ngIf="tenantContextMatches">
+      <div class="min-w-0">
+        <app-field-search
+          [options]="empresaSearchOptions"
+          label="Buscar"
+          placeholder="Digite e selecione os campos"
+          [defaultFields]="empresaSearchFields"
+          [showActions]="false"
+          (searchChange)="onEmpresaSearchChange($event)">
+        </app-field-search>
+      </div>
+      <div class="status-search-like">
+        <select class="status-native-select" formControlName="tipo" aria-label="Tipo">
+          <option value="">Tipo: Todos</option>
+          <option value="MATRIZ">Tipo: Matriz</option>
+          <option value="FILIAL">Tipo: Filial</option>
+        </select>
+      </div>
+      <div class="status-search-like">
+        <select class="status-native-select" formControlName="status" aria-label="Status">
+          <option value="">Status: Todos</option>
+          <option value="ativo">Status: Ativo</option>
+          <option value="inativo">Status: Inativo</option>
+        </select>
+      </div>
+    </form>
+
+    <div class="text-xs text-[var(--muted)]" *ngIf="!tenantContextMatches">
+      Para visualizar as filiais, selecione este locatário como contexto ativo.
+    </div>
+
+    <div class="mt-2 flex justify-end" *ngIf="loadingFiliais" role="status" aria-live="polite">
+      <app-inline-loader label="Carregando filiais"></app-inline-loader>
+    </div>
+
+    <div class="hidden overflow-auto border-b border-[var(--border-light)] md:block" *ngIf="tenantContextMatches && filteredEmpresas.length > 0">
+      <table class="w-full tenant-empresa-table">
+        <thead>
+          <tr>
+            <th>Razão social</th>
+            <th>Tipo</th>
+            <th>CNPJ</th>
+            <th>Vínculo</th>
+            <th>Status</th>
+            <th class="text-right acoes-col">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let empresa of filteredEmpresas">
+            <td class="font-semibold">{{ empresa.razaoSocial }}</td>
+            <td>{{ empresa.tipo }}</td>
+            <td>{{ empresa.cnpj }}</td>
+            <td>{{ matrizLabel(empresa) }}</td>
+            <td>
+              <span class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold"
+                [ngClass]="empresa.ativo ? 'bg-[var(--success-bg)] text-[var(--success-ink)]' : 'bg-[#e6e8ec] text-[#4b5563]'">
+                {{ empresa.ativo ? 'Ativo' : 'Inativo' }}
+              </span>
+            </td>
+            <td class="acoes-cell">
+              <div class="inline-flex items-center justify-end gap-1">
+                <button
+                  mat-icon-button
+                  matTooltip="Visualizar"
+                  [routerLink]="['/companies', empresa.id]"
+                  [queryParams]="locatario ? { returnTo: '/tenants/' + locatario.id } : null"
+                  aria-label="Visualizar empresa">
+                  <mat-icon>visibility</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  matTooltip="Editar"
+                  [routerLink]="['/companies', empresa.id, 'edit']"
+                  [queryParams]="locatario ? { returnTo: '/tenants/' + locatario.id } : null"
+                  aria-label="Editar empresa">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  [disabled]="togglingEmpresaId === empresa.id"
+                  [matTooltip]="empresa.ativo ? 'Desativar' : 'Ativar'"
+                  (click)="toggleEmpresaStatus(empresa)"
+                  aria-label="Ativar ou desativar empresa">
+                  <mat-icon>{{ empresa.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
+                </button>
+                <button
+                  mat-icon-button
+                  color="warn"
+                  [disabled]="deletingEmpresaId === empresa.id"
+                  matTooltip="Excluir"
+                  (click)="removeEmpresa(empresa)"
+                  aria-label="Excluir empresa">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="grid gap-2 pt-1 md:hidden" *ngIf="tenantContextMatches && filteredEmpresas.length > 0">
+      <article class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2" *ngFor="let empresa of filteredEmpresas">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-sm font-semibold">{{ empresa.razaoSocial }}</div>
+          <span class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold"
+            [ngClass]="empresa.ativo ? 'bg-[var(--success-bg)] text-[var(--success-ink)]' : 'bg-[#e6e8ec] text-[#4b5563]'">
+            {{ empresa.ativo ? 'Ativo' : 'Inativo' }}
+          </span>
+        </div>
+        <div class="text-xs text-[var(--muted)]">Tipo: {{ empresa.tipo }} | CNPJ: {{ empresa.cnpj }}</div>
+        <div class="text-xs text-[var(--muted)]">Vínculo: {{ matrizLabel(empresa) }}</div>
+        <div class="mt-1 flex justify-end gap-1">
+          <button mat-icon-button [routerLink]="['/companies', empresa.id]" [queryParams]="locatario ? { returnTo: '/tenants/' + locatario.id } : null" aria-label="Visualizar empresa">
+            <mat-icon>visibility</mat-icon>
+          </button>
+          <button mat-icon-button [routerLink]="['/companies', empresa.id, 'edit']" [queryParams]="locatario ? { returnTo: '/tenants/' + locatario.id } : null" aria-label="Editar empresa">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button [disabled]="togglingEmpresaId === empresa.id" (click)="toggleEmpresaStatus(empresa)" aria-label="Ativar ou desativar empresa">
+            <mat-icon>{{ empresa.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" [disabled]="deletingEmpresaId === empresa.id" (click)="removeEmpresa(empresa)" aria-label="Excluir empresa">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <div class="text-xs text-[var(--muted)]" *ngIf="tenantContextMatches && !loadingFiliais && filteredEmpresas.length === 0">
+      Nenhuma empresa encontrada para os filtros informados.
     </div>
   </section>
 </div>

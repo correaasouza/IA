@@ -2,6 +2,7 @@ package com.ia.app.security;
 
 import com.ia.app.domain.Locatario;
 import com.ia.app.repository.LocatarioRepository;
+import com.ia.app.repository.UsuarioLocatarioAcessoRepository;
 import com.ia.app.repository.UsuarioRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
@@ -31,11 +32,17 @@ public class TenantAccessFilter extends OncePerRequestFilter {
 
   private final LocatarioRepository repository;
   private final UsuarioRepository usuarioRepository;
+  private final UsuarioLocatarioAcessoRepository usuarioLocatarioAcessoRepository;
   private final ObjectMapper objectMapper;
 
-  public TenantAccessFilter(LocatarioRepository repository, UsuarioRepository usuarioRepository, ObjectMapper objectMapper) {
+  public TenantAccessFilter(
+      LocatarioRepository repository,
+      UsuarioRepository usuarioRepository,
+      UsuarioLocatarioAcessoRepository usuarioLocatarioAcessoRepository,
+      ObjectMapper objectMapper) {
     this.repository = repository;
     this.usuarioRepository = usuarioRepository;
+    this.usuarioLocatarioAcessoRepository = usuarioLocatarioAcessoRepository;
     this.objectMapper = objectMapper;
   }
 
@@ -98,7 +105,8 @@ public class TenantAccessFilter extends OncePerRequestFilter {
       if (authentication instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken jwtAuth) {
         keycloakId = jwtAuth.getToken().getSubject();
       }
-      boolean allowed = usuarioRepository.findByKeycloakIdAndTenantId(keycloakId, tenantId).isPresent();
+      boolean allowed = usuarioLocatarioAcessoRepository.existsByUsuarioIdAndLocatarioId(keycloakId, tenantId)
+        || usuarioRepository.findByKeycloakIdAndTenantId(keycloakId, tenantId).isPresent();
       if (!allowed) {
         writeProblem(response, 403, "tenant_forbidden", "Acesso negado",
           "Usuário não pertence ao locatário informado.");

@@ -6,14 +6,12 @@ import { BlockedComponent } from './features/blocked/blocked.component';
 import { UsersListComponent } from './features/users/users-list.component';
 import { UserFormComponent } from './features/users/user-form.component';
 import { RolesComponent } from './features/roles/roles.component';
+import { RoleFormComponent } from './features/roles/role-form.component';
 import { TenantsListComponent } from './features/tenants/tenants-list.component';
 import { TenantFormComponent } from './features/tenants/tenant-form.component';
-import { MetadataListComponent } from './features/metadata/metadata-list.component';
-import { MetadataFormComponent } from './features/metadata/metadata-form.component';
-import { EntitiesListComponent } from './features/entities/entities-list.component';
-import { EntityFormComponent } from './features/entities/entity-form.component';
-import { ReportsComponent } from './features/reports/reports.component';
 import { HelpComponent } from './features/help/help.component';
+import { CompaniesListComponent } from './features/companies/companies-list.component';
+import { CompanyFormComponent } from './features/companies/company-form.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent, canActivate: [AuthGuard] },
@@ -27,16 +25,13 @@ export const routes: Routes = [
   { path: 'users/:id', component: UserFormComponent, canActivate: [AuthGuard] },
   { path: 'users/:id/edit', component: UserFormComponent, canActivate: [AuthGuard] },
   { path: 'roles', component: RolesComponent, canActivate: [AuthGuard] },
-  { path: 'entities', component: EntitiesListComponent, canActivate: [AuthGuard] },
-  { path: 'entities/new', component: EntityFormComponent, canActivate: [AuthGuard] },
-  { path: 'entities/:id', component: EntityFormComponent, canActivate: [AuthGuard] },
-  { path: 'entities/:id/edit', component: EntityFormComponent, canActivate: [AuthGuard] },
-  { path: 'entities/config', redirectTo: 'metadata', pathMatch: 'full' },
-  { path: 'metadata', component: MetadataListComponent, canActivate: [AuthGuard] },
-  { path: 'metadata/new', component: MetadataFormComponent, canActivate: [AuthGuard] },
-  { path: 'metadata/:id/edit', component: MetadataFormComponent, canActivate: [AuthGuard] },
-  { path: 'configs', redirectTo: 'metadata', pathMatch: 'full' },
-  { path: 'reports', component: ReportsComponent, canActivate: [AuthGuard] },
+  { path: 'roles/new', component: RoleFormComponent, canActivate: [AuthGuard] },
+  { path: 'roles/:id', component: RoleFormComponent, canActivate: [AuthGuard] },
+  { path: 'roles/:id/edit', component: RoleFormComponent, canActivate: [AuthGuard] },
+  { path: 'companies', component: CompaniesListComponent, canActivate: [AuthGuard] },
+  { path: 'companies/new', component: CompanyFormComponent, canActivate: [AuthGuard] },
+  { path: 'companies/:id', component: CompanyFormComponent, canActivate: [AuthGuard] },
+  { path: 'companies/:id/edit', component: CompanyFormComponent, canActivate: [AuthGuard] },
   { path: 'help', component: HelpComponent, canActivate: [AuthGuard] },
   { path: 'blocked', component: BlockedComponent }
 ];

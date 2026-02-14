@@ -1,0 +1,104 @@
+.field-search-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.field-search-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 1px minmax(180px, 240px) 44px;
+  align-items: center;
+  min-height: 52px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #ededed;
+  overflow: hidden;
+}
+
+.field-search-input {
+  width: 100%;
+  min-width: 0;
+  height: 52px;
+  border: 0;
+  outline: 0;
+  padding: 0 16px;
+  font-size: 17px;
+  line-height: 52px;
+  background: transparent;
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+.field-search-input::placeholder {
+  color: #5f6368;
+}
+
+.field-search-divider {
+  width: 1px;
+  align-self: stretch;
+  background: #d1d5db;
+}
+
+.field-search-scope {
+  padding: 0 8px;
+}
+
+.field-search-scope ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+.field-search-scope ::ng-deep .mat-mdc-select-trigger {
+  min-height: 40px;
+}
+
+.field-search-icon-btn {
+  border: 0;
+  outline: 0;
+  background: transparent;
+  height: 100%;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.field-search-icon-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.field-search-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+@media (max-width: 900px) {
+  .field-search-shell {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 52px auto;
+  }
+
+  .field-search-divider {
+    display: none;
+  }
+
+  .field-search-scope {
+    border-top: 1px solid #d1d5db;
+    padding: 4px 8px;
+  }
+
+  .field-search-icon-btn {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 44px;
+    height: 52px;
+  }
+
+  .field-search-shell {
+    position: relative;
+    padding-right: 44px;
+  }
+
+  .field-search-input {
+    height: 52px;
+    line-height: 52px;
+  }
+}

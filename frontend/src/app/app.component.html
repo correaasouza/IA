@@ -1,16 +1,17 @@
-﻿<div class="min-h-screen bg-[var(--bg)] text-[var(--ink)]">
-  <mat-toolbar class="app-header flex h-14 items-center gap-3 border-b border-white/10 px-3 text-[var(--on-brand)] shadow-lg md:h-[68px] md:px-5" role="banner">
-    <div class="flex min-w-0 items-center gap-3">
+﻿<div class="min-h-dvh bg-[var(--bg)] text-[var(--ink)]">
+  <mat-toolbar class="app-header flex h-14 items-center gap-2 border-b border-white/10 px-2.5 text-[var(--on-brand)] shadow-lg md:h-[68px] md:gap-3 md:px-5" role="banner">
+    <div class="flex min-w-0 items-center gap-2 md:gap-3">
       <button mat-icon-button *ngIf="hasTenant" (click)="toggleSidebar()" aria-label="Alternar menu lateral">
         <mat-icon>menu</mat-icon>
       </button>
 
-      <div class="inline-flex min-w-0 items-center gap-3" aria-label="Sistema de Gestão de Negócios">
-        <span class="grid h-10 w-10 place-items-center rounded-xl border border-white/20 bg-white/15 shadow" aria-hidden="true">
-          <mat-icon class="text-[#e7f6f8]">business</mat-icon>
+      <div class="inline-flex min-w-0 items-center gap-2 md:gap-3" aria-label="Sistema de Gestão de Negócios">
+        <span class="hidden h-10 w-10 place-items-center rounded-xl border border-white/35 bg-white shadow sm:grid" aria-hidden="true">
+          <mat-icon class="text-[#1e3a6d]">business</mat-icon>
         </span>
-        <div class="grid leading-tight">
-          <span class="text-sm font-semibold md:text-base">Sistema de Gestão de Negócios</span>
+        <div class="grid min-w-0 leading-tight">
+          <span class="block truncate text-sm font-semibold text-[#f5fbfd] sm:hidden">SGN</span>
+          <span class="hidden truncate text-sm font-semibold text-[#f5fbfd] sm:block md:text-base">Sistema de Gestão de Negócios</span>
           <span class="hidden text-xs text-white/80 md:block" *ngIf="hasTenant">Ambiente do locatário</span>
         </div>
       </div>
@@ -38,15 +39,17 @@
     <span class="flex-1"></span>
 
     <div class="flex items-center gap-2">
-      <button mat-icon-button routerLink="/help" aria-label="Ajuda" matTooltip="Ajuda" *ngIf="hasTenant" class="h-9 w-9 rounded-xl bg-white/15 text-white">
+      <button mat-icon-button routerLink="/help" aria-label="Ajuda" matTooltip="Ajuda" *ngIf="hasTenant" class="hidden h-9 w-9 rounded-xl bg-white/15 text-white min-[420px]:inline-flex">
         <mat-icon>help_outline</mat-icon>
       </button>
 
       <div *ngIf="loggedIn; else loginActions">
-        <button mat-button [matMenuTriggerFor]="userMenu" aria-label="Abrir menu do usuário" class="inline-flex min-h-9 items-center gap-2 rounded-xl bg-white/15 px-2 text-[#f2fbfc]">
-          <span class="grid h-7 w-7 place-items-center rounded-full bg-white/25 text-xs font-bold">{{ userInitials }}</span>
-          <span class="hidden max-w-36 truncate text-xs font-semibold sm:block">{{ userName }}</span>
-          <mat-icon>expand_more</mat-icon>
+        <button mat-button [matMenuTriggerFor]="userMenu" aria-label="Abrir menu do usuário" class="inline-flex h-12 items-center gap-2 rounded-xl bg-white/15 px-2 text-[#f2fbfc]">
+          <div class="flex min-w-0 flex-col items-center justify-center">
+            <span class="grid h-8 w-8 place-items-center rounded-full bg-white/25 text-sm font-bold leading-none">{{ userInitials }}</span>
+            <span class="max-w-20 truncate pt-0.5 text-[10px] font-semibold leading-none">{{ userName }}</span>
+          </div>
+          <mat-icon class="text-[20px]">expand_more</mat-icon>
         </button>
         <mat-menu #userMenu="matMenu">
           <button mat-menu-item (click)="logout()">
@@ -61,8 +64,8 @@
     </div>
   </mat-toolbar>
 
-  <mat-sidenav-container class="h-[calc(100vh-56px)] md:h-[calc(100vh-68px)]">
-    <mat-sidenav #sidenav mode="side" [opened]="sidebarOpen" *ngIf="hasTenant" class="w-60 border-r border-[var(--border)] bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)]" role="navigation">
+  <mat-sidenav-container class="h-[calc(100dvh-56px)] md:h-[calc(100dvh-68px)]">
+    <mat-sidenav #sidenav [mode]="isMobile ? 'over' : 'side'" [opened]="sidebarOpen" [fixedInViewport]="isMobile" [disableClose]="!isMobile" *ngIf="hasTenant" class="w-60 border-r border-[var(--border)] bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)]" role="navigation">
       <div class="grid gap-0.5 px-3.5 pb-1 pt-3">
         <span class="text-xs font-semibold uppercase tracking-[0.6px] text-[var(--muted)]">Navegação</span>
         <span class="text-xs text-[var(--muted-strong)]">Favoritos e módulos</span>
@@ -121,3 +124,4 @@
     </mat-sidenav-content>
   </mat-sidenav-container>
 </div>
+

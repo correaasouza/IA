@@ -41,6 +41,7 @@
       - postgres
       - keycloak
     environment:
+      APP_PROFILE: prod
       DB_URL: jdbc:postgresql://postgres:5432/ia
       DB_USER: ia
       DB_PASSWORD: ia

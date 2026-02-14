@@ -26,12 +26,20 @@ export class RolesService {
     return this.http.get<Papel[]>(this.baseUrl);
   }
 
+  get(id: number): Observable<Papel> {
+    return this.http.get<Papel>(`${this.baseUrl}/${id}`);
+  }
+
   create(payload: { nome: string; descricao?: string; ativo: boolean }): Observable<Papel> {
     return this.http.post<Papel>(this.baseUrl, payload);
   }
 
   update(id: number, payload: { nome: string; descricao?: string; ativo: boolean }): Observable<Papel> {
     return this.http.put<Papel>(`${this.baseUrl}/${id}`, payload);
+  }
+
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${id}`);
   }
 
   listPermissoes(id: number): Observable<string[]> {

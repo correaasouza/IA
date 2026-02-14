@@ -107,7 +107,9 @@ export class UsersComponent implements OnInit {
 
   editPapeis(row: UsuarioResponse) {
     const ref = this.dialog.open(UsuarioPapeisDialogComponent, {
-      data: { userId: row.id, username: row.username }
+      data: { userId: row.id, username: row.username },
+      width: '420px',
+      maxWidth: '92vw'
     });
     ref.afterClosed().subscribe();
   }

@@ -1,4 +1,5 @@
 ﻿<div class="grid gap-3">
+  <div class="page-list-sticky grid gap-3">
   <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
     <div>
       <h1 class="m-0 text-lg font-bold">Locatários</h1>
@@ -15,9 +16,17 @@
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
     <div class="mb-2 flex items-center justify-between gap-2">
       <div class="text-sm font-semibold">Filtros</div>
-      <div class="text-xs text-[var(--muted)]">{{ totalElements }} locatário(s)</div>
+      <div class="flex items-center gap-2">
+        <button mat-button type="button" class="mobile-filter-toggle md:!hidden" (click)="toggleMobileFilters()">
+          <mat-icon>tune</mat-icon>
+          Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
+          <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+        <div class="text-xs text-[var(--muted)]">{{ totalElements }} locatário(s)</div>
+      </div>
     </div>
-    <form [formGroup]="filters" class="grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1.4fr)_170px_120px]" role="search">
+    <div *ngIf="!isMobile || mobileFiltersOpen">
+    <form [formGroup]="filters" class="grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1.4fr)_220px]" role="search">
       <div class="min-w-0">
         <app-field-search
           [options]="searchOptions"
@@ -28,26 +37,22 @@
           (searchChange)="onSearchChange($event)">
         </app-field-search>
       </div>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Status</mat-label>
-        <mat-select formControlName="status">
-          <mat-option value="">Todos</mat-option>
-          <mat-option value="ativo">Ativo</mat-option>
-          <mat-option value="bloqueado">Bloqueado</mat-option>
-        </mat-select>
-      </mat-form-field>
-      <button mat-flat-button color="primary" type="button" class="h-[56px] w-full lg:w-auto" (click)="applyFilters()">
-        <mat-icon>search</mat-icon>
-        Filtrar
-      </button>
+      <div class="status-search-like">
+        <select class="status-native-select" formControlName="status" (change)="applyFilters()" aria-label="Status">
+          <option value="">Status: Todos</option>
+          <option value="ativo">Status: Ativo</option>
+          <option value="bloqueado">Status: Bloqueado</option>
+        </select>
+      </div>
     </form>
+    </div>
   </section>
-
+  </div>
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="locatarios.length > 0">
     <div class="flex justify-end px-3 pb-0 pt-2.5" *ngIf="loading">
       <app-inline-loader label="Carregando locatários"></app-inline-loader>
     </div>
-    <div class="hidden overflow-auto border-b border-[var(--border-light)] md:block">
+    <div class="table-sticky-actions hidden overflow-auto border-b border-[var(--border-light)] md:block">
       <table mat-table [dataSource]="locatarios" matSort (matSortChange)="sortChange($event)" class="w-full">
         <ng-container matColumnDef="nome">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
@@ -66,9 +71,9 @@
             </span>
           </td>
         </ng-container>
-        <ng-container matColumnDef="acoes">
-          <th mat-header-cell *matHeaderCellDef>Ações</th>
-          <td mat-cell *matCellDef="let row" class="flex flex-wrap gap-1.5">
+        <ng-container matColumnDef="acoes" stickyEnd>
+          <th mat-header-cell *matHeaderCellDef class="text-right">Ações</th>
+          <td mat-cell *matCellDef="let row" class="flex flex-nowrap justify-end gap-1.5">
             <button mat-icon-button matTooltip="Renovar +30d" (click)="renew(row)" [attr.aria-label]="'Renovar ' + row.nome + ' por 30 dias'">
               <mat-icon>event</mat-icon>
             </button>
@@ -77,6 +82,9 @@
             </button>
             <button mat-icon-button matTooltip="Editar" (click)="edit(row)" [attr.aria-label]="'Editar ' + row.nome">
               <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button matTooltip="{{ row.ativo ? 'Desativar' : 'Ativar' }}" (click)="toggleStatus(row)" [attr.aria-label]="(row.ativo ? 'Desativar ' : 'Ativar ') + row.nome">
+              <mat-icon>{{ row.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
             </button>
             <button mat-icon-button color="warn" matTooltip="Excluir" (click)="remove(row)" [attr.aria-label]="'Excluir ' + row.nome">
               <mat-icon>delete</mat-icon>
@@ -119,6 +127,10 @@
               <mat-icon>edit</mat-icon>
               <span>Editar</span>
             </button>
+            <button mat-menu-item (click)="toggleStatus(row)">
+              <mat-icon>{{ row.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
+              <span>{{ row.ativo ? 'Desativar' : 'Ativar' }}</span>
+            </button>
             <button mat-menu-item (click)="remove(row)">
               <mat-icon>delete</mat-icon>
               <span>Excluir</span>
@@ -149,3 +161,6 @@
     </button>
   </section>
 </div>
+
+
+

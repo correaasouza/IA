@@ -1,12 +1,9 @@
 import { Component, EventEmitter, Input, Output, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatChipsModule } from '@angular/material/chips';
 import { combineLatest, Subject } from 'rxjs';
 import { debounceTime, startWith, takeUntil } from 'rxjs/operators';
 
@@ -26,14 +23,12 @@ export interface FieldSearchValue {
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatSelectModule,
     MatButtonModule,
-    MatIconModule,
-    MatChipsModule
+    MatIconModule
   ],
-  templateUrl: './field-search.component.html'
+  templateUrl: './field-search.component.html',
+  styleUrls: ['./field-search.component.css']
 })
 export class FieldSearchComponent implements OnInit, OnDestroy {
   @Input() options: FieldSearchOption[] = [];
@@ -45,22 +40,25 @@ export class FieldSearchComponent implements OnInit, OnDestroy {
   @Output() searchChange = new EventEmitter<FieldSearchValue>();
 
   termControl = new FormControl('', { nonNullable: true });
-  fieldsControl = new FormControl<string[]>([], { nonNullable: true });
+  fieldScopeControl = new FormControl('all', { nonNullable: true });
 
   private destroy$ = new Subject<void>();
 
   ngOnInit(): void {
-    if (this.defaultFields.length) {
-      this.fieldsControl.setValue([...this.defaultFields]);
+    if (!this.defaultFields.length) {
+      this.defaultFields = this.options.map(o => o.key);
+    }
+    if (this.defaultFields.length === 1) {
+      this.fieldScopeControl.setValue(this.defaultFields[0]!);
     }
 
     if (!this.showActions) {
       combineLatest([
         this.termControl.valueChanges.pipe(startWith(this.termControl.value)),
-        this.fieldsControl.valueChanges.pipe(startWith(this.fieldsControl.value))
+        this.fieldScopeControl.valueChanges.pipe(startWith(this.fieldScopeControl.value))
       ])
         .pipe(debounceTime(200), takeUntil(this.destroy$))
-        .subscribe(([term, fields]) => this.emitChange(term, fields));
+        .subscribe(([term, scope]) => this.emitChange(term, this.resolveFields(scope)));
     }
   }
 
@@ -70,18 +68,25 @@ export class FieldSearchComponent implements OnInit, OnDestroy {
   }
 
   apply() {
-    this.emitChange(this.termControl.value, this.fieldsControl.value);
+    this.emitChange(this.termControl.value, this.resolveFields(this.fieldScopeControl.value));
   }
 
   clear() {
     this.termControl.setValue('');
-    this.fieldsControl.setValue(this.defaultFields.length ? [...this.defaultFields] : []);
-    this.emitChange('', this.fieldsControl.value);
+    this.fieldScopeControl.setValue(this.defaultFields.length === 1 ? this.defaultFields[0]! : 'all');
+    this.emitChange('', this.resolveFields(this.fieldScopeControl.value));
   }
 
   private emitChange(term: string, fields: string[]) {
     const normalizedTerm = (term || '').trim();
     const normalizedFields = fields.length ? fields : this.options.map(o => o.key);
     this.searchChange.emit({ term: normalizedTerm, fields: normalizedFields });
+  }
+
+  private resolveFields(scope: string): string[] {
+    if (!scope || scope === 'all') {
+      return this.options.map(o => o.key);
+    }
+    return [scope];
   }
 }

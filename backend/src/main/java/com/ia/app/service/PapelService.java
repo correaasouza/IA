@@ -23,6 +23,15 @@ public class PapelService {
     return repository.findAllByTenantIdOrderByNome(requireTenant());
   }
 
+  public Papel get(Long id) {
+    Long tenantId = requireTenant();
+    Papel papel = repository.findById(id).orElseThrow();
+    if (!papel.getTenantId().equals(tenantId)) {
+      throw new IllegalStateException("papel_forbidden");
+    }
+    return papel;
+  }
+
   @Transactional
   public Papel create(PapelRequest request) {
     Long tenantId = requireTenant();
@@ -57,6 +66,17 @@ public class PapelService {
     Papel saved = repository.save(papel);
     auditService.log(tenantId, "PAPEL_ATUALIZADO", "papel", String.valueOf(saved.getId()), "nome=" + saved.getNome());
     return saved;
+  }
+
+  @Transactional
+  public void delete(Long id) {
+    Long tenantId = requireTenant();
+    Papel papel = repository.findById(id).orElseThrow();
+    if (!papel.getTenantId().equals(tenantId)) {
+      throw new IllegalStateException("papel_forbidden");
+    }
+    repository.delete(papel);
+    auditService.log(tenantId, "PAPEL_EXCLUIDO", "papel", String.valueOf(id), "nome=" + papel.getNome());
   }
 
   private Long requireTenant() {

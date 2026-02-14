@@ -27,6 +27,9 @@ export interface UsuarioPapelResponse {
   papelIds: number[];
   papeis: string[];
 }
+export interface UsuarioLocatarioAcessoResponse {
+  locatarioIds: number[];
+}
 
 @Injectable({ providedIn: 'root' })
 export class UsuarioService {
@@ -68,5 +71,13 @@ export class UsuarioService {
 
   setPapeis(id: number, papelIds: number[]): Observable<UsuarioPapelResponse> {
     return this.http.post<UsuarioPapelResponse>(`${this.baseUrl}/${id}/papeis`, { papelIds });
+  }
+
+  getLocatarios(id: number): Observable<UsuarioLocatarioAcessoResponse> {
+    return this.http.get<UsuarioLocatarioAcessoResponse>(`${this.baseUrl}/${id}/locatarios`);
+  }
+
+  setLocatarios(id: number, locatarioIds: number[]): Observable<UsuarioLocatarioAcessoResponse> {
+    return this.http.post<UsuarioLocatarioAcessoResponse>(`${this.baseUrl}/${id}/locatarios`, { locatarioIds });
   }
 }

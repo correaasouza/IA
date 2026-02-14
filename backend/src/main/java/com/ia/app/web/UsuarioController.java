@@ -1,11 +1,14 @@
 package com.ia.app.web;
 
 import com.ia.app.dto.PasswordResetRequest;
+import com.ia.app.dto.UsuarioLocatarioAcessoRequest;
+import com.ia.app.dto.UsuarioLocatarioAcessoResponse;
 import com.ia.app.dto.UsuarioPapelRequest;
 import com.ia.app.dto.UsuarioPapelResponse;
 import com.ia.app.dto.UsuarioRequest;
 import com.ia.app.dto.UsuarioResponse;
 import com.ia.app.dto.UsuarioUpdateRequest;
+import com.ia.app.service.UsuarioLocatarioAcessoService;
 import com.ia.app.service.UsuarioPapelService;
 import com.ia.app.service.UsuarioService;
 import jakarta.validation.Valid;
@@ -29,10 +32,14 @@ public class UsuarioController {
 
   private final UsuarioService service;
   private final UsuarioPapelService usuarioPapelService;
+  private final UsuarioLocatarioAcessoService usuarioLocatarioAcessoService;
 
-  public UsuarioController(UsuarioService service, UsuarioPapelService usuarioPapelService) {
+  public UsuarioController(UsuarioService service,
+      UsuarioPapelService usuarioPapelService,
+      UsuarioLocatarioAcessoService usuarioLocatarioAcessoService) {
     this.service = service;
     this.usuarioPapelService = usuarioPapelService;
+    this.usuarioLocatarioAcessoService = usuarioLocatarioAcessoService;
   }
 
   @GetMapping
@@ -96,5 +103,18 @@ public class UsuarioController {
   public UsuarioPapelResponse setPapeis(@PathVariable Long id,
       @Valid @RequestBody UsuarioPapelRequest request) {
     return usuarioPapelService.setByUsuario(id, request.papelIds());
+  }
+
+  @GetMapping("/{id}/locatarios")
+  @PreAuthorize("@permissaoGuard.hasPermissao('USUARIO_MANAGE')")
+  public UsuarioLocatarioAcessoResponse listLocatarios(@PathVariable Long id) {
+    return usuarioLocatarioAcessoService.listByUsuario(id);
+  }
+
+  @PostMapping("/{id}/locatarios")
+  @PreAuthorize("@permissaoGuard.hasPermissao('USUARIO_MANAGE')")
+  public UsuarioLocatarioAcessoResponse setLocatarios(@PathVariable Long id,
+      @Valid @RequestBody UsuarioLocatarioAcessoRequest request) {
+    return usuarioLocatarioAcessoService.setByUsuario(id, request.locatarioIds());
   }
 }

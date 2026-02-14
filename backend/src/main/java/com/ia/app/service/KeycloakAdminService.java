@@ -1,10 +1,12 @@
 package com.ia.app.service;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -40,12 +42,13 @@ public class KeycloakAdminService {
 
   public String createUser(String username, String email, String password, boolean enabled, List<String> roles) {
     String token = getAdminToken();
-    Map<String, Object> user = Map.of(
-      "username", username,
-      "email", email,
-      "enabled", enabled,
-      "emailVerified", true
-    );
+    Map<String, Object> user = new HashMap<>();
+    user.put("username", username);
+    user.put("enabled", enabled);
+    user.put("emailVerified", true);
+    if (email != null && !email.isBlank()) {
+      user.put("email", email);
+    }
 
     String location = webClient.post()
       .uri("/admin/realms/{realm}/users", targetRealm)
@@ -53,9 +56,17 @@ public class KeycloakAdminService {
       .header("Authorization", "Bearer " + token)
       .bodyValue(user)
       .exchangeToMono(resp -> {
+        if (resp.statusCode().is4xxClientError()) {
+          return resp.bodyToMono(String.class)
+            .defaultIfEmpty("")
+            .flatMap(body -> reactor.core.publisher.Mono.error(
+              new IllegalArgumentException("keycloak_create_user_failed: " + body)
+            ));
+        }
         String loc = resp.headers().asHttpHeaders().getFirst("Location");
         if (loc == null) {
           return resp.bodyToMono(String.class)
+            .defaultIfEmpty("")
             .flatMap(body -> reactor.core.publisher.Mono.error(
               new RuntimeException("keycloak_create_user_failed: " + body)
             ));
@@ -139,6 +150,11 @@ public class KeycloakAdminService {
         .uri("/admin/realms/{realm}/roles/{role}", targetRealm, roleName)
         .header("Authorization", "Bearer " + token)
         .retrieve()
+        .onStatus(HttpStatusCode::is4xxClientError, resp -> resp.bodyToMono(String.class)
+          .defaultIfEmpty("")
+          .flatMap(body -> reactor.core.publisher.Mono.error(
+            new IllegalArgumentException("keycloak_role_not_found: " + roleName)
+          )))
         .bodyToMono(Map.class)
         .block(Duration.ofSeconds(10));
       return Map.of(

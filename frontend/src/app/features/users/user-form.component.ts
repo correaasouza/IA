@@ -6,12 +6,16 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatSelectModule } from '@angular/material/select';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { forkJoin, of } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 
 import { UsuarioService, UsuarioResponse } from './usuario.service';
+import { TenantService, LocatarioResponse } from '../tenants/tenant.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { NotificationService } from '../../core/notifications/notification.service';
@@ -26,6 +30,7 @@ import { NotificationService } from '../../core/notifications/notification.servi
     MatInputModule,
     MatButtonModule,
     MatSlideToggleModule,
+    MatSelectModule,
     FormsModule,
     MatIconModule,
     MatDialogModule,
@@ -42,6 +47,11 @@ export class UserFormComponent implements OnInit {
   saving = false;
   deleting = false;
   resetting = false;
+  toggling = false;
+  savingLocatarios = false;
+  locatariosLoading = false;
+  locatariosDisponiveis: LocatarioResponse[] = [];
+  canManageUsers = false;
 
   form = this.fb.group({
     username: ['', Validators.required],
@@ -50,10 +60,15 @@ export class UserFormComponent implements OnInit {
     roles: ['USER'],
     ativo: [true]
   });
+  locatariosAcessoForm = this.fb.group({
+    locatarioIds: [[] as number[]]
+  });
 
   constructor(
     private fb: FormBuilder,
     private service: UsuarioService,
+    private tenantService: TenantService,
+    private auth: AuthService,
     private route: ActivatedRoute,
     private router: Router,
     private dialog: MatDialog,
@@ -61,6 +76,7 @@ export class UserFormComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.canManageUsers = this.isUserMasterOrMasterTenant();
     const id = this.route.snapshot.paramMap.get('id');
     const isEdit = this.route.snapshot.url.some(s => s.path === 'edit');
     if (id) {
@@ -78,20 +94,34 @@ export class UserFormComponent implements OnInit {
 
   private load(id: number) {
     this.loading = true;
-    this.service.get(id).pipe(finalize(() => this.loading = false)).subscribe({
-      next: data => {
-        this.user = data;
+    this.locatariosLoading = true;
+    forkJoin({
+      user: this.service.get(id),
+      locatarios: this.tenantService.list({ page: 0, size: 500, sort: 'nome,asc' }),
+      acessos: this.service.getLocatarios(id)
+    }).pipe(finalize(() => {
+      this.loading = false;
+      this.locatariosLoading = false;
+    })).subscribe({
+      next: ({ user, locatarios, acessos }) => {
+        this.user = user;
+        this.locatariosDisponiveis = locatarios.content || [];
         this.form.patchValue({
-          username: data.username,
-          email: data.email || '',
-          ativo: data.ativo
+          username: user.username,
+          email: user.email || '',
+          ativo: user.ativo
+        });
+        this.locatariosAcessoForm.patchValue({
+          locatarioIds: acessos.locatarioIds || []
         });
         if (this.mode === 'view') {
           this.form.disable();
+          this.locatariosAcessoForm.disable();
         } else {
           this.form.enable();
           this.form.get('password')?.disable();
           this.form.get('roles')?.disable();
+          this.locatariosAcessoForm.enable();
         }
         this.updateTitle();
       },
@@ -100,6 +130,7 @@ export class UserFormComponent implements OnInit {
   }
 
   save() {
+    if (this.mode === 'new' && !this.canManageUsers) return;
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -129,12 +160,24 @@ export class UserFormComponent implements OnInit {
       this.saving = false;
       return;
     }
-    this.service.update(this.user.id, {
-      username: this.form.value.username!,
-      email: this.form.value.email || undefined,
-      ativo: !!this.form.value.ativo
+    const locatarioIds = this.locatariosAcessoForm.value.locatarioIds || [];
+    forkJoin({
+      user: this.service.update(this.user.id, {
+        username: this.form.value.username!,
+        email: this.form.value.email || undefined,
+        ativo: !!this.form.value.ativo
+      }),
+      acessos: this.mode === 'edit'
+        ? this.service.setLocatarios(this.user.id, locatarioIds)
+        : of({ locatarioIds: [] as number[] })
     }).pipe(finalize(() => this.saving = false)).subscribe({
-      next: () => {
+      next: ({ user, acessos }) => {
+        this.user = user;
+        if (this.mode === 'edit') {
+          this.locatariosAcessoForm.patchValue({
+            locatarioIds: acessos.locatarioIds || []
+          });
+        }
         this.notify.success('Usuário atualizado.');
         this.router.navigate(['/users', this.user!.id]);
       },
@@ -155,6 +198,7 @@ export class UserFormComponent implements OnInit {
   }
 
   remove() {
+    if (!this.canManageUsers) return;
     if (!this.user) return;
     const ref = this.dialog.open(ConfirmDialogComponent, {
       data: { title: 'Excluir usuário', message: `Deseja excluir o usuário "${this.user.username}"?` }
@@ -172,6 +216,57 @@ export class UserFormComponent implements OnInit {
     });
   }
 
+  toggleStatus() {
+    if (!this.canManageUsers) return;
+    if (!this.user || this.mode === 'new') return;
+    const nextStatus = !this.user.ativo;
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: nextStatus ? 'Ativar usuário' : 'Desativar usuário',
+        message: nextStatus
+          ? `Deseja ativar o usuário "${this.user.username}"?`
+          : `Deseja desativar o usuário "${this.user.username}"?`,
+        confirmText: nextStatus ? 'Ativar' : 'Desativar',
+        confirmColor: nextStatus ? 'primary' : 'warn',
+        confirmAriaLabel: `${nextStatus ? 'Ativar' : 'Desativar'} usuário`
+      }
+    });
+    ref.afterClosed().subscribe(result => {
+      if (!result || !this.user) return;
+      this.toggling = true;
+      this.service.update(this.user.id, {
+        username: this.form.value.username!,
+        email: this.form.value.email || undefined,
+        ativo: nextStatus
+      }).pipe(finalize(() => (this.toggling = false))).subscribe({
+        next: updated => {
+          this.user = updated;
+          this.form.patchValue({ ativo: updated.ativo });
+          this.notify.success(nextStatus ? 'Usuário ativado.' : 'Usuário desativado.');
+        },
+        error: () => this.notify.error('Não foi possível atualizar o status do usuário.')
+      });
+    });
+  }
+
+  saveLocatariosAcesso() {
+    if (!this.canManageUsers) return;
+    if (!this.user || this.mode === 'view') return;
+    const locatarioIds = this.locatariosAcessoForm.value.locatarioIds || [];
+    this.savingLocatarios = true;
+    this.service.setLocatarios(this.user.id, locatarioIds)
+      .pipe(finalize(() => (this.savingLocatarios = false)))
+      .subscribe({
+        next: (data) => {
+          this.locatariosAcessoForm.patchValue({
+            locatarioIds: data.locatarioIds || []
+          });
+          this.notify.success('Acesso por locatário atualizado.');
+        },
+        error: () => this.notify.error('Não foi possível salvar os locatários de acesso.')
+      });
+  }
+
   toEdit() {
     if (!this.user) return;
     this.router.navigate(['/users', this.user.id, 'edit']);
@@ -179,6 +274,12 @@ export class UserFormComponent implements OnInit {
 
   back() {
     this.router.navigateByUrl('/users');
+  }
+
+  private isUserMasterOrMasterTenant(): boolean {
+    const tenantId = localStorage.getItem('tenantId');
+    const username = (this.auth.getUsername() || '').toLowerCase();
+    return tenantId === '1' || username === 'master';
   }
 }
 

@@ -8,6 +8,8 @@
 spring:
   application:
     name: ia-backend
+  profiles:
+    active: ${APP_PROFILE:dev}
   mvc:
     problemdetails:
       enabled: true

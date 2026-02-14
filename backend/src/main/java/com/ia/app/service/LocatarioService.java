@@ -6,6 +6,7 @@ import com.ia.app.dto.LocatarioRequest;
 import com.ia.app.dto.LocatarioResponse;
 import com.ia.app.mapper.LocatarioMapper;
 import com.ia.app.repository.LocatarioRepository;
+import com.ia.app.repository.UsuarioLocatarioAcessoRepository;
 import com.ia.app.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
@@ -21,28 +22,23 @@ public class LocatarioService {
 
   private final LocatarioRepository repository;
   private final UsuarioRepository usuarioRepository;
-  private final EntidadeDefinicaoService entidadeDefinicaoService;
-  private final TipoEntidadeService tipoEntidadeService;
-  private final ContatoTipoService contatoTipoService;
+  private final UsuarioLocatarioAcessoRepository usuarioLocatarioAcessoRepository;
   private final PermissaoCatalogService permissaoCatalogService;
   private final PapelSeedService papelSeedService;
   private final TenantAdminSeedService tenantAdminSeedService;
 
-  public LocatarioService(LocatarioRepository repository, EntidadeDefinicaoService entidadeDefinicaoService,
-      TipoEntidadeService tipoEntidadeService,
-      ContatoTipoService contatoTipoService,
+  public LocatarioService(LocatarioRepository repository,
       PermissaoCatalogService permissaoCatalogService,
       PapelSeedService papelSeedService,
       TenantAdminSeedService tenantAdminSeedService,
-      UsuarioRepository usuarioRepository) {
+      UsuarioRepository usuarioRepository,
+      UsuarioLocatarioAcessoRepository usuarioLocatarioAcessoRepository) {
     this.repository = repository;
-    this.entidadeDefinicaoService = entidadeDefinicaoService;
-    this.tipoEntidadeService = tipoEntidadeService;
-    this.contatoTipoService = contatoTipoService;
     this.permissaoCatalogService = permissaoCatalogService;
     this.papelSeedService = papelSeedService;
     this.tenantAdminSeedService = tenantAdminSeedService;
     this.usuarioRepository = usuarioRepository;
+    this.usuarioLocatarioAcessoRepository = usuarioLocatarioAcessoRepository;
   }
 
   public Page<Locatario> findAll(String nome, Boolean ativo, Boolean bloqueado, Pageable pageable) {
@@ -59,9 +55,6 @@ public class LocatarioService {
     locatario.setDataLimiteAcesso(request.dataLimiteAcesso());
     locatario.setAtivo(request.ativo());
     Locatario saved = repository.save(locatario);
-    entidadeDefinicaoService.seedDefaults(saved.getId());
-    tipoEntidadeService.seedDefaults(saved.getId());
-    contatoTipoService.seedDefaults(saved.getId());
     permissaoCatalogService.seedDefaults(saved.getId());
     papelSeedService.seedDefaults(saved.getId());
     tenantAdminSeedService.seedDefaultAdmin(saved);
@@ -123,11 +116,19 @@ public class LocatarioService {
       return repository.findById(1L).stream()
         .map(LocatarioMapper::toResponse).toList();
     }
-    Usuario usuario = usuarioRepository.findByKeycloakId(keycloakId).orElse(null);
-    if (usuario == null) {
+    java.util.List<Long> allowedIds = usuarioLocatarioAcessoRepository.findLocatarioIdsByUsuarioId(keycloakId);
+    if (allowedIds.isEmpty()) {
+      Usuario usuario = usuarioRepository.findByKeycloakId(keycloakId).orElse(null);
+      if (usuario == null) {
+        return List.of();
+      }
+      allowedIds = List.of(usuario.getTenantId());
+    }
+    if (allowedIds.isEmpty()) {
       return List.of();
     }
-    return repository.findById(usuario.getTenantId()).stream()
-      .map(LocatarioMapper::toResponse).toList();
+    return repository.findAllById(allowedIds).stream()
+      .map(LocatarioMapper::toResponse)
+      .toList();
   }
 }

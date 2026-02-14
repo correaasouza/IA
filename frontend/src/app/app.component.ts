@@ -41,6 +41,7 @@ import { environment } from '../environments/environment';
 })
 export class AppComponent {
   sidebarOpen = true;
+  isMobile = false;
   menu: MenuItem[] = [];
   atalhos: AtalhoUsuario[] = [];
   atalhosTop: MenuItem[] = [];
@@ -55,9 +56,7 @@ export class AppComponent {
   userName = '';
   userInitials = 'U';
   private readonly menuLabelAliases: Record<string, string> = {
-    metadata: 'Tipos Ent.',
-    'entities-config': 'Campos Tipo',
-    reports: 'Relatórios'
+    metadata: 'Tipos Ent.'
   };
 
   constructor(
@@ -89,12 +88,16 @@ export class AppComponent {
     this.loadMe();
 
     this.breakpoint.observe(['(max-width: 900px)']).subscribe(result => {
+      this.isMobile = result.matches;
       this.sidebarOpen = !result.matches;
     });
 
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(e => {
       const url = (e as NavigationEnd).urlAfterRedirects || (e as NavigationEnd).url;
       this.updateRouteFlags(url);
+      if (this.isMobile && this.sidebarOpen) {
+        this.sidebarOpen = false;
+      }
       if (!this.isSelectionRoute && localStorage.getItem('tenantId')) {
         this.refreshMenu();
         this.loadShortcuts();

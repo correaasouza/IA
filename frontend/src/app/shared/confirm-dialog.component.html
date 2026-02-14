@@ -1,4 +1,4 @@
-<div
+﻿<div
   class="grid grid-cols-[36px_1fr] items-center gap-2.5 px-4 pb-1.5 pt-3.5"
   role="dialog"
   aria-labelledby="confirm-title"
@@ -12,6 +12,12 @@
   </div>
 </div>
 <div class="flex justify-end gap-2 px-4 pb-3.5 pt-2">
-  <button mat-stroked-button (click)="close(false)" aria-label="Cancelar ação">Cancelar</button>
-  <button mat-flat-button color="warn" (click)="close(true)" aria-label="Confirmar exclusão">Excluir</button>
+  <button mat-stroked-button (click)="close(false)" aria-label="Cancelar ação">{{ data?.cancelText || 'Cancelar' }}</button>
+  <button
+    mat-flat-button
+    [color]="data?.confirmColor || 'warn'"
+    (click)="close(true)"
+    [attr.aria-label]="data?.confirmAriaLabel || 'Confirmar ação'">
+    {{ data?.confirmText || 'Excluir' }}
+  </button>
 </div>

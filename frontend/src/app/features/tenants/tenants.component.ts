@@ -12,6 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
 import { DateMaskDirective } from '../../shared/date-mask.directive';
+import { isValidDateInput } from '../../shared/date-utils';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { finalize } from 'rxjs/operators';
 
@@ -127,9 +128,15 @@ export class TenantsComponent implements OnInit {
     if (this.form.invalid) {
       return;
     }
+    const dataLimite = this.form.value.dataLimiteAcesso!;
+    if (!isValidDateInput(dataLimite)) {
+      this.form.get('dataLimiteAcesso')?.setErrors({ invalidDate: true });
+      this.form.get('dataLimiteAcesso')?.markAsTouched();
+      return;
+    }
     this.service.create({
       nome: this.form.value.nome!,
-      dataLimiteAcesso: this.form.value.dataLimiteAcesso!,
+      dataLimiteAcesso: dataLimite,
       ativo: true
     }).subscribe({
       next: () => {

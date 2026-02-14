@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,6 +38,13 @@ public class PapelController {
       .toList();
   }
 
+  @GetMapping("/{id}")
+  @PreAuthorize("@permissaoGuard.hasPermissao('PAPEL_MANAGE')")
+  public ResponseEntity<PapelResponse> get(@PathVariable Long id) {
+    var p = papelService.get(id);
+    return ResponseEntity.ok(new PapelResponse(p.getId(), p.getNome(), p.getDescricao(), p.isAtivo()));
+  }
+
   @PostMapping
   @PreAuthorize("@permissaoGuard.hasPermissao('PAPEL_MANAGE')")
   public ResponseEntity<PapelResponse> create(@Valid @RequestBody PapelRequest request) {
@@ -49,6 +57,13 @@ public class PapelController {
   public ResponseEntity<PapelResponse> update(@PathVariable Long id, @Valid @RequestBody PapelRequest request) {
     var p = papelService.update(id, request);
     return ResponseEntity.ok(new PapelResponse(p.getId(), p.getNome(), p.getDescricao(), p.isAtivo()));
+  }
+
+  @DeleteMapping("/{id}")
+  @PreAuthorize("@permissaoGuard.hasPermissao('PAPEL_MANAGE')")
+  public ResponseEntity<Void> delete(@PathVariable Long id) {
+    papelService.delete(id);
+    return ResponseEntity.noContent().build();
   }
 
   @GetMapping("/{id}/permissoes")

@@ -1,0 +1,19 @@
+:host ::ng-deep .mat-column-acoes.acoes-header,
+:host ::ng-deep .mat-column-acoes.acoes-cell {
+  justify-content: flex-start;
+  padding-right: 8px;
+}
+
+.acoes-label {
+  display: inline-block;
+  width: 150px;
+  text-align: left;
+}
+
+.role-actions {
+  display: inline-flex;
+  width: 150px;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+}

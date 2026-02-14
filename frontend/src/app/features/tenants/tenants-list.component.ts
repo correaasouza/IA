@@ -1,4 +1,4 @@
-﻿import { Component, OnInit } from '@angular/core';
+﻿import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -43,6 +43,7 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
     FieldSearchComponent
   ],
   templateUrl: './tenants-list.component.html',
+  styleUrls: ['./tenants-list.component.css']
 })
 export class TenantsListComponent implements OnInit {
   locatarios: LocatarioResponse[] = [];
@@ -58,6 +59,8 @@ export class TenantsListComponent implements OnInit {
   ];
   searchTerm = '';
   searchFields = ['nome'];
+  mobileFiltersOpen = false;
+  isMobile = false;
 
   filters = this.fb.group({
     status: ['']
@@ -72,6 +75,7 @@ export class TenantsListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.updateViewportMode();
     this.load();
   }
 
@@ -111,6 +115,28 @@ export class TenantsListComponent implements OnInit {
   onSearchChange(value: FieldSearchValue) {
     this.searchTerm = value.term;
     this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(o => o.key);
+    this.applyFilters();
+  }
+
+  
+  @HostListener('window:resize')
+  onWindowResize() {
+    this.updateViewportMode();
+  }
+
+  toggleMobileFilters() {
+    this.mobileFiltersOpen = !this.mobileFiltersOpen;
+  }
+
+  activeFiltersCount(): number {
+    let count = 0;
+    if ((this.searchTerm || '').trim()) count++;
+    if ((this.filters.value.status || '').trim()) count++;
+    return count;
+  }
+
+  private updateViewportMode() {
+    this.isMobile = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
   }
 
   pageChange(event: PageEvent) {
@@ -166,6 +192,31 @@ export class TenantsListComponent implements OnInit {
       });
     });
   }
+
+  toggleStatus(row: LocatarioResponse) {
+    const nextStatus = !row.ativo;
+    const action = nextStatus ? 'ativar' : 'desativar';
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: `${nextStatus ? 'Ativar' : 'Desativar'} locatário`,
+        message: `Deseja ${action} o locatário "${row.nome}"?`,
+        confirmText: nextStatus ? 'Ativar' : 'Desativar',
+        confirmColor: nextStatus ? 'primary' : 'warn',
+        confirmAriaLabel: `${nextStatus ? 'Ativar' : 'Desativar'} locatário`
+      }
+    });
+    ref.afterClosed().subscribe(result => {
+      if (!result) return;
+      this.service.updateStatus(row.id, nextStatus).subscribe({
+        next: () => {
+          this.notify.success(nextStatus ? 'Locatário ativado.' : 'Locatário desativado.');
+          this.load();
+        },
+        error: () => this.notify.error('Não foi possível atualizar o status do locatário.')
+      });
+    });
+  }
 }
+
 
 

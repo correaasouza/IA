@@ -123,6 +123,9 @@ body {
 
 .app-header {
   background: linear-gradient(120deg, var(--header-grad-start) 0%, var(--header-grad-mid) 55%, var(--header-grad-end) 100%) !important;
+  position: sticky;
+  top: 0;
+  z-index: 1200;
 }
 
 .app-header .mat-mdc-button,
@@ -156,6 +159,75 @@ body {
 
 .content {
   padding: 12px;
+}
+
+.page-header-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  background: var(--surface);
+  opacity: 1;
+  isolation: isolate;
+  overflow: hidden;
+  margin-top: -14px;
+  padding: 14px 12px 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-xs);
+}
+
+.page-header-sticky::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--surface);
+}
+
+.page-list-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 1090;
+  background: var(--surface);
+  opacity: 1;
+  isolation: isolate;
+  overflow: hidden;
+  margin-top: -14px;
+  padding: 14px 0 8px;
+  box-shadow: 0 1px 0 var(--border-light);
+}
+
+.page-list-sticky::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--surface);
+}
+
+.mobile-filter-toggle {
+  min-height: 30px !important;
+  padding: 0 10px !important;
+  border-radius: 6px !important;
+  border: 1px solid #9bb5de !important;
+  color: #2c5fa8 !important;
+  background: #ffffff !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+}
+
+.mobile-filter-toggle .mat-icon {
+  font-size: 15px !important;
+  width: 15px !important;
+  height: 15px !important;
+}
+
+.mobile-filter-toggle .mobile-filter-chevron {
+  font-size: 14px !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin-left: 2px;
 }
 
 .card,
@@ -405,6 +477,31 @@ mat-icon {
 .table-dense .mat-mdc-icon-button {
   width: 32px;
   height: 32px;
+}
+
+.table-sticky-actions {
+  --actions-col-width: 224px;
+}
+
+.table-sticky-actions .mat-column-acoes {
+  flex: 0 0 var(--actions-col-width);
+  width: var(--actions-col-width);
+  min-width: var(--actions-col-width);
+  max-width: var(--actions-col-width);
+}
+
+.table-sticky-actions .mat-mdc-header-cell.mat-column-acoes,
+.table-sticky-actions .mat-mdc-cell.mat-column-acoes {
+  background: var(--surface);
+  border-left: 1px solid var(--border-light);
+}
+
+.table-sticky-actions .mat-mdc-cell.mat-column-acoes {
+  z-index: 2;
+}
+
+.table-sticky-actions .mat-mdc-header-cell.mat-column-acoes {
+  z-index: 5;
 }
 
 .mat-mdc-button:hover,
