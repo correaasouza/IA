@@ -8,6 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { finalize } from 'rxjs/operators';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { NotificationService } from '../../core/notifications/notification.service';
@@ -24,6 +25,7 @@ import { CompanyService, EmpresaResponse } from './company.service';
     MatIconModule,
     MatInputModule,
     MatSelectModule,
+    MatSlideToggleModule,
     InlineLoaderComponent,
     RouterLink
   ],
@@ -44,7 +46,8 @@ export class CompanyFormComponent implements OnInit {
     razaoSocial: ['', Validators.required],
     nomeFantasia: [''],
     cnpj: ['', [Validators.required, Validators.pattern(/^\d{14}$/)]],
-    ativo: [true, Validators.required]
+    ativo: [true, Validators.required],
+    empresaPadrao: [false]
   });
 
   constructor(
@@ -100,7 +103,8 @@ export class CompanyFormComponent implements OnInit {
           razaoSocial: e.razaoSocial,
           nomeFantasia: e.nomeFantasia || '',
           cnpj: e.cnpj,
-          ativo: e.ativo
+          ativo: e.ativo,
+          empresaPadrao: this.isEmpresaPadraoEmpresaId(e.id)
         });
         if (this.mode === 'view') {
           this.form.disable();
@@ -134,7 +138,8 @@ export class CompanyFormComponent implements OnInit {
         ? this.service.createFilial({ ...body, matrizId: this.form.value.matrizId! })
         : this.service.createMatriz(body);
       request.pipe(finalize(() => (this.saving = false))).subscribe({
-        next: () => {
+        next: (created) => {
+          this.applyEmpresaPadraoSelection(created.id);
           this.notify.success('Empresa criada.');
           this.router.navigateByUrl(this.returnTo);
         },
@@ -148,7 +153,8 @@ export class CompanyFormComponent implements OnInit {
       return;
     }
     this.service.update(this.empresa.id, body).pipe(finalize(() => (this.saving = false))).subscribe({
-      next: () => {
+      next: (updated) => {
+        this.applyEmpresaPadraoSelection(updated.id || this.empresa!.id);
         this.notify.success('Empresa atualizada.');
         this.router.navigateByUrl(this.returnTo);
       },
@@ -158,6 +164,46 @@ export class CompanyFormComponent implements OnInit {
 
   back() {
     this.router.navigateByUrl(this.returnTo);
+  }
+
+  isEmpresaPadrao(): boolean {
+    if (!this.empresa?.id) return false;
+    return this.isEmpresaPadraoEmpresaId(this.empresa.id);
+  }
+
+  private tenantId(): string {
+    return (localStorage.getItem('tenantId') || '').trim();
+  }
+
+  private defaultKey(): string {
+    return `empresaDefault:${this.tenantId()}`;
+  }
+
+  private isEmpresaPadraoEmpresaId(empresaId: number): boolean {
+    const tenantId = (localStorage.getItem('tenantId') || '').trim();
+    if (!tenantId) return false;
+    const defaultId = Number(localStorage.getItem(`empresaDefault:${tenantId}`) || 0);
+    return !!defaultId && defaultId === empresaId;
+  }
+
+  private applyEmpresaPadraoSelection(empresaId: number): void {
+    if (!empresaId) return;
+    const tenantId = this.tenantId();
+    if (!tenantId) return;
+    const key = this.defaultKey();
+    const shouldBeDefault = !!this.form.value.empresaPadrao;
+    const currentDefaultId = Number(localStorage.getItem(key) || 0);
+
+    if (shouldBeDefault) {
+      localStorage.setItem(key, String(empresaId));
+      localStorage.setItem('empresaContextId', String(empresaId));
+    } else if (currentDefaultId === empresaId) {
+      localStorage.removeItem(key);
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('empresa-context-updated'));
+    }
   }
 }
 

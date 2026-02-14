@@ -1,6 +1,6 @@
-﻿import { Component } from '@angular/core';
+import { Component, HostListener } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterOutlet } from '@angular/router';
-import { filter } from 'rxjs/operators';
+import { filter, finalize } from 'rxjs/operators';
 import { forkJoin } from 'rxjs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatButtonModule } from '@angular/material/button';
@@ -63,6 +63,8 @@ export class AppComponent {
   empresaContextId: number | null = null;
   loadingEmpresaContext = false;
   private currentTenantId = '';
+  private readonly shortcutRemoving = new Set<string>();
+  private readonly shortcutCreating = new Set<string>();
   private readonly menuLabelAliases: Record<string, string> = {
     metadata: 'Tipos Ent.'
   };
@@ -120,6 +122,12 @@ export class AppComponent {
     this.sidebarOpen = !this.sidebarOpen;
   }
 
+  @HostListener('window:empresa-context-updated')
+  onEmpresaContextUpdated(): void {
+    if (!this.empresaContextOptions.length) return;
+    this.restoreEmpresaContextSelection();
+  }
+
   login() {
     this.auth.login();
   }
@@ -129,37 +137,43 @@ export class AppComponent {
   }
 
   isShortcut(menuId: string): boolean {
+    if (this.shortcutRemoving.has(menuId)) {
+      return false;
+    }
     return this.atalhos.some(a => a.menuId === menuId);
   }
 
   toggleShortcut(item: MenuItem) {
     if (!item.route) return;
+    if (this.shortcutCreating.has(item.id) || this.shortcutRemoving.has(item.id)) {
+      return;
+    }
     const existing = this.atalhos.filter(a => a.menuId === item.id);
     if (existing.length > 0) {
+      this.shortcutRemoving.add(item.id);
       this.atalhos = this.atalhos.filter(a => a.menuId !== item.id);
       this.rebuildShortcutsTop();
       const deletions = existing
         .filter(a => !!a.id)
         .map(a => this.atalhoService.delete(a.id));
       if (deletions.length === 0) {
+        this.shortcutRemoving.delete(item.id);
         this.loadShortcuts();
         return;
       }
-      forkJoin(deletions).subscribe({
-        next: () => this.loadShortcuts()
+      forkJoin(deletions).pipe(finalize(() => this.shortcutRemoving.delete(item.id))).subscribe({
+        next: () => this.loadShortcuts(),
+        error: () => this.loadShortcuts()
       });
       return;
     }
+    this.shortcutCreating.add(item.id);
     const ordem = this.atalhos.length + 1;
-    this.atalhos = this.atalhos.concat({
-      id: 0,
-      menuId: item.id,
-      icon: item.icon,
-      ordem
-    } as AtalhoUsuario);
-    this.rebuildShortcutsTop();
-    this.atalhoService.create({ menuId: item.id, icon: item.icon, ordem }).subscribe({
-      next: () => this.loadShortcuts()
+    this.atalhoService.create({ menuId: item.id, icon: item.icon, ordem })
+      .pipe(finalize(() => this.shortcutCreating.delete(item.id)))
+      .subscribe({
+      next: () => this.loadShortcuts(),
+      error: () => this.loadShortcuts()
     });
   }
 
@@ -372,18 +386,34 @@ export class AppComponent {
   }
 
   private restoreEmpresaContextSelection(): void {
+    const defaultId = this.getDefaultEmpresaId();
     const savedId = Number(localStorage.getItem('empresaContextId') || 0);
-    if (!savedId) {
-      this.setEmpresaContextAll();
+    const byDefault = defaultId ? this.empresaContextOptions.find(e => e.id === defaultId) : undefined;
+    if (byDefault) {
+      this.setEmpresaContext(byDefault.id);
       return;
     }
-    const existing = this.empresaContextOptions.find(e => e.id === savedId);
-    const selected = existing || null;
-    if (!selected) {
-      this.setEmpresaContextAll();
+
+    if (defaultId) {
+      const tenantId = (localStorage.getItem('tenantId') || '').trim();
+      if (tenantId) {
+        localStorage.removeItem(`empresaDefault:${tenantId}`);
+      }
+    }
+
+    const bySaved = savedId ? this.empresaContextOptions.find(e => e.id === savedId) : undefined;
+    if (bySaved) {
+      this.setEmpresaContext(bySaved.id);
       return;
     }
-    this.setEmpresaContext(selected.id);
+
+    const first = this.empresaContextOptions[0];
+    if (first) {
+      this.setEmpresaContext(first.id);
+      return;
+    }
+
+    this.setEmpresaContextAll();
   }
 
   onEmpresaContextChange(rawId: string): void {
@@ -419,6 +449,18 @@ export class AppComponent {
     localStorage.removeItem('empresaContextId');
     localStorage.removeItem('empresaContextTipo');
     localStorage.removeItem('empresaContextNome');
+  }
+
+  private getDefaultEmpresaId(): number {
+    const tenantId = (localStorage.getItem('tenantId') || '').trim();
+    if (!tenantId) return 0;
+    const raw = localStorage.getItem(`empresaDefault:${tenantId}`) || '';
+    return Number(raw || 0);
+  }
+
+  isEmpresaPadraoSelecionada(): boolean {
+    const defaultId = this.getDefaultEmpresaId();
+    return !!defaultId && this.empresaContextId === defaultId;
   }
 
   empresaContextLabel(empresa: EmpresaResponse): string {
@@ -471,5 +513,6 @@ export class AppComponent {
     });
   }
 }
+
 
 

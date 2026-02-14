@@ -1,4 +1,4 @@
-﻿<div class="min-h-dvh bg-[var(--bg)] text-[var(--ink)]">
+<div class="min-h-dvh bg-[var(--bg)] text-[var(--ink)]">
   <mat-toolbar class="app-header flex h-14 items-center gap-2 border-b border-white/10 px-2.5 text-[var(--on-brand)] shadow-lg md:h-[68px] md:gap-3 md:px-5" role="banner">
     <div class="flex min-w-0 items-center gap-2 md:gap-3">
       <button mat-icon-button *ngIf="hasTenant" (click)="toggleSidebar()" aria-label="Alternar menu lateral">
@@ -52,6 +52,7 @@
             {{ empresaContextLabel(empresa) }}
           </option>
         </select>
+        <span *ngIf="isEmpresaPadraoSelecionada()" class="header-company-default-badge">Padrão</span>
       </div>
 
       <button mat-icon-button routerLink="/help" aria-label="Ajuda" matTooltip="Ajuda" *ngIf="hasTenant" class="hidden h-9 w-9 rounded-xl bg-white/15 text-white min-[420px]:inline-flex">

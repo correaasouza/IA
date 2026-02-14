@@ -68,6 +68,49 @@ export class CompaniesListComponent implements OnInit {
     private notify: NotificationService
   ) {}
 
+  private tenantId(): string {
+    return (localStorage.getItem('tenantId') || '').trim();
+  }
+
+  private defaultKey(): string {
+    return `empresaDefault:${this.tenantId()}`;
+  }
+
+  private getDefaultEmpresaId(): number {
+    const raw = localStorage.getItem(this.defaultKey()) || '';
+    return Number(raw || 0);
+  }
+
+  isDefaultEmpresa(row: EmpresaResponse): boolean {
+    return row.id === this.getDefaultEmpresaId();
+  }
+
+  private notifyEmpresaContextUpdated(): void {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('empresa-context-updated'));
+  }
+
+  toggleDefaultEmpresa(row: EmpresaResponse): void {
+    const key = this.defaultKey();
+    if (!this.tenantId()) {
+      this.notify.error('Selecione um locatário para definir empresa padrão.');
+      return;
+    }
+    if (this.isDefaultEmpresa(row)) {
+      localStorage.removeItem(key);
+      this.notify.success('Empresa padrão removida.');
+      this.notifyEmpresaContextUpdated();
+      return;
+    }
+    localStorage.setItem(key, String(row.id));
+    this.notify.success(`Empresa padrão definida: ${row.razaoSocial}.`);
+    // Atualiza também o contexto atual do header para refletir imediatamente após refresh.
+    localStorage.setItem('empresaContextId', String(row.id));
+    localStorage.setItem('empresaContextTipo', row.tipo || '');
+    localStorage.setItem('empresaContextNome', row.razaoSocial || '');
+    this.notifyEmpresaContextUpdated();
+  }
+
   ngOnInit(): void {
     this.updateViewportMode();
     this.load();

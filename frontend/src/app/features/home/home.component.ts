@@ -36,7 +36,22 @@ export class HomeComponent implements OnInit {
 
   saveTenant() {
     if (this.tenantId === null || this.tenantId === undefined) return;
-    localStorage.setItem('tenantId', String(this.tenantId));
+    const tenantId = String(this.tenantId);
+    localStorage.setItem('tenantId', tenantId);
+
+    const defaultEmpresaId = Number(localStorage.getItem(`empresaDefault:${tenantId}`) || 0);
+    if (defaultEmpresaId > 0) {
+      localStorage.setItem('empresaContextId', String(defaultEmpresaId));
+    } else {
+      localStorage.removeItem('empresaContextId');
+      localStorage.removeItem('empresaContextTipo');
+      localStorage.setItem('empresaContextNome', 'Todas as empresas');
+    }
+
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('empresa-context-updated'));
+    }
+
     this.loadMe();
     this.router.navigateByUrl('/home');
   }
