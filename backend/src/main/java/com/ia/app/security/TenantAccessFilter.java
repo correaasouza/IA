@@ -1,4 +1,4 @@
-﻿package com.ia.app.security;
+package com.ia.app.security;
 
 import com.ia.app.domain.Locatario;
 import com.ia.app.repository.LocatarioRepository;

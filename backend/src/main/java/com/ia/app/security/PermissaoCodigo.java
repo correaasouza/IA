@@ -1,4 +1,4 @@
-﻿package com.ia.app.security;
+package com.ia.app.security;
 
 public enum PermissaoCodigo {
   CONFIG_EDITOR("Configurar colunas e formulários"),

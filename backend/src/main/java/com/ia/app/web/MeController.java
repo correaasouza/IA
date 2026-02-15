@@ -1,7 +1,11 @@
 package com.ia.app.web;
 
+import com.ia.app.dto.UsuarioEmpresaPadraoRequest;
+import com.ia.app.dto.UsuarioEmpresaPadraoResponse;
 import com.ia.app.service.PermissaoUsuarioService;
+import com.ia.app.service.UsuarioEmpresaPreferenciaService;
 import com.ia.app.tenant.TenantContext;
+import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -10,7 +14,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,11 +25,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api")
 public class MeController {
-
   private final PermissaoUsuarioService permissaoUsuarioService;
+  private final UsuarioEmpresaPreferenciaService usuarioEmpresaPreferenciaService;
 
-  public MeController(PermissaoUsuarioService permissaoUsuarioService) {
+  public MeController(
+      PermissaoUsuarioService permissaoUsuarioService,
+      UsuarioEmpresaPreferenciaService usuarioEmpresaPreferenciaService) {
     this.permissaoUsuarioService = permissaoUsuarioService;
+    this.usuarioEmpresaPreferenciaService = usuarioEmpresaPreferenciaService;
   }
 
   @GetMapping("/me")
@@ -81,5 +91,39 @@ public class MeController {
     }
 
     return ResponseEntity.status(401).build();
+  }
+
+  @GetMapping("/me/empresa-padrao")
+  public ResponseEntity<UsuarioEmpresaPadraoResponse> getEmpresaPadrao(Authentication authentication) {
+    String usuarioId = resolveUsuarioId(authentication);
+    Long empresaId = usuarioEmpresaPreferenciaService.getEmpresaPadraoId(usuarioId);
+    return ResponseEntity.ok()
+      .header(HttpHeaders.CACHE_CONTROL, "no-store")
+      .body(new UsuarioEmpresaPadraoResponse(empresaId));
+  }
+
+  @PutMapping("/me/empresa-padrao")
+  public ResponseEntity<UsuarioEmpresaPadraoResponse> setEmpresaPadrao(
+      Authentication authentication,
+      @Valid @RequestBody UsuarioEmpresaPadraoRequest request) {
+    String usuarioId = resolveUsuarioId(authentication);
+    Long empresaId = usuarioEmpresaPreferenciaService.setEmpresaPadraoId(usuarioId, request.empresaId());
+    return ResponseEntity.ok()
+      .header(HttpHeaders.CACHE_CONTROL, "no-store")
+      .body(new UsuarioEmpresaPadraoResponse(empresaId));
+  }
+
+  @DeleteMapping("/me/empresa-padrao")
+  public ResponseEntity<Void> clearEmpresaPadrao(Authentication authentication) {
+    String usuarioId = resolveUsuarioId(authentication);
+    usuarioEmpresaPreferenciaService.clearEmpresaPadraoId(usuarioId);
+    return ResponseEntity.noContent().build();
+  }
+
+  private String resolveUsuarioId(Authentication authentication) {
+    if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+      return jwtAuth.getToken().getSubject();
+    }
+    throw new IllegalStateException("unauthorized");
   }
 }

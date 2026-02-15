@@ -13,6 +13,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { CommonModule } from '@angular/common';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 
 import { AuthService } from './core/auth/auth.service';
 import { AccessControlService } from './core/access/access-control.service';
@@ -38,7 +39,8 @@ import { CompanyService, EmpresaResponse } from './features/companies/company.se
     MatListModule,
     MatDialogModule,
     MatMenuModule,
-    MatTooltipModule
+    MatTooltipModule,
+    FormsModule
   ],
   templateUrl: './app.component.html',
   
@@ -49,6 +51,7 @@ export class AppComponent {
   menu: MenuItem[] = [];
   atalhos: AtalhoUsuario[] = [];
   atalhosTop: MenuItem[] = [];
+  shortcutState: Record<string, boolean> = {};
   permissions: string[] = [];
   tenantRoles: string[] = [];
   hasTenant = false;
@@ -62,6 +65,7 @@ export class AppComponent {
   empresaContextOptions: EmpresaResponse[] = [];
   empresaContextId: number | null = null;
   loadingEmpresaContext = false;
+  private loadingDefaultEmpresaId = 0;
   private currentTenantId = '';
   private readonly shortcutRemoving = new Set<string>();
   private readonly shortcutCreating = new Set<string>();
@@ -98,6 +102,7 @@ export class AppComponent {
     this.updateRouteFlags(this.router.url);
     this.loadShortcuts();
     this.loadMe();
+    this.refreshEmpresaContextIfNeeded();
 
     this.breakpoint.observe(['(max-width: 900px)']).subscribe(result => {
       this.isMobile = result.matches;
@@ -124,8 +129,13 @@ export class AppComponent {
 
   @HostListener('window:empresa-context-updated')
   onEmpresaContextUpdated(): void {
-    if (!this.empresaContextOptions.length) return;
-    this.restoreEmpresaContextSelection();
+    const tenantId = this.getTenantId();
+    if (!tenantId || this.isSelectionRoute) {
+      this.clearEmpresaContext();
+      return;
+    }
+    this.currentTenantId = tenantId;
+    this.loadEmpresaContextOptions();
   }
 
   login() {
@@ -137,10 +147,7 @@ export class AppComponent {
   }
 
   isShortcut(menuId: string): boolean {
-    if (this.shortcutRemoving.has(menuId)) {
-      return false;
-    }
-    return this.atalhos.some(a => a.menuId === menuId);
+    return !!this.shortcutState[menuId];
   }
 
   toggleShortcut(item: MenuItem) {
@@ -151,6 +158,7 @@ export class AppComponent {
     const existing = this.atalhos.filter(a => a.menuId === item.id);
     if (existing.length > 0) {
       this.shortcutRemoving.add(item.id);
+      this.setShortcutState(item.id, false);
       this.atalhos = this.atalhos.filter(a => a.menuId !== item.id);
       this.rebuildShortcutsTop();
       const deletions = existing
@@ -162,18 +170,44 @@ export class AppComponent {
         return;
       }
       forkJoin(deletions).pipe(finalize(() => this.shortcutRemoving.delete(item.id))).subscribe({
-        next: () => this.loadShortcuts(),
-        error: () => this.loadShortcuts()
+        next: () => {
+          this.notifyShortcutsUpdated();
+        },
+        error: () => {
+          this.setShortcutState(item.id, true);
+          this.atalhos = [...this.atalhos, ...existing];
+          this.rebuildShortcutsTop();
+          this.loadShortcuts();
+          this.notifyShortcutsUpdated();
+        }
       });
       return;
     }
     this.shortcutCreating.add(item.id);
     const ordem = this.atalhos.length + 1;
+    this.setShortcutState(item.id, true);
+    this.atalhos = [...this.atalhos, { id: 0, menuId: item.id, icon: item.icon, ordem }];
+    this.rebuildShortcutsTop();
+    this.notifyShortcutsUpdated();
     this.atalhoService.create({ menuId: item.id, icon: item.icon, ordem })
       .pipe(finalize(() => this.shortcutCreating.delete(item.id)))
       .subscribe({
-      next: () => this.loadShortcuts(),
-      error: () => this.loadShortcuts()
+      next: created => {
+        this.atalhos = this.atalhos.map(a =>
+          a.menuId === item.id && a.id === 0
+            ? { ...a, id: created?.id || a.id, ordem: created?.ordem || a.ordem }
+            : a
+        );
+        this.rebuildShortcutsTop();
+        this.notifyShortcutsUpdated();
+      },
+      error: () => {
+        this.atalhos = this.atalhos.filter(a => !(a.menuId === item.id && a.id === 0));
+        this.setShortcutState(item.id, false);
+        this.rebuildShortcutsTop();
+        this.loadShortcuts();
+        this.notifyShortcutsUpdated();
+      }
     });
   }
 
@@ -182,17 +216,40 @@ export class AppComponent {
     if (!tenantId || this.isSelectionRoute) {
       this.atalhos = [];
       this.atalhosTop = [];
+      this.shortcutState = {};
       this.hasTenant = false;
       this.clearEmpresaContext();
+      this.notifyShortcutsUpdated();
       return;
     }
     this.hasTenant = true;
     this.atalhoService.list().subscribe({
       next: data => {
         this.atalhos = data || [];
+        this.syncShortcutState();
         this.rebuildShortcutsTop();
+        this.notifyShortcutsUpdated();
       }
     });
+  }
+
+  private syncShortcutState(): void {
+    const next: Record<string, boolean> = {};
+    for (const atalho of this.atalhos || []) {
+      if (atalho?.menuId) {
+        next[atalho.menuId] = true;
+      }
+    }
+    this.shortcutState = next;
+  }
+
+  private setShortcutState(menuId: string, enabled: boolean): void {
+    this.shortcutState = { ...this.shortcutState, [menuId]: enabled };
+  }
+
+  private notifyShortcutsUpdated(): void {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('shortcuts-updated'));
   }
 
   private rebuildShortcutsTop() {
@@ -348,12 +405,14 @@ export class AppComponent {
   }
 
   private refreshEmpresaContextIfNeeded(): void {
-    const tenantId = (localStorage.getItem('tenantId') || '').trim();
+    const tenantId = this.getTenantId();
     if (!tenantId || this.isSelectionRoute) {
       this.clearEmpresaContext();
       return;
     }
     if (this.currentTenantId !== tenantId) {
+      this.empresaContextOptions = [];
+      this.clearEmpresaContextSelection();
       this.currentTenantId = tenantId;
       this.loadEmpresaContextOptions();
       return;
@@ -364,10 +423,22 @@ export class AppComponent {
   }
 
   private loadEmpresaContextOptions(): void {
+    const requestTenantId = this.getTenantId();
+    if (!requestTenantId) {
+      this.clearEmpresaContext();
+      return;
+    }
+    // Prevent stale UI (wrong selected/default badge) while data is refreshing.
+    this.empresaContextOptions = [];
+    this.clearEmpresaContextSelection();
     this.loadingEmpresaContext = true;
     this.companyService.list({ page: 0, size: 500 }).subscribe({
-      next: data => {
-        const items = (data?.content || []) as EmpresaResponse[];
+      next: companies => {
+        if (this.isStaleTenantRequest(requestTenantId)) {
+          this.loadingEmpresaContext = false;
+          return;
+        }
+        const items = (companies?.content || []) as EmpresaResponse[];
         this.empresaContextOptions = items
           .sort((a, b) => {
             if (a.tipo !== b.tipo) {
@@ -375,19 +446,22 @@ export class AppComponent {
             }
             return (a.razaoSocial || '').localeCompare(b.razaoSocial || '');
           });
-        this.restoreEmpresaContextSelection();
+        const defaultFromList = this.empresaContextOptions.find(e => !!e.padrao)?.id || 0;
+        this.restoreEmpresaContextSelection(defaultFromList);
         this.loadingEmpresaContext = false;
       },
       error: () => {
+        if (this.isStaleTenantRequest(requestTenantId)) {
+          this.loadingEmpresaContext = false;
+          return;
+        }
         this.clearEmpresaContext();
         this.loadingEmpresaContext = false;
       }
     });
   }
 
-  private restoreEmpresaContextSelection(): void {
-    const defaultId = this.getDefaultEmpresaId();
-    const savedId = Number(localStorage.getItem('empresaContextId') || 0);
+  private restoreEmpresaContextSelection(defaultId: number): void {
     const byDefault = defaultId ? this.empresaContextOptions.find(e => e.id === defaultId) : undefined;
     if (byDefault) {
       this.setEmpresaContext(byDefault.id);
@@ -395,42 +469,75 @@ export class AppComponent {
     }
 
     if (defaultId) {
-      const tenantId = (localStorage.getItem('tenantId') || '').trim();
-      if (tenantId) {
-        localStorage.removeItem(`empresaDefault:${tenantId}`);
-      }
-    }
-
-    const bySaved = savedId ? this.empresaContextOptions.find(e => e.id === savedId) : undefined;
-    if (bySaved) {
-      this.setEmpresaContext(bySaved.id);
+      this.clearEmpresaContextSelection();
+      this.loadDefaultEmpresaAndApply(defaultId);
       return;
     }
 
-    const first = this.empresaContextOptions[0];
-    if (first) {
-      this.setEmpresaContext(first.id);
-      return;
-    }
-
-    this.setEmpresaContextAll();
+    this.applyFirstSelection();
   }
 
-  onEmpresaContextChange(rawId: string): void {
-    if (rawId === 'ALL') {
-      this.setEmpresaContextAll();
+  private loadDefaultEmpresaAndApply(defaultId: number): void {
+    if (!defaultId) {
+      this.applyFirstSelection();
       return;
     }
+    if (this.loadingDefaultEmpresaId === defaultId) {
+      return;
+    }
+
+    const requestTenantId = this.getTenantId();
+    if (!requestTenantId) {
+      this.clearEmpresaContextSelection();
+      return;
+    }
+
+    this.loadingDefaultEmpresaId = defaultId;
+    this.companyService.get(defaultId).pipe(finalize(() => (this.loadingDefaultEmpresaId = 0))).subscribe({
+      next: empresa => {
+        if (this.isStaleTenantRequest(requestTenantId)) {
+          return;
+        }
+        if (!empresa) {
+          this.applyFirstSelection();
+          return;
+        }
+        const exists = this.empresaContextOptions.some(e => e.id === empresa.id);
+        if (!exists) {
+          this.empresaContextOptions = [...this.empresaContextOptions, empresa].sort((a, b) => {
+            if (a.tipo !== b.tipo) {
+              return a.tipo === 'MATRIZ' ? -1 : 1;
+            }
+            return (a.razaoSocial || '').localeCompare(b.razaoSocial || '');
+          });
+        }
+        this.setEmpresaContext(empresa.id);
+      },
+      error: () => {
+        if (this.isStaleTenantRequest(requestTenantId)) {
+          return;
+        }
+        this.clearEmpresaContextSelection();
+      }
+    });
+  }
+
+  private applyFirstSelection(): void {
+    // Do not auto-pick a non-default company on refresh/login.
+    this.clearEmpresaContextSelection();
+  }
+
+  onEmpresaContextChange(rawId: string | number | null): void {
     const id = Number(rawId || 0);
     if (!id) return;
     this.setEmpresaContext(id);
   }
 
-  private setEmpresaContextAll(): void {
+  private clearEmpresaContextSelection(): void {
     this.empresaContextId = null;
     localStorage.removeItem('empresaContextId');
     localStorage.removeItem('empresaContextTipo');
-    localStorage.setItem('empresaContextNome', 'Todas as empresas');
+    localStorage.removeItem('empresaContextNome');
   }
 
   private setEmpresaContext(id: number): void {
@@ -451,16 +558,20 @@ export class AppComponent {
     localStorage.removeItem('empresaContextNome');
   }
 
-  private getDefaultEmpresaId(): number {
-    const tenantId = (localStorage.getItem('tenantId') || '').trim();
-    if (!tenantId) return 0;
-    const raw = localStorage.getItem(`empresaDefault:${tenantId}`) || '';
-    return Number(raw || 0);
+  private getTenantId(): string {
+    return (localStorage.getItem('tenantId') || '').trim();
+  }
+
+  private isStaleTenantRequest(requestTenantId: string): boolean {
+    const activeTenantId = this.getTenantId();
+    return !requestTenantId || !activeTenantId || requestTenantId !== activeTenantId || this.currentTenantId !== requestTenantId;
   }
 
   isEmpresaPadraoSelecionada(): boolean {
-    const defaultId = this.getDefaultEmpresaId();
-    return !!defaultId && this.empresaContextId === defaultId;
+    const selectedId = this.empresaContextId || 0;
+    if (!selectedId) return false;
+    const selected = this.empresaContextOptions.find(e => e.id === selectedId);
+    return !!selected?.padrao;
   }
 
   empresaContextLabel(empresa: EmpresaResponse): string {

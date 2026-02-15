@@ -196,6 +196,17 @@ body {
   white-space: nowrap;
 }
 
+.header-company-context-mobile {
+  min-width: 0;
+  max-width: 170px;
+}
+
+.header-company-context-mobile .header-company-context-select {
+  min-width: 0;
+  max-width: 132px;
+  font-size: 11px;
+}
+
 .company-default-tag {
   display: inline-flex;
   align-items: center;

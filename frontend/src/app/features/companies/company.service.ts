@@ -11,6 +11,7 @@ export interface EmpresaResponse {
   nomeFantasia?: string | null;
   cnpj: string;
   ativo: boolean;
+  padrao?: boolean;
 }
 
 export interface EmpresaMatrizRequest {

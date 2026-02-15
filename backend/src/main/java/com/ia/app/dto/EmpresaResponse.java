@@ -7,5 +7,6 @@ public record EmpresaResponse(
   String razaoSocial,
   String nomeFantasia,
   String cnpj,
-  boolean ativo
+  boolean ativo,
+  boolean padrao
 ) {}

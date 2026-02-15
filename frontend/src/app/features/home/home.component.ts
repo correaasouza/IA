@@ -11,6 +11,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { environment } from '../../../environments/environment';
 import { TenantService, LocatarioResponse } from '../tenants/tenant.service';
+import { CompanyService, EmpresaResponse } from '../companies/company.service';
 
 @Component({
   selector: 'app-home',
@@ -25,6 +26,7 @@ export class HomeComponent implements OnInit {
 
   constructor(
     private tenantService: TenantService,
+    private companyService: CompanyService,
     private http: HttpClient,
     private router: Router
   ) {}
@@ -38,20 +40,40 @@ export class HomeComponent implements OnInit {
     if (this.tenantId === null || this.tenantId === undefined) return;
     const tenantId = String(this.tenantId);
     localStorage.setItem('tenantId', tenantId);
+    localStorage.removeItem('empresaContextId');
+    localStorage.removeItem('empresaContextTipo');
+    localStorage.removeItem('empresaContextNome');
 
-    const defaultEmpresaId = Number(localStorage.getItem(`empresaDefault:${tenantId}`) || 0);
-    if (defaultEmpresaId > 0) {
-      localStorage.setItem('empresaContextId', String(defaultEmpresaId));
-    } else {
-      localStorage.removeItem('empresaContextId');
-      localStorage.removeItem('empresaContextTipo');
-      localStorage.setItem('empresaContextNome', 'Todas as empresas');
+    this.companyService.list({ page: 0, size: 500 }).subscribe({
+      next: data => {
+        const items = (data?.content || []) as EmpresaResponse[];
+        const selected = items.find(e => !!e.padrao);
+        this.applyEmpresaContext(selected);
+        this.finishTenantSelection();
+      },
+      error: () => {
+        this.applyEmpresaContext(undefined);
+        this.finishTenantSelection();
+      }
+    });
+  }
+
+  private applyEmpresaContext(selected?: EmpresaResponse): void {
+    if (selected) {
+      localStorage.setItem('empresaContextId', String(selected.id));
+      localStorage.setItem('empresaContextTipo', selected.tipo || '');
+      localStorage.setItem('empresaContextNome', selected.razaoSocial || '');
+      return;
     }
+    localStorage.removeItem('empresaContextId');
+    localStorage.removeItem('empresaContextTipo');
+    localStorage.removeItem('empresaContextNome');
+  }
 
+  private finishTenantSelection(): void {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('empresa-context-updated'));
     }
-
     this.loadMe();
     this.router.navigateByUrl('/home');
   }

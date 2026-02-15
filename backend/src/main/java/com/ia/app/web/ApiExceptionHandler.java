@@ -1,4 +1,4 @@
-﻿package com.ia.app.web;
+package com.ia.app.web;
 
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
@@ -19,9 +19,12 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(IllegalStateException.class)
   public ProblemDetail handleIllegalState(IllegalStateException ex) {
-    HttpStatus status = ex.getMessage() != null && ex.getMessage().startsWith("role_required_")
+    String message = ex.getMessage() == null ? "" : ex.getMessage();
+    HttpStatus status = message.startsWith("role_required_")
       ? HttpStatus.FORBIDDEN
-      : HttpStatus.BAD_REQUEST;
+      : message.equals("unauthorized")
+        ? HttpStatus.UNAUTHORIZED
+        : HttpStatus.BAD_REQUEST;
     ProblemDetail pd = ProblemDetail.forStatus(status);
     pd.setTitle("Requisição inválida");
     pd.setDetail(ex.getMessage());

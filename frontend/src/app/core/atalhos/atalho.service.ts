@@ -1,5 +1,5 @@
 ﻿import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
@@ -26,7 +26,11 @@ export class AtalhoService {
     if (!tenantId) {
       return of([]);
     }
-    return this.http.get<AtalhoUsuario[]>(this.baseUrl, { headers: this.tenantHeaders() });
+    const params = new HttpParams().set('_ts', String(Date.now()));
+    return this.http.get<AtalhoUsuario[]>(this.baseUrl, {
+      headers: this.tenantHeaders(),
+      params
+    });
   }
 
   create(payload: any): Observable<AtalhoUsuario> {

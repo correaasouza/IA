@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -28,6 +28,11 @@ export class HomeDashboardComponent implements OnInit {
       this.router.navigateByUrl('/');
       return;
     }
+    this.loadShortcuts();
+  }
+
+  @HostListener('window:shortcuts-updated')
+  onShortcutsUpdated(): void {
     this.loadShortcuts();
   }
 

@@ -10,9 +10,11 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { finalize } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { CompanyService, EmpresaResponse } from './company.service';
+import { CompanyContextService } from './company-context.service';
 
 @Component({
   selector: 'app-company-form',
@@ -39,6 +41,7 @@ export class CompanyFormComponent implements OnInit {
   empresa: EmpresaResponse | null = null;
   matrizesAtivas: EmpresaResponse[] = [];
   returnTo = '/companies';
+  defaultEmpresaId = 0;
 
   form = this.fb.group({
     tipo: ['MATRIZ', Validators.required],
@@ -53,6 +56,7 @@ export class CompanyFormComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private service: CompanyService,
+    private companyContextService: CompanyContextService,
     private route: ActivatedRoute,
     private router: Router,
     private notify: NotificationService
@@ -71,6 +75,7 @@ export class CompanyFormComponent implements OnInit {
     if (this.mode === 'new' && (tipo === 'FILIAL' || tipo === 'MATRIZ')) {
       this.form.patchValue({ tipo: tipo as 'FILIAL' | 'MATRIZ' });
     }
+    this.loadDefaultEmpresa();
     this.loadMatrizesAtivas();
     if (id) this.load(Number(id));
     this.form.get('tipo')?.valueChanges.subscribe(tipo => {
@@ -139,9 +144,16 @@ export class CompanyFormComponent implements OnInit {
         : this.service.createMatriz(body);
       request.pipe(finalize(() => (this.saving = false))).subscribe({
         next: (created) => {
-          this.applyEmpresaPadraoSelection(created.id);
-          this.notify.success('Empresa criada.');
-          this.router.navigateByUrl(this.returnTo);
+          this.applyEmpresaPadraoSelection(created.id).subscribe({
+            next: () => {
+              this.notify.success('Empresa criada.');
+              this.router.navigateByUrl(this.returnTo);
+            },
+            error: () => {
+              this.notify.error('Empresa criada, mas não foi possível atualizar a empresa padrão.');
+              this.router.navigateByUrl(this.returnTo);
+            }
+          });
         },
         error: () => this.notify.error('Não foi possível salvar a empresa.')
       });
@@ -154,9 +166,16 @@ export class CompanyFormComponent implements OnInit {
     }
     this.service.update(this.empresa.id, body).pipe(finalize(() => (this.saving = false))).subscribe({
       next: (updated) => {
-        this.applyEmpresaPadraoSelection(updated.id || this.empresa!.id);
-        this.notify.success('Empresa atualizada.');
-        this.router.navigateByUrl(this.returnTo);
+        this.applyEmpresaPadraoSelection(updated.id || this.empresa!.id).subscribe({
+          next: () => {
+            this.notify.success('Empresa atualizada.');
+            this.router.navigateByUrl(this.returnTo);
+          },
+          error: () => {
+            this.notify.error('Empresa atualizada, mas não foi possível atualizar a empresa padrão.');
+            this.router.navigateByUrl(this.returnTo);
+          }
+        });
       },
       error: () => this.notify.error('Não foi possível atualizar a empresa.')
     });
@@ -171,39 +190,60 @@ export class CompanyFormComponent implements OnInit {
     return this.isEmpresaPadraoEmpresaId(this.empresa.id);
   }
 
-  private tenantId(): string {
-    return (localStorage.getItem('tenantId') || '').trim();
-  }
-
-  private defaultKey(): string {
-    return `empresaDefault:${this.tenantId()}`;
+  private loadDefaultEmpresa(): void {
+    this.companyContextService.getDefault().subscribe({
+      next: pref => {
+        this.defaultEmpresaId = Number(pref?.empresaId || 0);
+        if (this.empresa?.id) {
+          this.form.patchValue({ empresaPadrao: this.isEmpresaPadraoEmpresaId(this.empresa.id) });
+        }
+      },
+      error: () => this.defaultEmpresaId = 0
+    });
   }
 
   private isEmpresaPadraoEmpresaId(empresaId: number): boolean {
-    const tenantId = (localStorage.getItem('tenantId') || '').trim();
-    if (!tenantId) return false;
-    const defaultId = Number(localStorage.getItem(`empresaDefault:${tenantId}`) || 0);
-    return !!defaultId && defaultId === empresaId;
+    return !!this.defaultEmpresaId && this.defaultEmpresaId === empresaId;
   }
 
-  private applyEmpresaPadraoSelection(empresaId: number): void {
-    if (!empresaId) return;
-    const tenantId = this.tenantId();
-    if (!tenantId) return;
-    const key = this.defaultKey();
+  private applyEmpresaPadraoSelection(empresaId: number): Observable<void> {
+    if (!empresaId) return of(void 0);
     const shouldBeDefault = !!this.form.value.empresaPadrao;
-    const currentDefaultId = Number(localStorage.getItem(key) || 0);
+    const currentDefaultId = this.defaultEmpresaId;
 
     if (shouldBeDefault) {
-      localStorage.setItem(key, String(empresaId));
-      localStorage.setItem('empresaContextId', String(empresaId));
-    } else if (currentDefaultId === empresaId) {
-      localStorage.removeItem(key);
+      return new Observable<void>(subscriber => {
+        this.companyContextService.setDefault(empresaId).subscribe({
+          next: () => {
+            this.defaultEmpresaId = empresaId;
+            localStorage.setItem('empresaContextId', String(empresaId));
+            this.notifyEmpresaContextUpdated();
+            subscriber.next();
+            subscriber.complete();
+          },
+          error: err => subscriber.error(err)
+        });
+      });
     }
+    if (currentDefaultId === empresaId) {
+      return new Observable<void>(subscriber => {
+        this.companyContextService.clearDefault().subscribe({
+          next: () => {
+            this.defaultEmpresaId = 0;
+            this.notifyEmpresaContextUpdated();
+            subscriber.next();
+            subscriber.complete();
+          },
+          error: err => subscriber.error(err)
+        });
+      });
+    }
+    return of(void 0);
+  }
 
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('empresa-context-updated'));
-    }
+  private notifyEmpresaContextUpdated(): void {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('empresa-context-updated'));
   }
 }
 

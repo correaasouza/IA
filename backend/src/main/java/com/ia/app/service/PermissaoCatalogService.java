@@ -1,4 +1,4 @@
-﻿package com.ia.app.service;
+package com.ia.app.service;
 
 import com.ia.app.domain.PermissaoCatalogo;
 import com.ia.app.dto.PermissaoCatalogResponse;

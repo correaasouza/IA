@@ -16,6 +16,7 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { CompanyService, EmpresaResponse } from './company.service';
+import { CompanyContextService } from './company-context.service';
 
 @Component({
   selector: 'app-companies-list',
@@ -44,6 +45,7 @@ export class CompaniesListComponent implements OnInit {
   pageIndex = 0;
   pageSize = 50;
   loading = false;
+  defaultEmpresaId = 0;
 
   searchOptions: FieldSearchOption[] = [
     { key: 'nome', label: 'Razão social' },
@@ -64,6 +66,7 @@ export class CompaniesListComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private service: CompanyService,
+    private companyContextService: CompanyContextService,
     private dialog: MatDialog,
     private notify: NotificationService
   ) {}
@@ -72,17 +75,8 @@ export class CompaniesListComponent implements OnInit {
     return (localStorage.getItem('tenantId') || '').trim();
   }
 
-  private defaultKey(): string {
-    return `empresaDefault:${this.tenantId()}`;
-  }
-
-  private getDefaultEmpresaId(): number {
-    const raw = localStorage.getItem(this.defaultKey()) || '';
-    return Number(raw || 0);
-  }
-
   isDefaultEmpresa(row: EmpresaResponse): boolean {
-    return row.id === this.getDefaultEmpresaId();
+    return row.id === this.defaultEmpresaId;
   }
 
   private notifyEmpresaContextUpdated(): void {
@@ -91,24 +85,32 @@ export class CompaniesListComponent implements OnInit {
   }
 
   toggleDefaultEmpresa(row: EmpresaResponse): void {
-    const key = this.defaultKey();
     if (!this.tenantId()) {
       this.notify.error('Selecione um locatário para definir empresa padrão.');
       return;
     }
     if (this.isDefaultEmpresa(row)) {
-      localStorage.removeItem(key);
-      this.notify.success('Empresa padrão removida.');
-      this.notifyEmpresaContextUpdated();
+      this.companyContextService.clearDefault().subscribe({
+        next: () => {
+          this.defaultEmpresaId = 0;
+          this.notify.success('Empresa padrão removida.');
+          this.notifyEmpresaContextUpdated();
+        },
+        error: () => this.notify.error('Não foi possível remover a empresa padrão.')
+      });
       return;
     }
-    localStorage.setItem(key, String(row.id));
-    this.notify.success(`Empresa padrão definida: ${row.razaoSocial}.`);
-    // Atualiza também o contexto atual do header para refletir imediatamente após refresh.
-    localStorage.setItem('empresaContextId', String(row.id));
-    localStorage.setItem('empresaContextTipo', row.tipo || '');
-    localStorage.setItem('empresaContextNome', row.razaoSocial || '');
-    this.notifyEmpresaContextUpdated();
+    this.companyContextService.setDefault(row.id).subscribe({
+      next: () => {
+        this.defaultEmpresaId = row.id;
+        this.notify.success(`Empresa padrão definida: ${row.razaoSocial}.`);
+        localStorage.setItem('empresaContextId', String(row.id));
+        localStorage.setItem('empresaContextTipo', row.tipo || '');
+        localStorage.setItem('empresaContextNome', row.razaoSocial || '');
+        this.notifyEmpresaContextUpdated();
+      },
+      error: () => this.notify.error('Não foi possível definir a empresa padrão.')
+    });
   }
 
   ngOnInit(): void {
@@ -133,6 +135,7 @@ export class CompaniesListComponent implements OnInit {
     this.service.list(params).pipe(finalize(() => (this.loading = false))).subscribe({
       next: data => {
         this.empresas = data.content || [];
+        this.defaultEmpresaId = this.empresas.find(e => !!e.padrao)?.id || 0;
         this.totalElements = data.totalElements || 0;
         this.buildMatrizMap();
       },

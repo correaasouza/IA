@@ -43,16 +43,32 @@
         <mat-icon class="header-company-context-icon">corporate_fare</mat-icon>
         <select
           class="header-company-context-select"
-          [value]="empresaContextId || 'ALL'"
-          (change)="onEmpresaContextChange($any($event.target).value)"
+          [ngModel]="empresaContextId"
+          (ngModelChange)="onEmpresaContextChange($event)"
+          [ngModelOptions]="{ standalone: true }"
           [disabled]="loadingEmpresaContext"
           aria-label="Selecionar empresa ou filial do contexto">
-          <option value="ALL">Todas as empresas do locatário</option>
-          <option *ngFor="let empresa of empresaContextOptions" [value]="empresa.id">
+          <option [ngValue]="null" disabled *ngIf="!empresaContextId">Selecione uma empresa</option>
+          <option *ngFor="let empresa of empresaContextOptions" [ngValue]="empresa.id">
             {{ empresaContextLabel(empresa) }}
           </option>
         </select>
         <span *ngIf="isEmpresaPadraoSelecionada()" class="header-company-default-badge">Padrão</span>
+      </div>
+      <div class="header-company-context header-company-context-mobile flex items-center gap-1 rounded-lg border border-white/25 bg-white/10 px-1.5 py-1 lg:hidden" *ngIf="hasTenant && !isSelectionRoute">
+        <mat-icon class="header-company-context-icon">corporate_fare</mat-icon>
+        <select
+          class="header-company-context-select"
+          [ngModel]="empresaContextId"
+          (ngModelChange)="onEmpresaContextChange($event)"
+          [ngModelOptions]="{ standalone: true }"
+          [disabled]="loadingEmpresaContext"
+          aria-label="Selecionar empresa ou filial do contexto no celular">
+          <option [ngValue]="null" disabled *ngIf="!empresaContextId">Empresa</option>
+          <option *ngFor="let empresa of empresaContextOptions" [ngValue]="empresa.id">
+            {{ empresaContextLabel(empresa) }}
+          </option>
+        </select>
       </div>
 
       <button mat-icon-button routerLink="/help" aria-label="Ajuda" matTooltip="Ajuda" *ngIf="hasTenant" class="hidden h-9 w-9 rounded-xl bg-white/15 text-white min-[420px]:inline-flex">
@@ -107,7 +123,9 @@
                   (click)="toggleShortcut(child); $event.preventDefault(); $event.stopPropagation();"
                   [attr.aria-pressed]="isShortcut(child.id)"
                   aria-label="Fixar ou desfazer atalho">
-                  <mat-icon [ngClass]="isShortcut(child.id) ? 'text-[#d08a00]' : ''">star</mat-icon>
+                  <mat-icon [style.color]="isShortcut(child.id) ? '#d08a00' : null">
+                    {{ isShortcut(child.id) ? 'star' : 'star_outline' }}
+                  </mat-icon>
                 </button>
                 <button
                   *ngIf="canConfigureAccess()"
@@ -137,7 +155,9 @@
                   (click)="toggleShortcut(item); $event.preventDefault(); $event.stopPropagation();"
                   [attr.aria-pressed]="isShortcut(item.id)"
                   aria-label="Fixar ou desfazer atalho">
-                  <mat-icon [ngClass]="isShortcut(item.id) ? 'text-[#d08a00]' : ''">star</mat-icon>
+                  <mat-icon [style.color]="isShortcut(item.id) ? '#d08a00' : null">
+                    {{ isShortcut(item.id) ? 'star' : 'star_outline' }}
+                  </mat-icon>
                 </button>
                 <button
                   *ngIf="canConfigureAccess()"

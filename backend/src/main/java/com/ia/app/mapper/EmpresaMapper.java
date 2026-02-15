@@ -7,6 +7,10 @@ public class EmpresaMapper {
   private EmpresaMapper() {}
 
   public static EmpresaResponse toResponse(Empresa entity) {
+    return toResponse(entity, false);
+  }
+
+  public static EmpresaResponse toResponse(Empresa entity, boolean padrao) {
     return new EmpresaResponse(
       entity.getId(),
       entity.getTipo(),
@@ -14,7 +18,8 @@ public class EmpresaMapper {
       entity.getRazaoSocial(),
       entity.getNomeFantasia(),
       entity.getCnpj(),
-      entity.isAtivo()
+      entity.isAtivo(),
+      padrao
     );
   }
 }
