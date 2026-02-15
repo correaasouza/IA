@@ -54,6 +54,20 @@ public class ApiExceptionHandler {
       pd.setDetail("Tipos de entidade padrao nao podem ser inativados.");
     } else if (message.startsWith("tipo_entidade_config_duplicada_agrupador")) {
       pd.setDetail("Ja existe configuracao ativa para este agrupador neste tipo de entidade.");
+    } else if (message.startsWith("empresa_context_required")) {
+      pd.setDetail("Selecione uma empresa no sistema para continuar.");
+    } else if (message.startsWith("empresa_sem_grupo_no_tipo_entidade")) {
+      pd.setDetail("A empresa selecionada nao esta vinculada a nenhum Grupo de Empresas para este Tipo de Entidade.");
+    } else if (message.startsWith("entidade_codigo_duplicado_configuracao")) {
+      pd.setDetail("Ja existe entidade com este codigo na configuracao atual.");
+    } else if (message.startsWith("pessoa_registro_federal_duplicado")) {
+      pd.setDetail("Ja existe pessoa com este documento neste locatario.");
+    } else if (message.startsWith("grupo_entidade_nome_duplicado_mesmo_pai")) {
+      pd.setDetail("Ja existe grupo com este nome no mesmo nivel.");
+    } else if (message.startsWith("grupo_entidade_possui_entidades")) {
+      pd.setDetail("Nao e possivel excluir o grupo pois existem entidades vinculadas.");
+    } else if (message.startsWith("grupo_entidade_ciclo_invalido")) {
+      pd.setDetail("Nao e possivel mover o grupo para dentro da propria subarvore.");
     } else {
       pd.setDetail(ex.getMessage());
     }
@@ -70,6 +84,12 @@ public class ApiExceptionHandler {
       pd.setDetail("Esta empresa ja esta vinculada a outro agrupador nesta configuracao.");
     } else if (normalized.contains("ux_agrupador_empresa_config_nome")) {
       pd.setDetail("Ja existe agrupador com este nome para esta configuracao.");
+    } else if (normalized.contains("ux_registro_entidade_codigo_scope")) {
+      pd.setDetail("Ja existe entidade com este codigo na configuracao atual.");
+    } else if (normalized.contains("ux_pessoa_tenant_tipo_registro_federal_norm")) {
+      pd.setDetail("Ja existe pessoa com este documento neste locatario.");
+    } else if (normalized.contains("ux_grupo_entidade_nome_parent_ativo")) {
+      pd.setDetail("Ja existe grupo com este nome no mesmo nivel.");
     } else {
       pd.setDetail("Operacao violou uma restricao de integridade.");
     }
@@ -84,6 +104,13 @@ public class ApiExceptionHandler {
       || message.startsWith("tipo_entidade_nome_duplicado")
       || message.startsWith("tipo_entidade_padrao_nao_excluivel")
       || message.startsWith("tipo_entidade_padrao_inativacao_nao_permitida")
-      || message.startsWith("tipo_entidade_config_duplicada_agrupador");
+      || message.startsWith("tipo_entidade_config_duplicada_agrupador")
+      || message.startsWith("empresa_context_required")
+      || message.startsWith("empresa_sem_grupo_no_tipo_entidade")
+      || message.startsWith("entidade_codigo_duplicado_configuracao")
+      || message.startsWith("pessoa_registro_federal_duplicado")
+      || message.startsWith("grupo_entidade_nome_duplicado_mesmo_pai")
+      || message.startsWith("grupo_entidade_possui_entidades")
+      || message.startsWith("grupo_entidade_ciclo_invalido");
   }
 }

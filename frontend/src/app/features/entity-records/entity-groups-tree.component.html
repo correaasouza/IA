@@ -1,0 +1,82 @@
+<section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+  <div class="mb-2 flex items-center justify-between gap-2">
+    <div class="text-sm font-semibold">Grupos de Entidade</div>
+    <div class="flex items-center gap-2">
+      <button
+        mat-stroked-button
+        type="button"
+        class="groups-all-button"
+        [class.groups-all-button-drop]="isAllDropTarget()"
+        (click)="selectGroup(null)"
+        (dragover)="onDragOverAll($event)"
+        (dragleave)="onDragLeaveAll()"
+        (drop)="onDropAll($event)">
+        <mat-icon>list</mat-icon>
+        Todos
+      </button>
+      <button mat-flat-button color="primary" type="button" (click)="addFromSelection()" [disabled]="!canManage || !tipoEntidadeId">
+        <mat-icon>add</mat-icon>
+        {{ createButtonLabel() }}
+      </button>
+    </div>
+  </div>
+
+  <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="loading">
+    Carregando grupos...
+  </div>
+
+  <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="!loading && nodes.length === 0">
+    Nenhum grupo cadastrado para o contexto atual.
+  </div>
+
+  <ng-container *ngIf="!loading && nodes.length > 0">
+    <ng-template #nodeTpl let-node>
+      <li class="group-node">
+        <div
+          class="group-node-row"
+          [class.group-node-row-selected]="isSelected(node)"
+          [class.group-node-row-drop]="isGroupDropTarget(node)"
+          (click)="selectGroup(node.id)"
+          (dragover)="onDragOverGroup(node, $event)"
+          (dragleave)="onDragLeaveGroup(node)"
+          (drop)="onDropGroup(node, $event)">
+          <button
+            *ngIf="hasChildren(node)"
+            mat-icon-button
+            type="button"
+            class="group-node-toggle"
+            (click)="toggleExpand(node, $event)"
+            [attr.aria-label]="isExpanded(node) ? 'Recolher grupo' : 'Expandir grupo'">
+            <mat-icon>{{ isExpanded(node) ? 'expand_more' : 'chevron_right' }}</mat-icon>
+          </button>
+          <span *ngIf="!hasChildren(node)" class="group-node-toggle-placeholder"></span>
+          <span class="group-node-title">{{ node.nome }}</span>
+          <span class="group-node-count">{{ node.totalRegistros || 0 }}</span>
+          <span class="group-node-actions">
+            <button mat-icon-button type="button" (click)="addChild(node); $event.stopPropagation()" matTooltip="Adicionar subgrupo">
+              <mat-icon>subdirectory_arrow_right</mat-icon>
+            </button>
+            <button mat-icon-button type="button" (click)="rename(node); $event.stopPropagation()" matTooltip="Renomear">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" type="button" (click)="remove(node); $event.stopPropagation()" matTooltip="Excluir">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </span>
+        </div>
+
+        <ul class="group-children" *ngIf="node.children?.length && isExpanded(node)">
+          <ng-container *ngFor="let child of node.children">
+            <ng-container *ngTemplateOutlet="nodeTpl; context: { $implicit: child }"></ng-container>
+          </ng-container>
+        </ul>
+      </li>
+    </ng-template>
+
+    <ul class="group-root">
+      <ng-container *ngFor="let node of nodes">
+        <ng-container *ngTemplateOutlet="nodeTpl; context: { $implicit: node }"></ng-container>
+      </ng-container>
+    </ul>
+  </ng-container>
+</section>

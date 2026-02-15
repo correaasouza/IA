@@ -24,6 +24,7 @@ import { IconService } from './core/menu/icon.service';
 import { AccessControlConfigDialogComponent } from './core/access/access-control-config-dialog.component';
 import { environment } from '../environments/environment';
 import { CompanyService, EmpresaResponse } from './features/companies/company.service';
+import { EntityTypeService, TipoEntidade } from './features/entity-types/entity-type.service';
 
 @Component({
   selector: 'app-root',
@@ -49,6 +50,9 @@ export class AppComponent {
   sidebarOpen = true;
   isMobile = false;
   menu: MenuItem[] = [];
+  allMenu: MenuItem[] = [];
+  private dynamicEntityTypeItems: MenuItem[] = [];
+  private loadingEntityTypeItems = false;
   atalhos: AtalhoUsuario[] = [];
   atalhosTop: MenuItem[] = [];
   shortcutState: Record<string, boolean> = {};
@@ -59,6 +63,7 @@ export class AppComponent {
   currentRoute = '';
   expandedGroups: Record<string, boolean> = {};
   private readonly expandedKey = 'menu:expanded';
+  private readonly menuModeKey = 'menu:mode';
   loggedIn = false;
   userName = '';
   userInitials = 'U';
@@ -69,6 +74,7 @@ export class AppComponent {
   private currentTenantId = '';
   private readonly shortcutRemoving = new Set<string>();
   private readonly shortcutCreating = new Set<string>();
+  menuMode: 'operacao' | 'configuracao' = 'operacao';
   private readonly menuLabelAliases: Record<string, string> = {
     metadata: 'Tipos Ent.'
   };
@@ -81,6 +87,7 @@ export class AppComponent {
     private dialog: MatDialog,
     private breakpoint: BreakpointObserver,
     private iconService: IconService,
+    private entityTypeService: EntityTypeService,
     private companyService: CompanyService,
     private http: HttpClient,
     private router: Router
@@ -97,6 +104,10 @@ export class AppComponent {
       } catch {
         this.expandedGroups = {};
       }
+    }
+    const cachedMenuMode = localStorage.getItem(this.menuModeKey);
+    if (cachedMenuMode === 'operacao' || cachedMenuMode === 'configuracao') {
+      this.menuMode = cachedMenuMode;
     }
     this.refreshMenu();
     this.updateRouteFlags(this.router.url);
@@ -253,7 +264,7 @@ export class AppComponent {
   }
 
   private rebuildShortcutsTop() {
-    const allowed = this.flattenMenu(this.menu);
+    const allowed = this.flattenMenu(this.allMenu.length ? this.allMenu : this.menu);
     this.atalhosTop = (this.atalhos || [])
       .sort((a, b) => a.ordem - b.ordem)
       .map(a => allowed.find(m => m.id === a.menuId))
@@ -292,7 +303,7 @@ export class AppComponent {
   }
 
   hasActiveChild(item: MenuItem): boolean {
-    return !!item.children?.some(child => this.isActiveRoute(child.route || ''));
+    return !!item.children?.some(child => this.isMenuItemActive(child));
   }
 
   private isAllowedLeaf(item: MenuItem): boolean {
@@ -300,8 +311,9 @@ export class AppComponent {
     if (!tenantId && item.id !== 'home') {
       return false;
     }
+    const controlKey = item.accessKey || `menu.${item.id}`;
     const roleOk = !item.roles || item.roles.length === 0
-      || this.accessControl.can(`menu.${item.id}`, item.roles);
+      || this.accessControl.can(controlKey, item.roles);
     const permOk = !item.perms || item.perms.length === 0 || item.perms.some(p => this.permissions.includes(p));
     if (item.roles && item.roles.length > 0 && item.perms && item.perms.length > 0) {
       return roleOk || permOk;
@@ -348,8 +360,11 @@ export class AppComponent {
   }
 
   refreshMenu() {
-    this.menu = this.normalizeMenu(this.menuService.items);
+    this.allMenu = this.normalizeMenu(this.menuSource());
+    this.menu = this.filterMenuByMode(this.allMenu);
     this.expandForRoute();
+    this.rebuildShortcutsTop();
+    this.loadEntityTypeMenuItems();
   }
 
   private normalizeMenu(items: MenuItem[]): MenuItem[] {
@@ -380,6 +395,15 @@ export class AppComponent {
     return items.flatMap(item => item.children && item.children.length > 0 ? item.children : [item]);
   }
 
+  private filterMenuByMode(items: MenuItem[]): MenuItem[] {
+    return (items || []).filter(item => {
+      if (this.menuMode === 'operacao') {
+        return item.id === 'group-cadastros';
+      }
+      return item.id === 'group-access' || item.id === 'group-config';
+    });
+  }
+
   private expandForRoute() {
     this.menu.forEach(item => {
       if (item.children && item.children.length > 0 && this.hasActiveChild(item)) {
@@ -394,6 +418,16 @@ export class AppComponent {
 
   private persistExpanded() {
     localStorage.setItem(this.expandedKey, JSON.stringify(this.expandedGroups));
+  }
+
+  toggleMenuMode(): void {
+    this.menuMode = this.menuMode === 'operacao' ? 'configuracao' : 'operacao';
+    localStorage.setItem(this.menuModeKey, this.menuMode);
+    this.refreshMenu();
+  }
+
+  menuModeLabel(): string {
+    return this.menuMode === 'operacao' ? 'Operação' : 'Configuração';
   }
 
   private updateRouteFlags(url: string) {
@@ -530,7 +564,11 @@ export class AppComponent {
   onEmpresaContextChange(rawId: string | number | null): void {
     const id = Number(rawId || 0);
     if (!id) return;
+    const previousId = this.empresaContextId || 0;
     this.setEmpresaContext(id);
+    if (previousId !== id) {
+      this.notifyEmpresaContextUpdated();
+    }
   }
 
   private clearEmpresaContextSelection(): void {
@@ -547,6 +585,11 @@ export class AppComponent {
     localStorage.setItem('empresaContextId', String(empresa.id));
     localStorage.setItem('empresaContextTipo', empresa.tipo || '');
     localStorage.setItem('empresaContextNome', empresa.razaoSocial || '');
+  }
+
+  private notifyEmpresaContextUpdated(): void {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent('empresa-context-updated'));
   }
 
   private clearEmpresaContext(): void {
@@ -591,7 +634,37 @@ export class AppComponent {
   isActiveRoute(route: string): boolean {
     if (!route) return false;
     if (route === '/') return this.isSelectionRoute;
-    return this.currentRoute === route || this.currentRoute.startsWith(route + '/');
+    const currentPath = this.currentPath();
+    return currentPath === route || currentPath.startsWith(route + '/');
+  }
+
+  isMenuItemActive(item: MenuItem): boolean {
+    if (!item?.route) return false;
+    if (!this.isActiveRoute(item.route)) return false;
+    const expected = item.queryParams || {};
+    const expectedKeys = Object.keys(expected);
+    if (expectedKeys.length === 0) return true;
+    const currentQuery = this.currentQueryParams();
+    return expectedKeys.every(key => String(currentQuery[key] ?? '') === String(expected[key]));
+  }
+
+  menuQueryParams(item: MenuItem): Record<string, string | number | boolean> | null {
+    return item.queryParams || null;
+  }
+
+  private currentPath(): string {
+    const url = this.currentRoute || this.router.url || '';
+    const path = url.split('?')[0]?.split('#')[0] || '';
+    return path || '/';
+  }
+
+  private currentQueryParams(): Record<string, unknown> {
+    try {
+      const parsed = this.router.parseUrl(this.currentRoute || this.router.url || '/');
+      return parsed.queryParams || {};
+    } catch {
+      return {};
+    }
   }
 
   getMenuLabel(item: MenuItem): string {
@@ -605,7 +678,7 @@ export class AppComponent {
   configureMenuAccess(item: MenuItem, event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    const key = `menu.${item.id}`;
+    const key = item.accessKey || `menu.${item.id}`;
     const current = this.accessControl.getRoles(key, item.roles || []);
     this.dialog.open(AccessControlConfigDialogComponent, {
       width: '460px',
@@ -622,6 +695,123 @@ export class AppComponent {
       this.refreshMenu();
       this.rebuildShortcutsTop();
     });
+  }
+
+  private menuSource(): MenuItem[] {
+    const source = (this.menuService.items || []).map(item => ({
+      ...item,
+      children: item.children ? [...item.children] : undefined
+    }));
+    const cadastros = source.find(item => item.id === 'group-cadastros');
+    if (cadastros && this.dynamicEntityTypeItems.length > 0) {
+      cadastros.children = [...this.dynamicEntityTypeItems];
+    }
+    return source;
+  }
+
+  private loadEntityTypeMenuItems(): void {
+    const tenantId = this.getTenantId();
+    if (!tenantId || this.isSelectionRoute || this.loadingEntityTypeItems) {
+      return;
+    }
+    this.loadingEntityTypeItems = true;
+    this.entityTypeService.list({ page: 0, size: 300, ativo: true })
+      .pipe(finalize(() => (this.loadingEntityTypeItems = false)))
+      .subscribe({
+        next: data => {
+          const types = (data?.content || []).filter(t => t.ativo);
+          this.dynamicEntityTypeItems = this.mapEntityTypesToMenu(types);
+          this.allMenu = this.normalizeMenu(this.menuSource());
+          this.menu = this.filterMenuByMode(this.allMenu);
+          this.expandForRoute();
+          this.rebuildShortcutsTop();
+        },
+        error: () => {
+          // keep static fallback menu on failures
+        }
+      });
+  }
+
+  private mapEntityTypesToMenu(types: TipoEntidade[]): MenuItem[] {
+    const orderBySeed: Record<string, number> = {
+      CLIENTE: 1,
+      FORNECEDOR: 2,
+      EQUIPE: 3
+    };
+    return [...(types || [])]
+      .sort((a, b) => {
+        const seedA = (a.codigoSeed || '').trim().toUpperCase();
+        const seedB = (b.codigoSeed || '').trim().toUpperCase();
+        const orderA = orderBySeed[seedA] ?? 999;
+        const orderB = orderBySeed[seedB] ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.nome || '').localeCompare(b.nome || '');
+      })
+      .map(type => this.toEntityTypeMenuItem(type));
+  }
+
+  private toEntityTypeMenuItem(type: TipoEntidade): MenuItem {
+    const seed = (type.codigoSeed || '').trim().toUpperCase();
+    if (seed === 'CLIENTE') {
+      return {
+        id: 'entities-clientes',
+        label: this.formatTipoMenuLabel(type.nome || 'Clientes'),
+        route: '/entities',
+        queryParams: { tipoEntidadeId: type.id, tipoSeed: 'CLIENTE' },
+        accessKey: 'menu.entities-clientes',
+        icon: 'badge',
+        roles: ['MASTER', 'ADMIN'],
+        perms: ['ENTIDADE_EDIT']
+      };
+    }
+    if (seed === 'FORNECEDOR') {
+      return {
+        id: 'entities-fornecedores',
+        label: this.formatTipoMenuLabel(type.nome || 'Fornecedores'),
+        route: '/entities',
+        queryParams: { tipoEntidadeId: type.id, tipoSeed: 'FORNECEDOR' },
+        accessKey: 'menu.entities-fornecedores',
+        icon: 'local_shipping',
+        roles: ['MASTER', 'ADMIN'],
+        perms: ['ENTIDADE_EDIT']
+      };
+    }
+    if (seed === 'EQUIPE') {
+      return {
+        id: 'entities-equipe',
+        label: this.formatTipoMenuLabel(type.nome || 'Equipe'),
+        route: '/entities',
+        queryParams: { tipoEntidadeId: type.id, tipoSeed: 'EQUIPE' },
+        accessKey: 'menu.entities-equipe',
+        icon: 'groups',
+        roles: ['MASTER', 'ADMIN'],
+        perms: ['ENTIDADE_EDIT']
+      };
+    }
+    return {
+      id: `entities-tipo-${type.id}`,
+      label: this.formatTipoMenuLabel(type.nome || `Tipo ${type.id}`),
+      route: '/entities',
+      queryParams: { tipoEntidadeId: type.id },
+      accessKey: `menu.entities.tipo.${type.id}`,
+      icon: 'view_list',
+      roles: ['MASTER', 'ADMIN'],
+      perms: ['ENTIDADE_EDIT']
+    };
+  }
+
+  private formatTipoMenuLabel(value: string): string {
+    const raw = (value || '').trim();
+    if (!raw) return 'Entidades';
+    if (raw === raw.toUpperCase()) {
+      return raw
+        .toLowerCase()
+        .split(' ')
+        .filter(part => !!part)
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+    }
+    return raw;
   }
 }
 

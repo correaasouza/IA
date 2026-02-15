@@ -44,7 +44,8 @@ public class PessoaService {
       return repository.findByTenantIdAndCnpj(tenantId, normalized)
         .orElseThrow(() -> new EntityNotFoundException("pessoa_not_found"));
     }
-    return repository.findByTenantIdAndIdEstrangeiro(tenantId, documento)
+    String idEstrangeiroNormalizado = normalizeIdEstrangeiro(documento);
+    return repository.findByTenantIdAndIdEstrangeiro(tenantId, idEstrangeiroNormalizado)
       .orElseThrow(() -> new EntityNotFoundException("pessoa_not_found"));
   }
 
@@ -62,6 +63,9 @@ public class PessoaService {
     entity.setCnpj(documento.cnpj);
     entity.setIdEstrangeiro(documento.idEstrangeiro);
     entity.setTipoPessoa(tipoPessoa);
+    entity.setTipoRegistro(toTipoRegistro(tipoPessoa));
+    entity.setRegistroFederal(documento.registroFederal);
+    entity.setRegistroFederalNormalizado(documento.registroFederalNormalizado);
     entity.setAtivo(request.ativo());
     entity.setVersao(1);
     return repository.save(entity);
@@ -81,6 +85,9 @@ public class PessoaService {
     entity.setCnpj(documento.cnpj);
     entity.setIdEstrangeiro(documento.idEstrangeiro);
     entity.setTipoPessoa(tipoPessoa);
+    entity.setTipoRegistro(toTipoRegistro(tipoPessoa));
+    entity.setRegistroFederal(documento.registroFederal);
+    entity.setRegistroFederalNormalizado(documento.registroFederalNormalizado);
     entity.setAtivo(request.ativo());
     entity.setVersao(entity.getVersao() + 1);
     return repository.save(entity);
@@ -135,18 +142,29 @@ public class PessoaService {
   private DocumentoInfo normalizeDocumento(PessoaRequest request, String tipoPessoa) {
     String cpf = normalize(request.cpf());
     String cnpj = normalize(request.cnpj());
-    String idEstrangeiro = trimToNull(request.idEstrangeiro());
+    String idEstrangeiro = normalizeIdEstrangeiro(request.idEstrangeiro());
+    String registroFederal;
+    String registroFederalNormalizado;
     if ("FISICA".equals(tipoPessoa)) {
       cnpj = null;
       idEstrangeiro = null;
+      registroFederal = cpf;
+      registroFederalNormalizado = cpf;
     } else if ("JURIDICA".equals(tipoPessoa)) {
       cpf = null;
       idEstrangeiro = null;
+      registroFederal = cnpj;
+      registroFederalNormalizado = cnpj;
     } else if ("ESTRANGEIRA".equals(tipoPessoa)) {
       cpf = null;
       cnpj = null;
+      registroFederal = idEstrangeiro;
+      registroFederalNormalizado = idEstrangeiro;
+    } else {
+      registroFederal = null;
+      registroFederalNormalizado = null;
     }
-    return new DocumentoInfo(cpf, cnpj, idEstrangeiro);
+    return new DocumentoInfo(cpf, cnpj, idEstrangeiro, registroFederal, registroFederalNormalizado);
   }
 
   private String resolveTipoPessoa(PessoaRequest request) {
@@ -177,6 +195,12 @@ public class PessoaService {
     return trimmed.isEmpty() ? null : trimmed;
   }
 
+  private String normalizeIdEstrangeiro(String value) {
+    String trimmed = trimToNull(value);
+    if (trimmed == null) return null;
+    return trimmed.toUpperCase();
+  }
+
   private String normalize(String value) {
     if (value == null) return null;
     return value.replaceAll("\\D", "");
@@ -186,7 +210,21 @@ public class PessoaService {
     return value == null || value.isBlank();
   }
 
-  private record DocumentoInfo(String cpf, String cnpj, String idEstrangeiro) {}
+  private String toTipoRegistro(String tipoPessoa) {
+    return switch (tipoPessoa) {
+      case "FISICA" -> "CPF";
+      case "JURIDICA" -> "CNPJ";
+      case "ESTRANGEIRA" -> "ID_ESTRANGEIRO";
+      default -> throw new IllegalArgumentException("tipo_pessoa_invalido");
+    };
+  }
+
+  private record DocumentoInfo(
+      String cpf,
+      String cnpj,
+      String idEstrangeiro,
+      String registroFederal,
+      String registroFederalNormalizado) {}
 
   private Long requireTenant() {
     Long tenantId = TenantContext.getTenantId();

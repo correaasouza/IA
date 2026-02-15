@@ -17,6 +17,9 @@ import { AccessControlFormComponent } from './features/access-controls/access-co
 import { ConfigsComponent } from './features/configs/configs.component';
 import { EntityTypesListComponent } from './features/entity-types/entity-types-list.component';
 import { EntityTypeFormComponent } from './features/entity-types/entity-type-form.component';
+import { EntityRecordsListComponent } from './features/entity-records/entity-records-list.component';
+import { EntityRecordFormComponent } from './features/entity-records/entity-record-form.component';
+import { EntityGroupsPageComponent } from './features/entity-records/entity-groups-page.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent, canActivate: [AuthGuard] },
@@ -46,6 +49,11 @@ export const routes: Routes = [
   { path: 'entity-types/new', component: EntityTypeFormComponent, canActivate: [AuthGuard] },
   { path: 'entity-types/:id', component: EntityTypeFormComponent, canActivate: [AuthGuard] },
   { path: 'entity-types/:id/edit', component: EntityTypeFormComponent, canActivate: [AuthGuard] },
+  { path: 'entities', component: EntityRecordsListComponent, canActivate: [AuthGuard] },
+  { path: 'entities/groups', component: EntityGroupsPageComponent, canActivate: [AuthGuard] },
+  { path: 'entities/new', component: EntityRecordFormComponent, canActivate: [AuthGuard] },
+  { path: 'entities/:id', component: EntityRecordFormComponent, canActivate: [AuthGuard] },
+  { path: 'entities/:id/edit', component: EntityRecordFormComponent, canActivate: [AuthGuard] },
   { path: 'help', component: HelpComponent, canActivate: [AuthGuard] },
   { path: 'blocked', component: BlockedComponent }
 ];

@@ -1,6 +1,7 @@
 package com.ia.app.security;
 
 import com.ia.app.domain.Locatario;
+import com.ia.app.repository.EmpresaRepository;
 import com.ia.app.repository.LocatarioRepository;
 import com.ia.app.repository.UsuarioLocatarioAcessoRepository;
 import com.ia.app.repository.UsuarioRepository;
@@ -19,6 +20,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import com.ia.app.tenant.EmpresaContext;
 import com.ia.app.tenant.TenantContext;
 
 @Component
@@ -31,16 +33,19 @@ public class TenantAccessFilter extends OncePerRequestFilter {
   );
 
   private final LocatarioRepository repository;
+  private final EmpresaRepository empresaRepository;
   private final UsuarioRepository usuarioRepository;
   private final UsuarioLocatarioAcessoRepository usuarioLocatarioAcessoRepository;
   private final ObjectMapper objectMapper;
 
   public TenantAccessFilter(
       LocatarioRepository repository,
+      EmpresaRepository empresaRepository,
       UsuarioRepository usuarioRepository,
       UsuarioLocatarioAcessoRepository usuarioLocatarioAcessoRepository,
       ObjectMapper objectMapper) {
     this.repository = repository;
+    this.empresaRepository = empresaRepository;
     this.usuarioRepository = usuarioRepository;
     this.usuarioLocatarioAcessoRepository = usuarioLocatarioAcessoRepository;
     this.objectMapper = objectMapper;
@@ -114,10 +119,33 @@ public class TenantAccessFilter extends OncePerRequestFilter {
       }
     }
 
+    String empresaIdHeader = request.getHeader("X-Empresa-Id");
+    Long empresaId = null;
+    if (empresaIdHeader != null && !empresaIdHeader.isBlank()) {
+      try {
+        empresaId = Long.parseLong(empresaIdHeader);
+      } catch (NumberFormatException ex) {
+        writeProblem(response, 400, "empresa_context_invalid", "Empresa inválida",
+          "X-Empresa-Id deve ser um número.");
+        return;
+      }
+      if (empresaId <= 0 || !empresaRepository.existsByIdAndTenantId(empresaId, tenantId)) {
+        writeProblem(response, 404, "empresa_context_not_found", "Empresa não encontrada",
+          "Empresa informada não existe no locatário.");
+        return;
+      }
+    }
+
     try {
       TenantContext.setTenantId(tenantId);
+      if (empresaId != null) {
+        EmpresaContext.setEmpresaId(empresaId);
+      } else {
+        EmpresaContext.clear();
+      }
       filterChain.doFilter(request, response);
     } finally {
+      EmpresaContext.clear();
       TenantContext.clear();
     }
   }

@@ -14,4 +14,6 @@ public interface PessoaRepository extends JpaRepository<Pessoa, Long> {
   Optional<Pessoa> findByTenantIdAndCpf(Long tenantId, String cpf);
   Optional<Pessoa> findByTenantIdAndCnpj(Long tenantId, String cnpj);
   Optional<Pessoa> findByTenantIdAndIdEstrangeiro(Long tenantId, String idEstrangeiro);
+  Optional<Pessoa> findByTenantIdAndTipoRegistroAndRegistroFederalNormalizado(
+    Long tenantId, String tipoRegistro, String registroFederalNormalizado);
 }

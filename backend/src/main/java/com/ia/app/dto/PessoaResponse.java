@@ -7,6 +7,9 @@ public record PessoaResponse(
   String cpf,
   String cnpj,
   String idEstrangeiro,
+  String tipoRegistro,
+  String registroFederal,
+  String registroFederalNormalizado,
   String tipoPessoa,
   boolean ativo
 ) {}

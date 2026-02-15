@@ -14,10 +14,14 @@ export class AuthInterceptor implements HttpInterceptor {
       catchError(() => of(false)),
       switchMap(loggedIn => {
         const tenantId = localStorage.getItem('tenantId');
+        const empresaId = localStorage.getItem('empresaContextId');
         if (!loggedIn) {
           let headers = req.headers;
           if (tenantId) {
             headers = headers.set('X-Tenant-Id', tenantId);
+          }
+          if (empresaId) {
+            headers = headers.set('X-Empresa-Id', empresaId);
           }
           return next.handle(req.clone({ headers }));
         }
@@ -31,6 +35,9 @@ export class AuthInterceptor implements HttpInterceptor {
               let headers = req.headers;
               if (tenantId) {
                 headers = headers.set('X-Tenant-Id', tenantId);
+              }
+              if (empresaId) {
+                headers = headers.set('X-Empresa-Id', empresaId);
               }
               return next.handle(req.clone({ headers }));
             }
@@ -46,6 +53,9 @@ export class AuthInterceptor implements HttpInterceptor {
               .set('X-Request-Id', requestId);
             if (tenantId) {
               headers = headers.set('X-Tenant-Id', tenantId);
+            }
+            if (empresaId) {
+              headers = headers.set('X-Empresa-Id', empresaId);
             }
             return next.handle(req.clone({ headers }));
           })

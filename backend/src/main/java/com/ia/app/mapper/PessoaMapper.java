@@ -14,6 +14,9 @@ public class PessoaMapper {
       entity.getCpf(),
       entity.getCnpj(),
       entity.getIdEstrangeiro(),
+      entity.getTipoRegistro(),
+      entity.getRegistroFederal(),
+      entity.getRegistroFederalNormalizado(),
       entity.getTipoPessoa(),
       entity.isAtivo()
     );

@@ -16,6 +16,7 @@ import { AccessControlService } from '../../core/access/access-control.service';
 import { MenuItem, MenuService } from '../../core/menu/menu.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { NotificationService } from '../../core/notifications/notification.service';
+import { EntityTypeService } from '../entity-types/entity-type.service';
 
 @Component({
   selector: 'app-access-controls',
@@ -48,6 +49,7 @@ export class AccessControlsComponent implements OnInit {
   constructor(
     private access: AccessControlService,
     private menuService: MenuService,
+    private entityTypeService: EntityTypeService,
     private breakpoint: BreakpointObserver,
     private dialog: MatDialog,
     private notify: NotificationService,
@@ -65,22 +67,18 @@ export class AccessControlsComponent implements OnInit {
 
   reload() {
     this.access.refreshPolicies();
-    this.fallbackRolesByKey = this.buildFallbackRolesByKey(this.menuService.items);
-    const map = new Map<string, string[]>();
-
-    Object.entries(this.fallbackRolesByKey).forEach(([key, fallback]) => {
-      map.set(key, this.normalizeRoles(this.access.getRoles(key, fallback)));
+    const baseFallbacks = this.buildFallbackRolesByKey(this.menuService.items);
+    this.entityTypeService.list({ page: 0, size: 300, ativo: true }).subscribe({
+      next: data => {
+        const typeFallbacks = this.buildEntityTypeFallbacks(data?.content || []);
+        this.fallbackRolesByKey = { ...baseFallbacks, ...typeFallbacks };
+        this.composePolicies();
+      },
+      error: () => {
+        this.fallbackRolesByKey = baseFallbacks;
+        this.composePolicies();
+      }
     });
-
-    this.access.listPolicies().forEach(p => {
-      map.set(p.controlKey, this.normalizeRoles(p.roles));
-    });
-
-    this.policies = Array.from(map.entries())
-      .map(([controlKey, roles]) => ({ controlKey, roles }))
-      .sort((a, b) => a.controlKey.localeCompare(b.controlKey));
-
-    this.applyFilters();
   }
 
   viewPolicy(item: { controlKey: string }): void {
@@ -159,8 +157,33 @@ export class AccessControlsComponent implements OnInit {
         continue;
       }
       if (!item.id) continue;
-      map[`menu.${item.id}`] = (item.roles || []).map(r => (r || '').toUpperCase());
+      const key = (item.accessKey || `menu.${item.id}`).toLowerCase();
+      map[key] = (item.roles || []).map(r => (r || '').toUpperCase());
     }
     return map;
+  }
+
+  private buildEntityTypeFallbacks(types: Array<{ id: number; tipoPadrao?: boolean; ativo?: boolean }>): Record<string, string[]> {
+    const map: Record<string, string[]> = {};
+    (types || [])
+      .filter(t => t?.ativo !== false && !!t?.id && !t?.tipoPadrao)
+      .forEach(t => {
+        map[`menu.entities.tipo.${t.id}`] = ['MASTER', 'ADMIN'];
+      });
+    return map;
+  }
+
+  private composePolicies(): void {
+    const map = new Map<string, string[]>();
+    Object.entries(this.fallbackRolesByKey).forEach(([key, fallback]) => {
+      map.set(key, this.normalizeRoles(this.access.getRoles(key, fallback)));
+    });
+    this.access.listPolicies().forEach(p => {
+      map.set(p.controlKey, this.normalizeRoles(p.roles));
+    });
+    this.policies = Array.from(map.entries())
+      .map(([controlKey, roles]) => ({ controlKey, roles }))
+      .sort((a, b) => a.controlKey.localeCompare(b.controlKey));
+    this.applyFilters();
   }
 }

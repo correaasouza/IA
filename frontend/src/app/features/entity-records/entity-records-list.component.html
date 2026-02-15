@@ -1,0 +1,224 @@
+<div class="grid gap-3">
+  <div class="page-list-sticky grid gap-3">
+    <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+      <div>
+        <h1 class="m-0 text-lg font-bold">{{ headerTitle() }}</h1>
+        <p class="mt-1 text-xs text-[var(--muted)]">Listagem no contexto da empresa selecionada no sistema.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button mat-flat-button color="primary" type="button" (click)="goNew()" [disabled]="!context?.vinculado">
+          <mat-icon>add</mat-icon>
+          Nova entidade
+        </button>
+      </div>
+    </header>
+
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <div class="text-sm font-semibold">Filtros</div>
+        <div class="flex items-center gap-2">
+          <button mat-button type="button" class="mobile-filter-toggle md:!hidden" (click)="toggleMobileFilters()">
+            <mat-icon>tune</mat-icon>
+            Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
+            <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+          <div class="text-xs text-[var(--muted)]">{{ totalElements }} registro(s)</div>
+        </div>
+      </div>
+
+      <form
+        *ngIf="!isMobile || mobileFiltersOpen"
+        [formGroup]="filters"
+        class="grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1fr)_220px]"
+        role="search">
+        <div class="min-w-0">
+          <app-field-search
+            [options]="searchOptions"
+            [defaultFields]="searchFields"
+            [showActions]="false"
+            placeholder="Digite e selecione os campos"
+            (searchChange)="onSearchChange($event)">
+          </app-field-search>
+        </div>
+
+        <div class="status-search-like">
+          <select class="status-native-select" formControlName="status" (change)="applyFilters()" aria-label="Status">
+            <option value="">Status: Todos</option>
+            <option value="ativo">Status: Ativo</option>
+            <option value="inativo">Status: Inativo</option>
+          </select>
+        </div>
+      </form>
+      <div class="mt-2 text-xs text-[var(--muted)]" *ngIf="loadingContext">Resolvendo contexto da empresa...</div>
+    </section>
+  </div>
+
+  <section class="rounded-xl border border-dashed border-[#fda29b] bg-[#fef3f2] p-3 text-sm text-[#b42318]" *ngIf="contextWarning">
+    {{ contextWarning }}
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="context?.vinculado">
+    <div class="px-3 pb-0 pt-2 text-xs text-[var(--muted)]" *ngIf="context">
+      Empresa: <strong>{{ context.empresaNome }}</strong> |
+      Grupo: <strong>{{ context.agrupadorNome }}</strong>
+    </div>
+
+    <div class="entity-records-main-grid p-3 pt-2">
+      <aside class="entity-records-tree-col">
+        <app-entity-groups-tree
+          [tipoEntidadeId]="selectedTipoEntidadeId()"
+          [allowEntityDrop]="true"
+          [selectedGroupId]="selectedGroupId"
+          [canManage]="!!context?.vinculado"
+          (entityDroppedOnGroup)="onGroupDrop($event)"
+          (selectedGroupIdChange)="onGroupSelected($event)"
+          (changed)="refreshContextAndData()">
+        </app-entity-groups-tree>
+      </aside>
+
+      <div class="entity-records-list-col">
+        <div class="hidden overflow-auto border-b border-[var(--border-light)] md:block">
+          <table mat-table [dataSource]="registros" class="w-full">
+        <ng-container matColumnDef="codigo">
+          <th mat-header-cell *matHeaderCellDef>Codigo</th>
+          <td mat-cell *matCellDef="let row">{{ row.codigo }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="pessoa">
+          <th mat-header-cell *matHeaderCellDef>Pessoa</th>
+          <td mat-cell *matCellDef="let row">{{ row.pessoa.nome }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="registro">
+          <th mat-header-cell *matHeaderCellDef>Registro</th>
+          <td mat-cell *matCellDef="let row">{{ row.pessoa.tipoRegistro }} - {{ row.pessoa.registroFederal }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="grupo">
+          <th mat-header-cell *matHeaderCellDef>Grupo</th>
+          <td mat-cell *matCellDef="let row">{{ row.grupoEntidadeNome || '-' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="moverGrupo">
+          <th mat-header-cell *matHeaderCellDef>Mover grupo</th>
+          <td mat-cell *matCellDef="let row">
+            <select
+              class="entity-group-move-select"
+              [disabled]="!context?.vinculado"
+              [value]="row.grupoEntidadeId || ''"
+              (change)="onMoveGroup(row, $any($event.target).value)"
+              aria-label="Mover entidade de grupo">
+              <option value="">Sem grupo</option>
+              <option *ngFor="let grupo of gruposFiltro" [value]="grupo.id">{{ grupo.nome }}</option>
+            </select>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="ativo">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let row">{{ row.ativo ? 'Ativo' : 'Inativo' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="acoes">
+          <th mat-header-cell *matHeaderCellDef class="text-right">Acoes</th>
+          <td mat-cell *matCellDef="let row">
+            <div class="flex justify-end gap-1">
+              <button mat-icon-button type="button" (click)="view(row)" matTooltip="Consultar">
+                <mat-icon>visibility</mat-icon>
+              </button>
+              <button mat-icon-button type="button" (click)="edit(row)" matTooltip="Editar">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button color="warn" type="button" (click)="remove(row)" matTooltip="Excluir">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: displayedColumns;"
+          class="entity-row-draggable"
+          draggable="true"
+          (dragstart)="onEntityRowDragStart($event, row)"
+          matTooltip="Arraste esta linha para um grupo na arvore">
+        </tr>
+          </table>
+        </div>
+
+        <div class="grid gap-2.5 md:hidden" *ngIf="registros.length > 0">
+          <article
+            class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]"
+            *ngFor="let row of registros"
+            draggable="true"
+            (dragstart)="onEntityRowDragStart($event, row)">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-sm font-semibold">#{{ row.codigo }}</div>
+          <span
+            class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold"
+            [ngClass]="row.ativo ? 'bg-[var(--success-bg)] text-[var(--success-ink)]' : 'bg-[var(--warning-bg)] text-[var(--warning-ink)]'">
+            {{ row.ativo ? 'Ativo' : 'Inativo' }}
+          </span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Pessoa</span>
+            <span class="text-xs">{{ row.pessoa.nome }}</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Registro</span>
+            <span class="text-xs">{{ row.pessoa.tipoRegistro }} - {{ row.pessoa.registroFederal }}</span>
+          </div>
+          <div class="col-span-2 flex flex-col gap-0.5">
+            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Grupo</span>
+            <span class="text-xs">{{ row.grupoEntidadeNome || '-' }}</span>
+          </div>
+          <div class="col-span-2 flex flex-col gap-1">
+            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Mover grupo</span>
+            <select
+              class="entity-group-move-select"
+              [disabled]="!context?.vinculado"
+              [value]="row.grupoEntidadeId || ''"
+              (change)="onMoveGroup(row, $any($event.target).value)"
+              aria-label="Mover entidade de grupo no celular">
+              <option value="">Sem grupo</option>
+              <option *ngFor="let grupo of gruposFiltro" [value]="grupo.id">{{ grupo.nome }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex justify-between gap-1.5">
+          <span class="text-[10.5px] text-[var(--muted)] self-center">Arraste para a arvore</span>
+          <div class="flex gap-1.5">
+          <button mat-icon-button type="button" (click)="view(row)" matTooltip="Consultar" aria-label="Consultar entidade">
+            <mat-icon>visibility</mat-icon>
+          </button>
+          <button mat-icon-button type="button" (click)="edit(row)" matTooltip="Editar" aria-label="Editar entidade">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button mat-icon-button color="warn" type="button" (click)="remove(row)" matTooltip="Excluir" aria-label="Excluir entidade">
+            <mat-icon>delete</mat-icon>
+          </button>
+          </div>
+        </div>
+          </article>
+        </div>
+
+        <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-3 text-xs text-[var(--muted)]" *ngIf="!loading && registros.length === 0">
+          Nenhuma entidade encontrada para o contexto atual.
+        </div>
+
+        <mat-paginator
+          [length]="totalElements"
+          [pageIndex]="pageIndex"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="[10,20,50]"
+          (page)="pageChange($event)">
+        </mat-paginator>
+      </div>
+    </div>
+  </section>
+</div>

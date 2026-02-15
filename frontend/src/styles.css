@@ -9,6 +9,7 @@
 }
 
 :root {
+  --app-sidenav-width: 260px;
   --bg: #edf2f7;
   --surface: #ffffff;
   --surface-muted: #f4f7fb;
@@ -506,6 +507,12 @@ mat-icon {
 .mat-mdc-sidenav {
   background: var(--surface-muted);
   border-right: 1px solid var(--border);
+}
+
+.app-sidenav {
+  width: var(--app-sidenav-width) !important;
+  min-width: var(--app-sidenav-width) !important;
+  max-width: var(--app-sidenav-width) !important;
 }
 
 .mat-mdc-list-item .mdc-list-item__primary-text {

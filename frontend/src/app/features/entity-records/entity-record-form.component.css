@@ -1,0 +1,29 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.entity-record-form-shell {
+  min-width: 0;
+}
+
+.entity-record-form-header-actions {
+  width: auto;
+}
+
+@media (max-width: 767px) {
+  .entity-record-form-header-actions {
+    width: 100%;
+  }
+
+  .entity-record-form-header-actions .mat-mdc-button-base {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+}
+
+@media (max-width: 460px) {
+  .entity-record-form-header-actions .mat-mdc-button-base {
+    flex-basis: 100%;
+  }
+}

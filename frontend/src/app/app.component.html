@@ -25,7 +25,7 @@
       </button>
       <div class="flex min-w-0 flex-1 items-center gap-2" aria-label="Navegação rápida">
         <ng-container *ngFor="let s of atalhosTop">
-          <button mat-button [routerLink]="s.route" [ngClass]="isActiveRoute(s.route) ? 'bg-white/20' : ''" class="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-3 text-xs text-[#f5fbfd]">
+          <button mat-button [routerLink]="s.route" [queryParams]="menuQueryParams(s)" [ngClass]="isMenuItemActive(s) ? 'bg-white/20' : ''" class="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-3 text-xs text-[#f5fbfd]">
             <mat-icon>{{ s.icon }}</mat-icon>
             <span class="max-w-40 truncate" [attr.title]="s.label">{{ getMenuLabel(s) }}</span>
           </button>
@@ -96,11 +96,17 @@
     </div>
   </mat-toolbar>
 
-  <mat-sidenav-container class="h-[calc(100dvh-56px)] md:h-[calc(100dvh-68px)]">
-    <mat-sidenav #sidenav [mode]="isMobile ? 'over' : 'side'" [opened]="sidebarOpen" [fixedInViewport]="isMobile" [disableClose]="!isMobile" *ngIf="hasTenant" class="w-60 border-r border-[var(--border)] bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)]" role="navigation">
+  <mat-sidenav-container [autosize]="true" class="h-[calc(100dvh-56px)] md:h-[calc(100dvh-68px)]">
+    <mat-sidenav #sidenav [mode]="isMobile ? 'over' : 'side'" [opened]="sidebarOpen" [fixedInViewport]="isMobile" [disableClose]="!isMobile" *ngIf="hasTenant" class="app-sidenav border-r border-[var(--border)] bg-[linear-gradient(180deg,#f8fafc_0%,#f1f5f9_100%)]" role="navigation">
       <div class="grid gap-0.5 px-3.5 pb-1 pt-3">
         <span class="text-xs font-semibold uppercase tracking-[0.6px] text-[var(--muted)]">Navegação</span>
         <span class="text-xs text-[var(--muted-strong)]">Favoritos e módulos</span>
+      </div>
+      <div class="px-3.5 pb-2">
+        <button mat-stroked-button type="button" class="w-full !justify-start gap-2" (click)="toggleMenuMode()">
+          <mat-icon>swap_horiz</mat-icon>
+          <span>Modo: {{ menuModeLabel() }}</span>
+        </button>
       </div>
       <mat-nav-list class="px-2 pb-3">
         <ng-container *ngFor="let item of menu">
@@ -112,7 +118,8 @@
               mat-list-item
               *ngFor="let child of item.children"
               [routerLink]="child.route"
-              [ngClass]="isActiveRoute(child.route) ? 'bg-[#dfe8f3] text-[var(--ink)]' : ''"
+              [queryParams]="menuQueryParams(child)"
+              [ngClass]="isMenuItemActive(child) ? 'bg-[#dfe8f3] text-[var(--ink)]' : ''"
               class="sidebar-menu-item my-0.5 flex min-h-9 items-center gap-2 rounded-xl px-2 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--ink)]">
               <mat-icon class="menu-left-icon">{{ child.icon }}</mat-icon>
               <span class="menu-item-label truncate text-sm" [attr.title]="child.label">{{ getMenuLabel(child) }}</span>
@@ -144,7 +151,8 @@
             <a
               mat-list-item
               [routerLink]="item.route"
-              [ngClass]="isActiveRoute(item.route) ? 'bg-[#dfe8f3] text-[var(--ink)]' : ''"
+              [queryParams]="menuQueryParams(item)"
+              [ngClass]="isMenuItemActive(item) ? 'bg-[#dfe8f3] text-[var(--ink)]' : ''"
               class="sidebar-menu-item my-0.5 flex min-h-10 items-center gap-2 rounded-xl px-3 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--ink)]">
               <mat-icon class="menu-left-icon">{{ item.icon }}</mat-icon>
               <span class="menu-item-label truncate text-sm">{{ item.label }}</span>

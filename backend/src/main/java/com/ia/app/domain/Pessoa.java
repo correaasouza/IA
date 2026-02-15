@@ -6,9 +6,16 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "pessoa")
+@Table(
+  name = "pessoa",
+  uniqueConstraints = {
+    @UniqueConstraint(
+      name = "ux_pessoa_tenant_tipo_registro_federal_norm",
+      columnNames = {"tenant_id", "tipo_registro", "registro_federal_normalizado"})
+  })
 public class Pessoa extends AuditableEntity {
 
   @Id
@@ -32,6 +39,15 @@ public class Pessoa extends AuditableEntity {
 
   @Column(name = "id_estrangeiro", length = 40)
   private String idEstrangeiro;
+
+  @Column(name = "tipo_registro", nullable = false, length = 20)
+  private String tipoRegistro = "CPF";
+
+  @Column(name = "registro_federal", nullable = false, length = 40)
+  private String registroFederal;
+
+  @Column(name = "registro_federal_normalizado", nullable = false, length = 40)
+  private String registroFederalNormalizado;
 
   @Column(name = "tipo_pessoa", nullable = false, length = 20)
   private String tipoPessoa = "FISICA";
@@ -100,6 +116,30 @@ public class Pessoa extends AuditableEntity {
 
   public void setTipoPessoa(String tipoPessoa) {
     this.tipoPessoa = tipoPessoa;
+  }
+
+  public String getTipoRegistro() {
+    return tipoRegistro;
+  }
+
+  public void setTipoRegistro(String tipoRegistro) {
+    this.tipoRegistro = tipoRegistro;
+  }
+
+  public String getRegistroFederal() {
+    return registroFederal;
+  }
+
+  public void setRegistroFederal(String registroFederal) {
+    this.registroFederal = registroFederal;
+  }
+
+  public String getRegistroFederalNormalizado() {
+    return registroFederalNormalizado;
+  }
+
+  public void setRegistroFederalNormalizado(String registroFederalNormalizado) {
+    this.registroFederalNormalizado = registroFederalNormalizado;
   }
 
   public boolean isAtivo() {

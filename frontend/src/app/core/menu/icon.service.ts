@@ -7,6 +7,7 @@ export class IconService {
     'group-home': 'folder',
     'group-access': 'folder',
     'group-cadastros': 'folder',
+    'group-config': 'folder',
     'group-settings': 'folder',
     'group-reports': 'folder',
     'group-help': 'folder',
@@ -14,6 +15,10 @@ export class IconService {
     users: 'group',
     roles: 'security',
     entities: 'assignment',
+    'entities-clientes': 'badge',
+    'entities-fornecedores': 'local_shipping',
+    'entities-equipe': 'groups',
+    'entities-outras': 'view_list',
     metadata: 'view_list',
     'entities-config': 'fact_check',
     reports: 'bar_chart'
