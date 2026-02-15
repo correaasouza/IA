@@ -26,17 +26,20 @@ public class LocatarioService {
   private final PermissaoCatalogService permissaoCatalogService;
   private final PapelSeedService papelSeedService;
   private final TenantAdminSeedService tenantAdminSeedService;
+  private final TipoEntidadeSeedService tipoEntidadeSeedService;
 
   public LocatarioService(LocatarioRepository repository,
       PermissaoCatalogService permissaoCatalogService,
       PapelSeedService papelSeedService,
       TenantAdminSeedService tenantAdminSeedService,
+      TipoEntidadeSeedService tipoEntidadeSeedService,
       UsuarioRepository usuarioRepository,
       UsuarioLocatarioAcessoRepository usuarioLocatarioAcessoRepository) {
     this.repository = repository;
     this.permissaoCatalogService = permissaoCatalogService;
     this.papelSeedService = papelSeedService;
     this.tenantAdminSeedService = tenantAdminSeedService;
+    this.tipoEntidadeSeedService = tipoEntidadeSeedService;
     this.usuarioRepository = usuarioRepository;
     this.usuarioLocatarioAcessoRepository = usuarioLocatarioAcessoRepository;
   }
@@ -57,6 +60,7 @@ public class LocatarioService {
     Locatario saved = repository.save(locatario);
     permissaoCatalogService.seedDefaults(saved.getId());
     papelSeedService.seedDefaults(saved.getId());
+    tipoEntidadeSeedService.seedDefaults(saved.getId());
     tenantAdminSeedService.seedDefaultAdmin(saved);
     return saved;
   }

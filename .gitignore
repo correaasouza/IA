@@ -5,9 +5,10 @@ backend/target/
 frontend/node_modules/
 frontend/dist/
 .angular/
+frontend/playwright-report/
+frontend/test-results/
 
 # OS / tooling
 *.log
 .DS_Store
 Thumbs.db
-

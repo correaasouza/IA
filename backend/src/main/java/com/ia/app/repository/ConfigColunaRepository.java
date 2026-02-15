@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ConfigColunaRepository extends JpaRepository<ConfigColuna, Long> {
+  boolean existsByIdAndTenantId(Long id, Long tenantId);
   Optional<ConfigColuna> findFirstByTenantIdAndScreenIdAndScopeTipoAndScopeValor(Long tenantId, String screenId, String scopeTipo, String scopeValor);
   Optional<ConfigColuna> findFirstByTenantIdAndScreenIdAndScopeTipoAndScopeValorIn(Long tenantId, String screenId, String scopeTipo, List<String> scopeValor);
   Optional<ConfigColuna> findFirstByTenantIdAndScreenIdAndScopeTipo(Long tenantId, String screenId, String scopeTipo);

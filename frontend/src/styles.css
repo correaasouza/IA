@@ -238,6 +238,16 @@ body {
   padding: 12px;
 }
 
+.app-page-shell {
+  padding: 14px 20px;
+}
+
+@media (min-width: 768px) {
+  .app-page-shell {
+    padding: 14px 24px;
+  }
+}
+
 .page-header-sticky {
   position: sticky;
   top: 0;
@@ -246,8 +256,8 @@ body {
   opacity: 1;
   isolation: isolate;
   overflow: hidden;
-  margin-top: -14px;
-  padding: 14px 12px 8px;
+  margin-top: 0;
+  padding: 10px 12px 8px;
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: var(--shadow-xs);
@@ -269,8 +279,8 @@ body {
   opacity: 1;
   isolation: isolate;
   overflow: hidden;
-  margin-top: -14px;
-  padding: 14px 0 8px;
+  margin-top: 0;
+  padding: 10px 12px 8px;
   box-shadow: 0 1px 0 var(--border-light);
 }
 

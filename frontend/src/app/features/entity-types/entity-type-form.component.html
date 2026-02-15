@@ -1,0 +1,138 @@
+<div class="entity-type-form-shell grid gap-3">
+  <header class="entity-type-form-header page-header-sticky flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+    <div>
+      <h1 class="m-0 text-lg font-bold">{{ title }}</h1>
+      <p class="mt-1 text-xs text-[var(--muted)]" *ngIf="tipoEntidade">ID {{ tipoEntidade.id }}</p>
+      <p class="mt-1 text-xs text-[var(--muted-strong)]">Nome: {{ form.get('nome')?.value || tipoEntidade?.nome || '-' }}</p>
+    </div>
+    <div class="entity-type-form-header-actions flex flex-wrap gap-2">
+      <button class="entity-type-form-header-btn" mat-stroked-button type="button" (click)="back()">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+      <button class="entity-type-form-header-btn" mat-stroked-button *ngIf="mode === 'view'" type="button" (click)="toEdit()">
+        <mat-icon>edit</mat-icon>
+        Alterar
+      </button>
+      <button class="entity-type-form-header-btn" mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()" [disabled]="saving">
+        <mat-icon>save</mat-icon>
+        Salvar
+      </button>
+      <button
+        class="entity-type-form-header-btn"
+        mat-button
+        color="warn"
+        *ngIf="tipoEntidade && mode !== 'new' && !tipoEntidade.tipoPadrao"
+        type="button"
+        (click)="remove()"
+        [disabled]="deleting">
+        <mat-icon>delete</mat-icon>
+        Excluir
+      </button>
+    </div>
+  </header>
+
+  <section class="entity-type-card mt-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="mb-2.5 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Dados do tipo</div>
+      <span
+        *ngIf="tipoEntidade?.tipoPadrao"
+        class="inline-flex items-center justify-center rounded-full bg-[var(--info-bg)] px-2 py-0.5 text-xs font-semibold text-[var(--info-ink)]">
+        Padrao do Sistema
+      </span>
+    </div>
+
+    <form [formGroup]="form" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+      <mat-form-field appearance="outline">
+        <mat-label>Nome</mat-label>
+        <input matInput formControlName="nome" aria-describedby="tipo-entidade-nome-err" />
+        <mat-error id="tipo-entidade-nome-err" *ngIf="form.get('nome')?.hasError('required')">Informe o nome.</mat-error>
+      </mat-form-field>
+
+      <div class="entity-type-status-toggle flex items-center pt-2">
+        <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
+      </div>
+
+      <div class="col-span-full flex justify-end" *ngIf="loading">
+        <app-inline-loader label="Carregando dados"></app-inline-loader>
+      </div>
+      <div class="col-span-full flex justify-end" *ngIf="saving">
+        <app-inline-loader label="Salvando"></app-inline-loader>
+      </div>
+      <div class="col-span-full flex justify-end" *ngIf="deleting">
+        <app-inline-loader label="Excluindo"></app-inline-loader>
+      </div>
+    </form>
+  </section>
+
+  <section
+    *ngIf="tipoEntidade?.id"
+    class="entity-type-card rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="mb-2.5">
+      <div class="text-sm font-semibold">Configuracoes por Grupo de Empresas</div>
+      <div class="text-xs text-[var(--muted)]">Uma empresa pode participar de apenas um agrupador nesta configuracao.</div>
+    </div>
+    <app-agrupadores-empresa
+      [configType]="'TIPO_ENTIDADE'"
+      [configId]="tipoEntidade!.id"
+      [configReferenceName]="configOriginName()"
+      (configure)="openConfigPorGrupoModal($event)"
+      (changed)="onAgrupadoresChanged()">
+    </app-agrupadores-empresa>
+  </section>
+</div>
+
+<ng-template #configPorGrupoDialog>
+  <section class="entity-type-config-modal rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="entity-type-config-modal-header entity-type-config-modal-header-shell mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div class="min-w-0">
+        <div class="text-sm font-semibold">Configuracoes por Grupo de Empresas</div>
+        <div class="text-xs text-[var(--muted)]">Defina regras especificas para o agrupador selecionado.</div>
+        <div class="mt-2 text-xs text-[var(--muted-strong)]"><strong>Origem:</strong> {{ configOriginReference() }}</div>
+        <div class="mt-1 text-xs text-[var(--muted-strong)]"><strong>Grupo:</strong> {{ configGroupReference() }}</div>
+        <div class="mt-2">
+          <div class="text-xs font-semibold text-[var(--muted-strong)]">Empresas do grupo ({{ configModalGroupEmpresas.length }})</div>
+          <div class="entity-type-config-empresa-list mt-1" *ngIf="configModalGroupEmpresas.length > 0; else noEmpresaOnHeader">
+            <span class="entity-type-config-empresa-chip" *ngFor="let item of configModalGroupEmpresas">{{ item.nome }}</span>
+          </div>
+          <ng-template #noEmpresaOnHeader>
+            <div class="text-xs text-[var(--muted)]">Nenhuma empresa vinculada neste grupo.</div>
+          </ng-template>
+        </div>
+      </div>
+      <div class="entity-type-config-modal-actions flex gap-2">
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="openAgrupadorFormFromConfigModal()"
+          [disabled]="!configModalGroupId || configModalSaving || mode === 'view'">
+          <mat-icon>tune</mat-icon>
+          Configurar grupo
+        </button>
+        <button mat-stroked-button type="button" (click)="closeConfigPorGrupoModal()" [disabled]="configModalSaving">
+          <mat-icon>close</mat-icon>
+          Cancelar
+        </button>
+        <button class="entity-type-config-save-btn" mat-flat-button color="primary" type="button" (click)="saveConfigPorGrupoModal()" [disabled]="mode === 'view' || configModalSaving">
+          <mat-icon class="entity-type-config-save-icon">save</mat-icon>
+          Salvar
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-2.5">
+      <div class="flex items-center pt-2">
+        <mat-slide-toggle
+          [(ngModel)]="configModalObrigarUmTelefone"
+          [ngModelOptions]="{ standalone: true }"
+          [disabled]="mode === 'view' || configModalSaving">
+          Obrigar um telefone
+        </mat-slide-toggle>
+      </div>
+    </div>
+
+    <div class="mt-2 flex justify-end" *ngIf="configModalSaving">
+      <app-inline-loader label="Salvando configuracao"></app-inline-loader>
+    </div>
+  </section>
+</ng-template>

@@ -132,6 +132,33 @@
       </div>
     </form>
   </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="mb-2.5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <div>
+        <div class="text-sm font-semibold">Agrupadores por configuracao</div>
+        <div class="text-xs text-[var(--muted)]">Escolha o tipo e ID da configuracao para gerenciar seus agrupadores.</div>
+      </div>
+      <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+        <mat-form-field appearance="outline">
+          <mat-label>Tipo de configuracao</mat-label>
+          <mat-select [(value)]="agrupadorConfigType">
+            <mat-option value="FORMULARIO">FORMULARIO</mat-option>
+            <mat-option value="COLUNA">COLUNA</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>ID da configuracao</mat-label>
+          <input matInput type="number" min="1" [(ngModel)]="agrupadorConfigId" />
+        </mat-form-field>
+      </div>
+    </div>
+
+    <app-agrupadores-empresa
+      [configType]="agrupadorConfigType"
+      [configId]="agrupadorConfigId">
+    </app-agrupadores-empresa>
+  </section>
 </div>
 
 

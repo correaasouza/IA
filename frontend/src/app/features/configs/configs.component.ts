@@ -1,18 +1,29 @@
 ﻿import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
+import { AgrupadoresEmpresaComponent } from './agrupadores-empresa.component';
 
 import { ConfigService } from './config.service';
 
 @Component({
   selector: 'app-configs',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, MatFormFieldModule, MatInputModule, MatButtonModule, MatSelectModule, MatIconModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatSelectModule,
+    MatIconModule,
+    AgrupadoresEmpresaComponent
+  ],
   templateUrl: './configs.component.html'
 })
 export class ConfigsComponent {
@@ -31,6 +42,8 @@ export class ConfigsComponent {
     scopeValor: [''],
     configJson: ['{}', Validators.required]
   });
+  agrupadorConfigType = 'FORMULARIO';
+  agrupadorConfigId: number | null = null;
 
   constructor(private fb: FormBuilder, private service: ConfigService) {}
 

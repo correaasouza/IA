@@ -1,0 +1,235 @@
+<section class="group-shell rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+  <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5" *ngIf="!canRender()">
+    <div class="text-xs text-[var(--muted)]">Informe um tipo e ID de configuracao validos para gerenciar agrupadores.</div>
+  </div>
+
+  <div class="grid gap-2.5" *ngIf="canRender()">
+    <div class="grid gap-2">
+      <div class="mb-1 flex items-center justify-between gap-2">
+        <div class="text-sm font-semibold">Filtros</div>
+        <button mat-flat-button color="primary" type="button" (click)="startCreateForm()" [disabled]="saving || loading">
+          <mat-icon>add</mat-icon>
+          Novo Grupo
+        </button>
+      </div>
+      <form class="grid grid-cols-1 items-start gap-2" role="search">
+        <div class="min-w-0">
+          <app-field-search
+            [options]="empresaSearchOptions"
+            label="Buscar"
+            placeholder="Digite e selecione os campos"
+            [defaultFields]="empresaSearchFields"
+            [showActions]="false"
+            (searchChange)="onEmpresaSearchChange($event)">
+          </app-field-search>
+        </div>
+      </form>
+    </div>
+
+    <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="loading">
+      Carregando agrupadores...
+    </div>
+    <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="loadingEmpresas">
+      Carregando empresas...
+    </div>
+    <div class="rounded-lg border border-dashed border-[#fda29b] bg-[#fef3f2] p-2.5 text-xs text-[#b42318]" *ngIf="error">
+      {{ error }}
+    </div>
+
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+
+      <div class="hidden overflow-auto rounded-lg border border-[var(--border)] md:block" *ngIf="agrupadores.length > 0; else emptyAgrupadores">
+        <table mat-table [dataSource]="agrupadores" class="w-full">
+          <ng-container matColumnDef="nome">
+            <th mat-header-cell *matHeaderCellDef>Nome</th>
+            <td mat-cell *matCellDef="let group">
+              <span class="inline-flex items-center gap-1.5">
+                <span>{{ group.nome }}</span>
+                <span
+                  *ngIf="isGroupBeingEdited(group.id)"
+                  class="inline-flex items-center rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-0.5 text-[11px] text-[var(--muted-strong)]">
+                  Em edicao
+                </span>
+              </span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="empresas">
+            <th mat-header-cell *matHeaderCellDef>Empresas</th>
+            <td mat-cell *matCellDef="let group">
+              <div class="group-empresa-list" *ngIf="empresasCount(group) > 0; else noEmpresaInGroup">
+                <span class="group-empresa-chip" *ngFor="let item of group.empresas">{{ item.nome }}</span>
+              </div>
+              <ng-template #noEmpresaInGroup>
+                <span class="group-empresa-empty">Nenhuma empresa</span>
+              </ng-template>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="acoes">
+            <th mat-header-cell *matHeaderCellDef class="text-right">Acoes</th>
+            <td mat-cell *matCellDef="let group" class="text-right">
+              <div class="inline-flex items-center justify-end gap-1.5">
+                <button mat-icon-button matTooltip="Configurar grupo" type="button" (click)="openGroupConfig(group)" [disabled]="saving || loading">
+                  <mat-icon>tune</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Editar ficha" type="button" (click)="startEditForm(group)" [disabled]="saving || loading">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button color="warn" matTooltip="Remover" type="button" (click)="remove(group)" [disabled]="saving || loading">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="['nome', 'empresas', 'acoes']"></tr>
+          <tr mat-row *matRowDef="let row; columns: ['nome', 'empresas', 'acoes'];"></tr>
+        </table>
+      </div>
+
+      <div class="grid gap-2.5 md:hidden" *ngIf="agrupadores.length > 0">
+        <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]" *ngFor="let group of agrupadores">
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-sm font-semibold">{{ group.nome }}</div>
+            <span class="inline-flex items-center justify-center rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-xs font-semibold text-[var(--muted-strong)]">
+              {{ empresasCount(group) }} empresa(s)
+            </span>
+          </div>
+
+          <div class="group-empresa-list" *ngIf="empresasCount(group) > 0; else noEmpresaInMobileCard">
+            <span class="group-empresa-chip" *ngFor="let item of group.empresas">{{ item.nome }}</span>
+          </div>
+          <ng-template #noEmpresaInMobileCard>
+            <span class="group-empresa-empty">Nenhuma empresa</span>
+          </ng-template>
+
+          <div class="flex justify-end gap-1.5">
+            <button mat-icon-button matTooltip="Configurar grupo" type="button" (click)="openGroupConfig(group)" [disabled]="saving || loading" aria-label="Configurar grupo">
+              <mat-icon>tune</mat-icon>
+            </button>
+            <button mat-icon-button matTooltip="Editar ficha" type="button" (click)="startEditForm(group)" [disabled]="saving || loading" aria-label="Editar agrupador">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" matTooltip="Remover" type="button" (click)="remove(group)" [disabled]="saving || loading" aria-label="Remover agrupador">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </article>
+      </div>
+
+      <ng-template #emptyAgrupadores>
+        <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]">
+          Nenhum agrupador cadastrado para esta configuracao.
+        </div>
+      </ng-template>
+    </section>
+  </div>
+</section>
+
+<ng-template #agrupadorFormDialog>
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="agrupador-form-header mb-3 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <div>
+        <div class="text-sm font-semibold">{{ editingModeLabel() }}</div>
+        <div class="mt-1 text-xs text-[var(--muted)]" *ngIf="editingGroupId">ID {{ editingGroupId }}</div>
+        <div class="mt-1 text-xs text-[var(--muted-strong)]">Origem: {{ configContextReference() }}</div>
+      </div>
+      <div class="agrupador-form-header-actions flex flex-wrap gap-2">
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="openCurrentGroupConfig()"
+          [disabled]="!editingGroupId || saving || loading"
+          [matTooltip]="editingGroupId ? 'Abrir configuracoes do grupo' : 'Salve o agrupador antes de configurar'">
+          <mat-icon>tune</mat-icon>
+          Configuracoes
+        </button>
+        <button mat-stroked-button type="button" (click)="cancelForm()" [disabled]="saving || loading">
+          <mat-icon>close</mat-icon>
+          Cancelar
+        </button>
+        <button mat-flat-button color="primary" type="button" (click)="saveForm()" [disabled]="!formNome.trim() || saving || loading">
+          <mat-icon>{{ editingGroupId ? 'save' : 'add' }}</mat-icon>
+          {{ editingGroupId ? 'Salvar' : 'Criar' }}
+        </button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-2">
+      <mat-form-field appearance="outline">
+        <mat-label>Nome do agrupador</mat-label>
+        <input matInput [(ngModel)]="formNome" placeholder="Ex.: Operacao varejo" [disabled]="saving || loading" />
+      </mat-form-field>
+
+    </div>
+
+    <div class="dual-list-shell">
+      <div class="dual-list-col">
+        <div class="dual-list-title">Empresas disponiveis</div>
+        <div
+          class="dual-list-box"
+          cdkDropList
+          id="availableCompaniesList"
+          [cdkDropListData]="availableEmpresasForForm()"
+          [cdkDropListConnectedTo]="['selectedCompaniesList']"
+          [cdkDropListSortingDisabled]="true"
+          (cdkDropListDropped)="onDropToAvailable($event)">
+          <div
+            class="dual-list-item"
+            *ngFor="let empresa of availableEmpresasForForm()"
+            [class.selected]="isAvailableSelected(empresa.id)"
+            [class.disabled]="isEmpresaDisabledForForm(empresa.id)"
+            (click)="toggleAvailableSelection(empresa.id)"
+            cdkDrag
+            [cdkDragData]="empresa.id"
+            [cdkDragDisabled]="isEmpresaDisabledForForm(empresa.id) || saving || loading">
+            <div class="dual-list-item-label">{{ empresaLabel(empresa) }}</div>
+            <div class="dual-list-item-note" *ngIf="occupiedLabelForForm(empresa.id)">{{ occupiedLabelForForm(empresa.id) }}</div>
+          </div>
+          <div class="dual-list-empty" *ngIf="!availableEmpresasForForm().length">
+            Nenhuma empresa disponivel.
+          </div>
+        </div>
+      </div>
+
+      <div class="dual-list-actions">
+        <button mat-stroked-button type="button" (click)="assignSelected()" [disabled]="!selectedAvailableEmpresaIds.length || saving || loading">
+          <mat-icon>chevron_right</mat-icon>
+          Atribuir
+        </button>
+        <button mat-stroked-button type="button" (click)="unassignSelected()" [disabled]="!selectedAddedEmpresaIds.length || saving || loading">
+          <mat-icon>chevron_left</mat-icon>
+          Desatribuir
+        </button>
+        <div class="dual-list-hint">Arraste entre listas</div>
+      </div>
+
+      <div class="dual-list-col">
+        <div class="dual-list-title">Empresas no agrupador</div>
+        <div
+          class="dual-list-box"
+          cdkDropList
+          id="selectedCompaniesList"
+          [cdkDropListData]="addedEmpresasForForm()"
+          [cdkDropListConnectedTo]="['availableCompaniesList']"
+          [cdkDropListSortingDisabled]="true"
+          (cdkDropListDropped)="onDropToSelected($event)">
+          <div
+            class="dual-list-item"
+            *ngFor="let item of addedEmpresasForForm()"
+            [class.selected]="isAddedSelected(item.id)"
+            (click)="toggleAddedSelection(item.id)"
+            cdkDrag
+            [cdkDragData]="item.id"
+            [cdkDragDisabled]="saving || loading">
+            <div class="dual-list-item-label">{{ item.label }}</div>
+          </div>
+          <div class="dual-list-empty" *ngIf="!addedEmpresasForForm().length">
+            Nenhuma empresa atribuida.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</ng-template>

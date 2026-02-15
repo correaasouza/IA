@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ConfigFormularioRepository extends JpaRepository<ConfigFormulario, Long> {
+  boolean existsByIdAndTenantId(Long id, Long tenantId);
   Optional<ConfigFormulario> findFirstByTenantIdAndScreenIdAndScopeTipoAndScopeValor(Long tenantId, String screenId, String scopeTipo, String scopeValor);
   Optional<ConfigFormulario> findFirstByTenantIdAndScreenIdAndScopeTipoAndScopeValorIn(Long tenantId, String screenId, String scopeTipo, List<String> scopeValor);
   Optional<ConfigFormulario> findFirstByTenantIdAndScreenIdAndScopeTipo(Long tenantId, String screenId, String scopeTipo);

@@ -24,6 +24,14 @@ export class MenuService {
         { id: 'access-controls', label: 'Acessos UI', route: '/access-controls', icon: 'tune', roles: ['MASTER', 'ADMIN'] }
       ]
     },
+    {
+      id: 'group-config',
+      label: 'Configurações',
+      icon: 'settings',
+      children: [
+        { id: 'entity-types', label: 'Tipos de Entidade', route: '/entity-types', icon: 'category', roles: ['MASTER', 'ADMIN'], perms: ['ENTIDADE_EDIT'] }
+      ]
+    }
   ];
 }
 
