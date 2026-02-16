@@ -1,17 +1,26 @@
 <div class="grid gap-3">
   <div class="page-list-sticky grid gap-3">
-    <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+    <div class="flex flex-col items-start justify-between gap-2 md:flex-row md:items-start">
       <div>
         <h1 class="m-0 text-lg font-bold">{{ headerTitle() }}</h1>
         <p class="mt-1 text-xs text-[var(--muted)]">Listagem no contexto da empresa selecionada no sistema.</p>
       </div>
-      <div class="flex flex-wrap gap-2">
-        <button mat-flat-button color="primary" type="button" (click)="goNew()" [disabled]="!context?.vinculado">
-          <mat-icon>add</mat-icon>
-          Nova entidade
-        </button>
-      </div>
-    </header>
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        (click)="goNew()"
+        [disabled]="!context?.vinculado"
+        [attr.aria-label]="newEntityButtonLabel()">
+        <mat-icon>add</mat-icon>
+        {{ newEntityButtonLabel() }}
+      </button>
+    </div>
+
+    <div class="header-context-line text-xs text-[var(--muted)]" *ngIf="context?.vinculado && context">
+      Empresa: <strong>{{ context.empresaNome }}</strong> |
+      Grupo: <strong>{{ context.agrupadorNome }}</strong>
+    </div>
 
     <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
       <div class="mb-2 flex items-center justify-between gap-2">
@@ -26,29 +35,112 @@
         </div>
       </div>
 
-      <form
-        *ngIf="!isMobile || mobileFiltersOpen"
-        [formGroup]="filters"
-        class="grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1fr)_220px]"
-        role="search">
-        <div class="min-w-0">
-          <app-field-search
-            [options]="searchOptions"
-            [defaultFields]="searchFields"
-            [showActions]="false"
-            placeholder="Digite e selecione os campos"
-            (searchChange)="onSearchChange($event)">
-          </app-field-search>
-        </div>
+      <ng-container *ngIf="!isMobile || mobileFiltersOpen">
+        <form
+          [formGroup]="filters"
+          class="grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1fr)_220px]"
+          role="search">
+          <div class="min-w-0">
+            <app-field-search
+              [options]="searchOptions"
+              [defaultFields]="searchFields"
+              [showActions]="false"
+              placeholder="Digite e selecione os campos"
+              (searchChange)="onSearchChange($event)">
+            </app-field-search>
+          </div>
 
-        <div class="status-search-like">
-          <select class="status-native-select" formControlName="status" (change)="applyFilters()" aria-label="Status">
-            <option value="">Status: Todos</option>
-            <option value="ativo">Status: Ativo</option>
-            <option value="inativo">Status: Inativo</option>
-          </select>
+          <div class="status-search-like">
+            <select class="status-native-select" formControlName="status" (change)="applyFilters()" aria-label="Status">
+              <option value="">Status: Todos</option>
+              <option value="ativo">Status: Ativo</option>
+              <option value="inativo">Status: Inativo</option>
+            </select>
+          </div>
+        </form>
+      </ng-container>
+
+      <div class="filters-group-row mt-2" *ngIf="context?.vinculado">
+        <button
+          mat-button
+          class="filters-group-toggle"
+          type="button"
+          (click)="toggleGroupTree()"
+          [disabled]="!context?.vinculado"
+          aria-label="Abrir ou fechar arvore de grupos">
+          <mat-icon>account_tree</mat-icon>
+          {{ groupTreeOpen ? 'Fechar grupos' : 'Grupos' }}
+        </button>
+        <button
+          mat-button
+          class="filters-group-toggle"
+          type="button"
+          (click)="showAllGroups()"
+          [disabled]="!selectedGroupId"
+          aria-label="Mostrar todos os grupos">
+          <mat-icon>list</mat-icon>
+          Todos
+        </button>
+        <button
+          *ngIf="!isMobile"
+          mat-button
+          class="filters-group-toggle"
+          type="button"
+          (click)="toggleMovementArea()"
+          [disabled]="!context?.vinculado"
+          [matTooltip]="movementAreaOpen ? 'Fechar area de movimentacao de grupos' : 'Abrir area de movimentacao de grupos'"
+          aria-label="Abrir ou fechar area de movimentacao">
+          <mat-icon>swap_horiz</mat-icon>
+          {{ movementAreaOpen ? 'Fechar movimentacao' : 'Movimentacao' }}
+        </button>
+        <span
+          class="selected-group-label text-xs text-[var(--muted)]"
+          [attr.title]="selectedGroupHeader()">
+          Grupo selecionado: <strong>{{ selectedGroupHeader() }}</strong>
+        </span>
+      </div>
+
+      <div class="group-tree-inline mt-2" *ngIf="groupTreeOpen && context?.vinculado">
+        <app-entity-groups-tree
+          [tipoEntidadeId]="selectedTipoEntidadeId()"
+          [allowEntityDrop]="false"
+          [selectedGroupId]="selectedGroupId"
+          [canManage]="!!context?.vinculado"
+          (selectedGroupIdChange)="onGroupSelected($event)"
+          (changed)="refreshContextAndData()">
+        </app-entity-groups-tree>
+      </div>
+
+      <div class="group-destination-panel mt-1" *ngIf="!isMobile && context?.vinculado && movementAreaOpen">
+        <div class="group-destination-header">
+          <span class="group-destination-title">Área de movimentação de grupos</span>
+          <span class="group-destination-hint">Arraste entidade ou grupo e solte na area ao lado.</span>
         </div>
-      </form>
+        <div class="group-destination-controls">
+          <select
+            class="group-destination-select"
+            [value]="dropTargetGroupId || ''"
+            (change)="onDropTargetGroupChange($any($event.target).value)"
+            aria-label="Grupo de destino para movimentacao">
+            <option value="">Selecione o grupo de destino</option>
+            <option *ngFor="let grupo of gruposFiltro" [value]="grupo.id">{{ grupo.nome }}</option>
+          </select>
+
+          <div
+            class="group-destination-dropzone"
+            [class.group-destination-dropzone-active]="dropZoneActive"
+            [class.group-destination-dropzone-disabled]="!dropTargetGroupId || dropZoneBusy"
+            [class.group-destination-dropzone-busy]="dropZoneBusy"
+            (dragover)="onDestinationDragOver($event)"
+            (dragleave)="onDestinationDragLeave()"
+            (drop)="onDestinationDrop($event)">
+            <mat-icon>move_down</mat-icon>
+            <span *ngIf="dropZoneBusy">Movendo entidades...</span>
+            <span *ngIf="!dropZoneBusy && dropTargetGroupId">Solte aqui para mover para: <strong>{{ dropTargetGroupLabel() }}</strong></span>
+            <span *ngIf="!dropZoneBusy && !dropTargetGroupId">Selecione um destino para habilitar o drop.</span>
+          </div>
+        </div>
+      </div>
       <div class="mt-2 text-xs text-[var(--muted)]" *ngIf="loadingContext">Resolvendo contexto da empresa...</div>
     </section>
   </div>
@@ -58,24 +150,7 @@
   </section>
 
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="context?.vinculado">
-    <div class="px-3 pb-0 pt-2 text-xs text-[var(--muted)]" *ngIf="context">
-      Empresa: <strong>{{ context.empresaNome }}</strong> |
-      Grupo: <strong>{{ context.agrupadorNome }}</strong>
-    </div>
-
-    <div class="entity-records-main-grid p-3 pt-2">
-      <aside class="entity-records-tree-col">
-        <app-entity-groups-tree
-          [tipoEntidadeId]="selectedTipoEntidadeId()"
-          [allowEntityDrop]="true"
-          [selectedGroupId]="selectedGroupId"
-          [canManage]="!!context?.vinculado"
-          (entityDroppedOnGroup)="onGroupDrop($event)"
-          (selectedGroupIdChange)="onGroupSelected($event)"
-          (changed)="refreshContextAndData()">
-        </app-entity-groups-tree>
-      </aside>
-
+    <div class="p-3 pt-2">
       <div class="entity-records-list-col">
         <div class="hidden overflow-auto border-b border-[var(--border-light)] md:block">
           <table mat-table [dataSource]="registros" class="w-full">
@@ -99,24 +174,18 @@
           <td mat-cell *matCellDef="let row">{{ row.grupoEntidadeNome || '-' }}</td>
         </ng-container>
 
-        <ng-container matColumnDef="moverGrupo">
-          <th mat-header-cell *matHeaderCellDef>Mover grupo</th>
-          <td mat-cell *matCellDef="let row">
-            <select
-              class="entity-group-move-select"
-              [disabled]="!context?.vinculado"
-              [value]="row.grupoEntidadeId || ''"
-              (change)="onMoveGroup(row, $any($event.target).value)"
-              aria-label="Mover entidade de grupo">
-              <option value="">Sem grupo</option>
-              <option *ngFor="let grupo of gruposFiltro" [value]="grupo.id">{{ grupo.nome }}</option>
-            </select>
-          </td>
-        </ng-container>
-
         <ng-container matColumnDef="ativo">
           <th mat-header-cell *matHeaderCellDef>Status</th>
-          <td mat-cell *matCellDef="let row">{{ row.ativo ? 'Ativo' : 'Inativo' }}</td>
+          <td mat-cell *matCellDef="let row">
+            <mat-slide-toggle
+              class="entity-status-toggle-row"
+              [checked]="row.ativo"
+              [disabled]="!context?.vinculado || loading"
+              (click)="$event.stopPropagation()"
+              (change)="onStatusToggle(row, $event.checked)">
+              {{ row.ativo ? 'Ativo' : 'Inativo' }}
+            </mat-slide-toggle>
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="acoes">
@@ -156,11 +225,13 @@
             (dragstart)="onEntityRowDragStart($event, row)">
         <div class="flex items-center justify-between gap-2">
           <div class="text-sm font-semibold">#{{ row.codigo }}</div>
-          <span
-            class="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-semibold"
-            [ngClass]="row.ativo ? 'bg-[var(--success-bg)] text-[var(--success-ink)]' : 'bg-[var(--warning-bg)] text-[var(--warning-ink)]'">
+          <mat-slide-toggle
+            class="entity-status-toggle-row"
+            [checked]="row.ativo"
+            [disabled]="!context?.vinculado || loading"
+            (change)="onStatusToggle(row, $event.checked)">
             {{ row.ativo ? 'Ativo' : 'Inativo' }}
-          </span>
+          </mat-slide-toggle>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -176,22 +247,10 @@
             <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Grupo</span>
             <span class="text-xs">{{ row.grupoEntidadeNome || '-' }}</span>
           </div>
-          <div class="col-span-2 flex flex-col gap-1">
-            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Mover grupo</span>
-            <select
-              class="entity-group-move-select"
-              [disabled]="!context?.vinculado"
-              [value]="row.grupoEntidadeId || ''"
-              (change)="onMoveGroup(row, $any($event.target).value)"
-              aria-label="Mover entidade de grupo no celular">
-              <option value="">Sem grupo</option>
-              <option *ngFor="let grupo of gruposFiltro" [value]="grupo.id">{{ grupo.nome }}</option>
-            </select>
-          </div>
         </div>
 
         <div class="flex justify-between gap-1.5">
-          <span class="text-[10.5px] text-[var(--muted)] self-center">Arraste para a arvore</span>
+          <span class="text-[10.5px] text-[var(--muted)] self-center">Use o filtro de grupos para refinar a lista</span>
           <div class="flex gap-1.5">
           <button mat-icon-button type="button" (click)="view(row)" matTooltip="Consultar" aria-label="Consultar entidade">
             <mat-icon>visibility</mat-icon>

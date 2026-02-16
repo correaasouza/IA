@@ -663,6 +663,92 @@ mat-icon {
   z-index: 5;
 }
 
+/* Desktop density for list pages: more rows visible and tighter headers. */
+@media (min-width: 901px) {
+  .app-page-shell {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .page-list-sticky,
+  .page-header-sticky {
+    padding: 6px 8px 4px;
+  }
+
+  .page-list-sticky.grid,
+  .page-header-sticky.grid {
+    gap: 5px !important;
+  }
+
+  .page-list-sticky > header,
+  .page-header-sticky > header {
+    gap: 5px !important;
+    margin: 0;
+  }
+
+  .page-list-sticky h1,
+  .page-header-sticky h1,
+  .page-list-sticky .text-lg,
+  .page-header-sticky .text-lg {
+    line-height: 1.12;
+    margin-bottom: 0;
+  }
+
+  .page-list-sticky p,
+  .page-header-sticky p {
+    margin-bottom: 0 !important;
+    line-height: 1.2;
+  }
+
+  .page-list-sticky .mt-1,
+  .page-header-sticky .mt-1 {
+    margin-top: 1px !important;
+  }
+
+  .page-list-sticky .mat-mdc-button,
+  .page-list-sticky .mat-mdc-unelevated-button,
+  .page-list-sticky .mat-mdc-outlined-button,
+  .page-header-sticky .mat-mdc-button,
+  .page-header-sticky .mat-mdc-unelevated-button,
+  .page-header-sticky .mat-mdc-outlined-button {
+    min-height: 30px;
+  }
+
+  .page-list-sticky .mat-mdc-icon-button,
+  .page-header-sticky .mat-mdc-icon-button {
+    width: 30px;
+    height: 30px;
+  }
+
+  .mat-mdc-table .mat-mdc-header-row {
+    height: 36px;
+  }
+
+  .mat-mdc-table .mat-mdc-row {
+    height: 34px;
+  }
+
+  .mat-mdc-table .mat-mdc-header-cell,
+  .mat-mdc-table .mat-mdc-cell {
+    padding-top: 4px;
+    padding-bottom: 4px;
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
+  .mat-mdc-table .mat-mdc-icon-button {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+  }
+
+  .mat-mdc-paginator .mat-mdc-paginator-container {
+    min-height: 42px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+}
+
 .mat-mdc-button:hover,
 .mat-mdc-outlined-button:hover,
 .mat-mdc-unelevated-button:hover {

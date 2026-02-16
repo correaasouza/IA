@@ -155,8 +155,20 @@ public class AgrupadorEmpresaService {
     Long tenantId = requireTenant();
     String normalizedType = configuracaoScopeService.normalizeAndValidate(tenantId, configType, configId);
     AgrupadorEmpresa agrupador = findAgrupador(tenantId, normalizedType, configId, agrupadorId);
-    itemRepository.findByTenantIdAndConfigTypeAndConfigIdAndAgrupadorIdAndEmpresaId(
-      tenantId, normalizedType, configId, agrupadorId, empresaId).ifPresent(itemRepository::delete);
+    AgrupadorEmpresaItem removed = itemRepository
+      .findByTenantIdAndConfigTypeAndConfigIdAndAgrupadorIdAndEmpresaId(
+        tenantId, normalizedType, configId, agrupadorId, empresaId)
+      .orElseGet(() -> itemRepository
+        .findByTenantIdAndConfigTypeAndConfigIdAndEmpresaId(tenantId, normalizedType, configId, empresaId)
+        .orElse(null));
+
+    if (removed != null) {
+      if (removed.getAgrupador() != null) {
+        removed.getAgrupador().getItens().remove(removed);
+      }
+      itemRepository.delete(removed);
+      itemRepository.flush();
+    }
     metric("remove_empresa", "success");
     auditService.log(tenantId, "AGRUPADOR_EMPRESA_EMPRESA_REMOVIDA", "agrupador_empresa", String.valueOf(agrupadorId),
       "configType=" + normalizedType + ";configId=" + configId + ";empresaId=" + empresaId);

@@ -3,17 +3,139 @@
   min-width: 0;
 }
 
-.entity-records-main-grid {
-  display: grid;
-  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
-  gap: 12px;
-  align-items: start;
+.filters-group-toggle {
+  min-height: 26px !important;
+  padding: 0 6px !important;
+  border-radius: 6px !important;
+  color: var(--ink) !important;
+  font-weight: 600;
 }
 
-.entity-records-tree-col {
+.filters-group-toggle .mat-icon {
+  font-size: 17px !important;
+  width: 17px !important;
+  height: 17px !important;
+}
+
+.filters-group-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.selected-group-label {
   min-width: 0;
-  position: sticky;
-  top: 8px;
+  flex: 1 1 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-tree-inline {
+  border-top: 1px solid var(--border-light);
+  padding-top: 8px;
+}
+
+.group-destination-panel {
+  border-top: 1px solid var(--border-light);
+  padding-top: 6px;
+}
+
+.group-destination-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.group-destination-title {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.group-destination-hint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.group-destination-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.group-destination-select {
+  width: 100%;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  padding: 0 28px 0 10px;
+  appearance: none;
+  outline: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #6b7280 50%),
+    linear-gradient(135deg, #6b7280 50%, transparent 50%);
+  background-position:
+    calc(100% - 13px) calc(50% - 2px),
+    calc(100% - 8px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.group-destination-select:focus {
+  border-color: #9ca3af;
+}
+
+.group-destination-dropzone {
+  min-height: 30px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--muted-strong);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.group-destination-dropzone .mat-icon {
+  font-size: 16px !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.group-destination-dropzone-active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.group-destination-dropzone-disabled {
+  opacity: 0.72;
+}
+
+.group-destination-dropzone-busy {
+  border-style: solid;
+}
+
+.header-context-line {
+  margin-top: -2px;
+  padding: 0 2px 2px;
+}
+
+.group-selected-mobile {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-light);
 }
 
 .entity-records-list-col {
@@ -26,6 +148,11 @@
 
 .entity-row-draggable:active {
   cursor: grabbing;
+}
+
+.entity-status-toggle-row {
+  transform: scale(0.92);
+  transform-origin: left center;
 }
 
 .status-search-like {
@@ -90,12 +217,20 @@
 }
 
 @media (max-width: 899px) {
-  .entity-records-main-grid {
-    grid-template-columns: 1fr;
+  .filters-group-row {
+    gap: 8px;
+    align-items: flex-start;
   }
 
-  .entity-records-tree-col {
-    position: static;
+  .filters-group-toggle {
+    min-height: 28px !important;
+    padding: 0 8px !important;
+  }
+
+  .selected-group-label {
+    flex-basis: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
 
   :host ::ng-deep .mat-mdc-paginator-container {

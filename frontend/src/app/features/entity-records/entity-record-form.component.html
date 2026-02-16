@@ -3,6 +3,21 @@
     <div>
       <h1 class="m-0 text-lg font-bold">{{ cadastroTitle() }}</h1>
       <p class="mt-1 text-xs text-[var(--muted)]">{{ title }}</p>
+      <p class="mt-1 text-xs text-[var(--muted)]">
+        Codigo: <strong>{{ codigoInfo }}</strong>
+        <span class="entity-status-chip" [class.entity-status-chip-inactive]="!form.value.ativo">
+          {{ ativoHeaderLabel() }}
+        </span>
+      </p>
+      <div class="mt-1">
+        <mat-slide-toggle
+          class="entity-header-status-toggle"
+          [checked]="!!form.value.ativo"
+          [disabled]="mode === 'view' || !contexto?.vinculado"
+          (change)="setAtivoFromHeader($event.checked)">
+          Ativo
+        </mat-slide-toggle>
+      </div>
       <p class="mt-1 text-xs text-[var(--muted)]" *ngIf="contexto?.vinculado">
         Empresa: <strong>{{ contexto?.empresaNome }}</strong> |
         Grupo: <strong>{{ contexto?.agrupadorNome }}</strong>
@@ -12,10 +27,6 @@
       <button mat-stroked-button type="button" (click)="back()">
         <mat-icon>arrow_back</mat-icon>
         Voltar
-      </button>
-      <button mat-stroked-button type="button" (click)="goGroups()" [disabled]="!contexto?.vinculado">
-        <mat-icon>account_tree</mat-icon>
-        Grupos
       </button>
       <button mat-stroked-button *ngIf="mode === 'view'" type="button" (click)="toEdit()">
         <mat-icon>edit</mat-icon>
@@ -41,19 +52,9 @@
 
     <form [formGroup]="form" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
       <mat-form-field appearance="outline">
-        <mat-label>Codigo</mat-label>
-        <input matInput formControlName="codigo" />
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Nome da pessoa</mat-label>
-        <input matInput formControlName="pessoaNome" />
-        <mat-error *ngIf="form.get('pessoaNome')?.hasError('required')">Informe o nome.</mat-error>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Apelido</mat-label>
-        <input matInput formControlName="pessoaApelido" />
+        <mat-label>Registro federal</mat-label>
+        <input matInput formControlName="registroFederal" />
+        <mat-error *ngIf="form.get('registroFederal')?.hasError('required')">Informe o registro.</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
@@ -66,14 +67,15 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Registro federal</mat-label>
-        <input matInput formControlName="registroFederal" />
-        <mat-error *ngIf="form.get('registroFederal')?.hasError('required')">Informe o registro.</mat-error>
+        <mat-label>Nome da pessoa</mat-label>
+        <input matInput formControlName="pessoaNome" />
+        <mat-error *ngIf="form.get('pessoaNome')?.hasError('required')">Informe o nome.</mat-error>
       </mat-form-field>
 
-      <div class="col-span-full flex items-center pt-1">
-        <mat-slide-toggle formControlName="ativo">Ativo</mat-slide-toggle>
-      </div>
+      <mat-form-field appearance="outline">
+        <mat-label>Apelido</mat-label>
+        <input matInput formControlName="pessoaApelido" />
+      </mat-form-field>
 
       <div class="col-span-full flex justify-end" *ngIf="loading">
         <app-inline-loader label="Carregando"></app-inline-loader>

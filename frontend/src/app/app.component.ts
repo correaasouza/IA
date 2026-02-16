@@ -138,11 +138,16 @@ export class AppComponent {
     this.sidebarOpen = !this.sidebarOpen;
   }
 
-  @HostListener('window:empresa-context-updated')
-  onEmpresaContextUpdated(): void {
+  @HostListener('window:empresa-context-updated', ['$event'])
+  onEmpresaContextUpdated(event?: CustomEvent<{ source?: string }>): void {
     const tenantId = this.getTenantId();
     if (!tenantId || this.isSelectionRoute) {
       this.clearEmpresaContext();
+      return;
+    }
+    // When the event comes from the company selector itself, avoid reloading options
+    // to prevent forcing the selection back to the default company.
+    if (event?.detail?.source === 'selector') {
       return;
     }
     this.currentTenantId = tenantId;
@@ -567,7 +572,7 @@ export class AppComponent {
     const previousId = this.empresaContextId || 0;
     this.setEmpresaContext(id);
     if (previousId !== id) {
-      this.notifyEmpresaContextUpdated();
+      this.notifyEmpresaContextUpdated('selector');
     }
   }
 
@@ -587,9 +592,9 @@ export class AppComponent {
     localStorage.setItem('empresaContextNome', empresa.razaoSocial || '');
   }
 
-  private notifyEmpresaContextUpdated(): void {
+  private notifyEmpresaContextUpdated(source: 'selector' | 'external' = 'external'): void {
     if (typeof window === 'undefined') return;
-    window.dispatchEvent(new CustomEvent('empresa-context-updated'));
+    window.dispatchEvent(new CustomEvent('empresa-context-updated', { detail: { source } }));
   }
 
   private clearEmpresaContext(): void {

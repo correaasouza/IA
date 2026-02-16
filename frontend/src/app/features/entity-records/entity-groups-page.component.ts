@@ -136,6 +136,11 @@ export class EntityGroupsPageComponent implements OnInit {
       this.contextWarning = 'Tipo de entidade nao informado.';
       return;
     }
+    if (!this.hasEmpresaContext()) {
+      this.context = null;
+      this.contextWarning = 'Selecione uma empresa no topo do sistema para continuar.';
+      return;
+    }
     this.loadingContext = true;
     this.contextWarning = '';
     this.recordService.contextoEmpresa(this.tipoEntidadeId)
@@ -168,5 +173,9 @@ export class EntityGroupsPageComponent implements OnInit {
         .join(' ');
     }
     return raw;
+  }
+
+  private hasEmpresaContext(): boolean {
+    return !!(localStorage.getItem('empresaContextId') || '').trim();
   }
 }

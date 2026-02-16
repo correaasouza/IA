@@ -375,8 +375,8 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     const toRemove = [...beforeSet].filter(id => !afterSet.has(id));
 
     const actions: Array<{ kind: 'add' | 'remove'; empresaId: number }> = [
-      ...toAdd.map(empresaId => ({ kind: 'add' as const, empresaId })),
-      ...toRemove.map(empresaId => ({ kind: 'remove' as const, empresaId }))
+      ...toRemove.map(empresaId => ({ kind: 'remove' as const, empresaId })),
+      ...toAdd.map(empresaId => ({ kind: 'add' as const, empresaId }))
     ];
 
     const run = (index: number) => {

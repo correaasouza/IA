@@ -43,11 +43,11 @@ export class EntityRecordFormComponent implements OnInit {
   loading = false;
   saving = false;
   deleting = false;
+  codigoInfo = 'Gerado ao salvar';
   selectedGrupoIdFromRoute: number | null = null;
   currentGrupoEntidadeId: number | null = null;
 
   form = this.fb.group({
-    codigo: [{ value: '', disabled: true }],
     ativo: [true, Validators.required],
     pessoaNome: ['', [Validators.required, Validators.maxLength(200)]],
     pessoaApelido: ['', [Validators.maxLength(200)]],
@@ -92,11 +92,6 @@ export class EntityRecordFormComponent implements OnInit {
     this.router.navigate(['/entities', this.entidadeId, 'edit'], { queryParams: { tipoEntidadeId: this.tipoEntidadeId } });
   }
 
-  goGroups(): void {
-    if (!this.tipoEntidadeId) return;
-    this.router.navigate(['/entities/groups'], { queryParams: { tipoEntidadeId: this.tipoEntidadeId } });
-  }
-
   save(): void {
     if (this.mode === 'view' || !this.contexto?.vinculado) return;
     if (this.form.invalid) {
@@ -139,7 +134,7 @@ export class EntityRecordFormComponent implements OnInit {
 
   remove(): void {
     if (!this.entidadeId || this.mode === 'new') return;
-    if (!confirm(`Excluir entidade codigo ${this.form.getRawValue().codigo || ''}?`)) return;
+    if (!confirm(`Excluir entidade codigo ${this.codigoInfo || ''}?`)) return;
     this.deleting = true;
     this.service.delete(this.tipoEntidadeId, this.entidadeId).pipe(finalize(() => (this.deleting = false))).subscribe({
       next: () => {
@@ -159,7 +154,21 @@ export class EntityRecordFormComponent implements OnInit {
     return nome ? `Cadastro ${nome}` : 'Cadastro de Entidades';
   }
 
+  ativoHeaderLabel(): string {
+    return this.form.value.ativo ? 'Ativo' : 'Inativo';
+  }
+
+  setAtivoFromHeader(nextValue: boolean): void {
+    this.form.controls.ativo.setValue(!!nextValue);
+  }
+
   private resolveContextAndLoad(): void {
+    if (!this.hasEmpresaContext()) {
+      this.contexto = null;
+      this.contextoWarning = 'Selecione uma empresa no topo do sistema para continuar.';
+      this.form.disable();
+      return;
+    }
     this.loading = true;
     this.service.contextoEmpresa(this.tipoEntidadeId)
       .pipe(finalize(() => (this.loading = false)))
@@ -204,8 +213,8 @@ export class EntityRecordFormComponent implements OnInit {
 
   private patchForm(entity: RegistroEntidade): void {
     this.currentGrupoEntidadeId = entity.grupoEntidadeId || null;
+    this.codigoInfo = String(entity.codigo || '');
     this.form.patchValue({
-      codigo: entity.codigo.toString(),
       ativo: entity.ativo,
       pessoaNome: entity.pessoa.nome,
       pessoaApelido: entity.pessoa.apelido || '',
@@ -224,10 +233,6 @@ export class EntityRecordFormComponent implements OnInit {
       return;
     }
     this.form.enable();
-    this.form.controls.codigo.disable();
-    if (this.mode === 'new') {
-      this.form.controls.codigo.setValue('Gerado ao salvar');
-    }
   }
 
   private toNumber(value: unknown): number | null {
@@ -277,5 +282,9 @@ export class EntityRecordFormComponent implements OnInit {
         .join(' ');
     }
     return raw;
+  }
+
+  private hasEmpresaContext(): boolean {
+    return !!(localStorage.getItem('empresaContextId') || '').trim();
   }
 }

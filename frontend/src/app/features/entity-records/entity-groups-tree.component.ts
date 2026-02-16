@@ -63,25 +63,9 @@ export class EntityGroupsTreeComponent implements OnChanges {
       });
   }
 
-  addFromSelection(): void {
+  addRoot(): void {
     if (!this.tipoEntidadeId || !this.canManage) return;
-    const parentId = this.selectedGroupId || null;
-    const parentName = parentId ? this.nodeById[parentId]?.nome || '' : '';
-    const promptText = parentId
-      ? `Nome do novo subgrupo de "${parentName}":`
-      : 'Nome do novo grupo raiz:';
-    const nome = (prompt(promptText) || '').trim();
-    if (!nome) return;
-    this.service.create(this.tipoEntidadeId, nome, parentId).subscribe({
-      next: () => {
-        this.notify.success(parentId ? 'Subgrupo criado.' : 'Grupo criado.');
-        this.load();
-        this.changed.emit();
-      },
-      error: err => this.notify.error(err?.error?.detail || (parentId
-        ? 'Nao foi possivel criar subgrupo.'
-        : 'Nao foi possivel criar grupo.'))
-    });
+    this.createGroupWithPrompt(null);
   }
 
   addChild(node: GrupoEntidadeNode): void {
@@ -157,6 +141,15 @@ export class EntityGroupsTreeComponent implements OnChanges {
     event.preventDefault();
     this.dragOverGroupId = node.id;
     this.dragOverAll = false;
+  }
+
+  onGroupDragStart(event: DragEvent, node: GrupoEntidadeNode): void {
+    const payload = JSON.stringify({ groupId: node.id });
+    event.dataTransfer?.setData('application/x-entity-group', payload);
+    event.dataTransfer?.setData('text/plain', `group:${node.id}`);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = 'move';
+    }
   }
 
   onDropGroup(node: GrupoEntidadeNode, event: DragEvent): void {
@@ -235,10 +228,6 @@ export class EntityGroupsTreeComponent implements OnChanges {
     }
   }
 
-  createButtonLabel(): string {
-    return this.selectedGroupId ? 'Novo subgrupo' : 'Novo grupo';
-  }
-
   private collapseSiblings(nodeId: number): void {
     const parentId = this.parentById[nodeId];
     const key = parentId === null || parentId === undefined ? 'root' : String(parentId);
@@ -283,5 +272,25 @@ export class EntityGroupsTreeComponent implements OnChanges {
       const id = Number(raw);
       return Number.isFinite(id) && id > 0 ? id : null;
     }
+  }
+
+  private createGroupWithPrompt(parentId: number | null): void {
+    if (!this.tipoEntidadeId || !this.canManage) return;
+    const parentName = parentId ? this.nodeById[parentId]?.nome || '' : '';
+    const promptText = parentId
+      ? `Nome do novo subgrupo de "${parentName}":`
+      : 'Nome do novo grupo raiz:';
+    const nome = (prompt(promptText) || '').trim();
+    if (!nome) return;
+    this.service.create(this.tipoEntidadeId, nome, parentId).subscribe({
+      next: () => {
+        this.notify.success(parentId ? 'Subgrupo criado.' : 'Grupo criado.');
+        this.load();
+        this.changed.emit();
+      },
+      error: err => this.notify.error(err?.error?.detail || (parentId
+        ? 'Nao foi possivel criar subgrupo.'
+        : 'Nao foi possivel criar grupo.'))
+    });
   }
 }

@@ -1,26 +1,4 @@
 <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-  <div class="mb-2 flex items-center justify-between gap-2">
-    <div class="text-sm font-semibold">Grupos de Entidade</div>
-    <div class="flex items-center gap-2">
-      <button
-        mat-stroked-button
-        type="button"
-        class="groups-all-button"
-        [class.groups-all-button-drop]="isAllDropTarget()"
-        (click)="selectGroup(null)"
-        (dragover)="onDragOverAll($event)"
-        (dragleave)="onDragLeaveAll()"
-        (drop)="onDropAll($event)">
-        <mat-icon>list</mat-icon>
-        Todos
-      </button>
-      <button mat-flat-button color="primary" type="button" (click)="addFromSelection()" [disabled]="!canManage || !tipoEntidadeId">
-        <mat-icon>add</mat-icon>
-        {{ createButtonLabel() }}
-      </button>
-    </div>
-  </div>
-
   <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="loading">
     Carregando grupos...
   </div>
@@ -37,6 +15,8 @@
           [class.group-node-row-selected]="isSelected(node)"
           [class.group-node-row-drop]="isGroupDropTarget(node)"
           (click)="selectGroup(node.id)"
+          draggable="true"
+          (dragstart)="onGroupDragStart($event, node)"
           (dragover)="onDragOverGroup(node, $event)"
           (dragleave)="onDragLeaveGroup(node)"
           (drop)="onDropGroup(node, $event)">
@@ -53,7 +33,13 @@
           <span class="group-node-title">{{ node.nome }}</span>
           <span class="group-node-count">{{ node.totalRegistros || 0 }}</span>
           <span class="group-node-actions">
-            <button mat-icon-button type="button" (click)="addChild(node); $event.stopPropagation()" matTooltip="Adicionar subgrupo">
+            <button
+              mat-icon-button
+              type="button"
+              class="group-node-action-add"
+              (click)="addChild(node); $event.stopPropagation()"
+              matTooltip="Adicionar subgrupo"
+              aria-label="Adicionar subgrupo">
               <mat-icon>subdirectory_arrow_right</mat-icon>
             </button>
             <button mat-icon-button type="button" (click)="rename(node); $event.stopPropagation()" matTooltip="Renomear">

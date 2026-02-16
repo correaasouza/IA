@@ -45,9 +45,12 @@ public interface RegistroEntidadeRepository extends JpaRepository<RegistroEntida
        AND p.tenant_id = re.tenant_id
       WHERE re.tenant_id = :tenantId
         AND re.tipo_entidade_config_agrupador_id = :configId
-        AND (:codigo IS NULL OR re.codigo = :codigo)
-        AND (:pessoaNome IS NULL OR lower(p.nome) LIKE lower(concat('%', :pessoaNome, '%')))
-        AND (:registroFederalNorm IS NULL OR p.registro_federal_normalizado = :registroFederalNorm)
+        AND (
+          (:codigo IS NULL AND :pessoaNome IS NULL AND :registroFederalNorm IS NULL)
+          OR (:codigo IS NOT NULL AND re.codigo = :codigo)
+          OR (:pessoaNome IS NOT NULL AND lower(p.nome) LIKE lower(concat('%', :pessoaNome, '%')))
+          OR (:registroFederalNorm IS NOT NULL AND p.registro_federal_normalizado = :registroFederalNorm)
+        )
         AND (:grupoId IS NULL OR re.grupo_entidade_id = :grupoId)
         AND (:ativo IS NULL OR re.ativo = :ativo)
       ORDER BY re.codigo ASC
@@ -60,9 +63,12 @@ public interface RegistroEntidadeRepository extends JpaRepository<RegistroEntida
        AND p.tenant_id = re.tenant_id
       WHERE re.tenant_id = :tenantId
         AND re.tipo_entidade_config_agrupador_id = :configId
-        AND (:codigo IS NULL OR re.codigo = :codigo)
-        AND (:pessoaNome IS NULL OR lower(p.nome) LIKE lower(concat('%', :pessoaNome, '%')))
-        AND (:registroFederalNorm IS NULL OR p.registro_federal_normalizado = :registroFederalNorm)
+        AND (
+          (:codigo IS NULL AND :pessoaNome IS NULL AND :registroFederalNorm IS NULL)
+          OR (:codigo IS NOT NULL AND re.codigo = :codigo)
+          OR (:pessoaNome IS NOT NULL AND lower(p.nome) LIKE lower(concat('%', :pessoaNome, '%')))
+          OR (:registroFederalNorm IS NOT NULL AND p.registro_federal_normalizado = :registroFederalNorm)
+        )
         AND (:grupoId IS NULL OR re.grupo_entidade_id = :grupoId)
         AND (:ativo IS NULL OR re.ativo = :ativo)
       """,

@@ -2,10 +2,12 @@ import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { EntityTypeService, TipoEntidade } from '../entity-types/entity-type.service';
@@ -26,6 +28,7 @@ import { EntityGroupsTreeComponent } from './entity-groups-tree.component';
     MatButtonModule,
     MatIconModule,
     MatPaginatorModule,
+    MatSlideToggleModule,
     MatTableModule,
     MatTooltipModule,
     FieldSearchComponent,
@@ -43,13 +46,18 @@ export class EntityRecordsListComponent implements OnInit {
   registros: RegistroEntidade[] = [];
   context: RegistroEntidadeContexto | null = null;
   contextWarning = '';
-  displayedColumns = ['codigo', 'pessoa', 'registro', 'grupo', 'moverGrupo', 'ativo', 'acoes'];
+  displayedColumns = ['codigo', 'pessoa', 'registro', 'grupo', 'ativo', 'acoes'];
   totalElements = 0;
   pageIndex = 0;
   pageSize = 20;
   gruposFiltro: Array<{ id: number; nome: string }> = [];
+  dropTargetGroupId: number | null = null;
+  dropZoneActive = false;
+  dropZoneBusy = false;
+  movementAreaOpen = false;
   isMobile = false;
   mobileFiltersOpen = false;
+  groupTreeOpen = false;
   routeTipoEntidadeId = 0;
   routeTipoSeed = '';
   routeCustomOnly = false;
@@ -135,6 +143,14 @@ export class EntityRecordsListComponent implements OnInit {
       this.gruposFiltro = [];
       return;
     }
+    if (!this.hasEmpresaContext()) {
+      this.context = null;
+      this.contextWarning = 'Selecione uma empresa no topo do sistema para continuar.';
+      this.registros = [];
+      this.totalElements = 0;
+      this.gruposFiltro = [];
+      return;
+    }
 
     this.loadingContext = true;
     this.contextWarning = '';
@@ -211,6 +227,9 @@ export class EntityRecordsListComponent implements OnInit {
 
   toggleMobileFilters(): void {
     this.mobileFiltersOpen = !this.mobileFiltersOpen;
+    if (this.isMobile && !this.mobileFiltersOpen) {
+      this.groupTreeOpen = false;
+    }
   }
 
   pageChange(event: PageEvent): void {
@@ -245,6 +264,25 @@ export class EntityRecordsListComponent implements OnInit {
     this.moveEntityToGroup(row.id, nextGroupId);
   }
 
+  onStatusToggle(row: RegistroEntidade, nextAtivo: boolean): void {
+    const tipoEntidadeId = this.selectedTipoEntidadeId();
+    if (!tipoEntidadeId || !this.context?.vinculado) return;
+    const previous = !!row.ativo;
+    if (previous === nextAtivo) return;
+
+    this.service.update(tipoEntidadeId, row.id, this.buildUpdatePayload(row, row.grupoEntidadeId || null, nextAtivo)).subscribe({
+      next: updated => {
+        row.ativo = !!updated.ativo;
+        this.notify.success(`Entidade ${row.codigo} ${row.ativo ? 'ativada' : 'inativada'}.`);
+        this.loadRegistros();
+      },
+      error: err => {
+        row.ativo = previous;
+        this.notify.error(err?.error?.detail || 'Nao foi possivel atualizar o status da entidade.');
+      }
+    });
+  }
+
   onGroupDrop(event: { entityId: number; groupId: number | null }): void {
     this.moveEntityToGroup(event.entityId, event.groupId);
   }
@@ -275,6 +313,75 @@ export class EntityRecordsListComponent implements OnInit {
     this.selectedGroupId = groupId;
     this.pageIndex = 0;
     this.loadRegistros();
+    if (this.isMobile) {
+      this.groupTreeOpen = false;
+      this.mobileFiltersOpen = false;
+    }
+  }
+
+  toggleGroupTree(): void {
+    this.groupTreeOpen = !this.groupTreeOpen;
+  }
+
+  showAllGroups(): void {
+    this.onGroupSelected(null);
+  }
+
+  toggleMovementArea(): void {
+    this.movementAreaOpen = !this.movementAreaOpen;
+  }
+
+  onDropTargetGroupChange(rawGroupId: string): void {
+    this.dropTargetGroupId = this.parseNumber(rawGroupId);
+  }
+
+  dropTargetGroupLabel(): string {
+    if (!this.dropTargetGroupId) return 'Nenhum';
+    const target = this.gruposFiltro.find(item => item.id === this.dropTargetGroupId);
+    return target?.nome || 'Nao encontrado';
+  }
+
+  onDestinationDragOver(event: DragEvent): void {
+    if (this.isMobile || this.dropZoneBusy) return;
+    event.preventDefault();
+    this.dropZoneActive = true;
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = 'move';
+    }
+  }
+
+  onDestinationDragLeave(): void {
+    this.dropZoneActive = false;
+  }
+
+  onDestinationDrop(event: DragEvent): void {
+    if (this.isMobile || this.dropZoneBusy) return;
+    event.preventDefault();
+    this.dropZoneActive = false;
+    if (!this.context?.vinculado) return;
+    const targetGroupId = this.dropTargetGroupId;
+    if (!targetGroupId) {
+      this.notify.info('Selecione um grupo de destino antes de soltar.');
+      return;
+    }
+
+    const entityId = this.readEntityIdFromDrag(event);
+    if (entityId) {
+      this.moveEntityToGroup(entityId, targetGroupId);
+      return;
+    }
+
+    const sourceGroupId = this.readGroupIdFromDrag(event);
+    if (sourceGroupId) {
+      if (sourceGroupId === targetGroupId) {
+        this.notify.info('O grupo de origem ja e o grupo de destino.');
+        return;
+      }
+      this.moveAllFromGroupToGroup(sourceGroupId, targetGroupId);
+      return;
+    }
+
+    this.notify.info('Arraste uma entidade da lista ou um grupo da arvore.');
   }
 
   private moveEntityToGroup(entityId: number, groupId: number | null): void {
@@ -285,16 +392,7 @@ export class EntityRecordsListComponent implements OnInit {
     const currentGroupId = row.grupoEntidadeId || null;
     if ((groupId || null) === currentGroupId) return;
 
-    const payload = {
-      grupoEntidadeId: groupId,
-      ativo: row.ativo,
-      pessoa: {
-        nome: row.pessoa.nome,
-        apelido: row.pessoa.apelido || undefined,
-        tipoRegistro: row.pessoa.tipoRegistro,
-        registroFederal: row.pessoa.registroFederal
-      }
-    };
+    const payload = this.buildUpdatePayload(row, groupId);
 
     this.service.update(tipoEntidadeId, row.id, payload).subscribe({
       next: updated => {
@@ -307,6 +405,38 @@ export class EntityRecordsListComponent implements OnInit {
         this.notify.error(err?.error?.detail || 'Nao foi possivel mover a entidade de grupo.');
       }
     });
+  }
+
+  private async moveAllFromGroupToGroup(sourceGroupId: number, targetGroupId: number): Promise<void> {
+    const tipoEntidadeId = this.selectedTipoEntidadeId();
+    if (!tipoEntidadeId || !this.context?.vinculado) return;
+    this.dropZoneBusy = true;
+    try {
+      const entities = await this.fetchAllEntitiesByGroup(tipoEntidadeId, sourceGroupId);
+      if (entities.length === 0) {
+        this.notify.info('O grupo de origem nao possui entidades para mover.');
+        return;
+      }
+
+      let moved = 0;
+      for (const entity of entities) {
+        const currentGroupId = entity.grupoEntidadeId || null;
+        if (currentGroupId === targetGroupId) continue;
+        await firstValueFrom(this.service.update(tipoEntidadeId, entity.id, this.buildUpdatePayload(entity, targetGroupId)));
+        moved++;
+      }
+
+      if (moved === 0) {
+        this.notify.info('Nenhuma entidade precisou ser movida.');
+        return;
+      }
+      this.notify.success(`${moved} entidade(s) movida(s) para ${this.dropTargetGroupLabel()}.`);
+      this.refreshContextAndData();
+    } catch (err: any) {
+      this.notify.error(err?.error?.detail || 'Nao foi possivel mover entidades do grupo selecionado.');
+    } finally {
+      this.dropZoneBusy = false;
+    }
   }
 
   private loadGruposFiltro(tipoEntidadeId: number): void {
@@ -330,6 +460,92 @@ export class EntityRecordsListComponent implements OnInit {
     return Number.isFinite(n) && n > 0 ? n : null;
   }
 
+  private hasEmpresaContext(): boolean {
+    return !!(localStorage.getItem('empresaContextId') || '').trim();
+  }
+
+  private buildUpdatePayload(entity: RegistroEntidade, groupId: number | null, ativo: boolean = entity.ativo): {
+    grupoEntidadeId: number | null;
+    ativo: boolean;
+    pessoa: {
+      nome: string;
+      apelido?: string | undefined;
+      tipoRegistro: 'CPF' | 'CNPJ' | 'ID_ESTRANGEIRO';
+      registroFederal: string;
+    };
+  } {
+    return {
+      grupoEntidadeId: groupId,
+      ativo: !!ativo,
+      pessoa: {
+        nome: entity.pessoa.nome,
+        apelido: entity.pessoa.apelido || undefined,
+        tipoRegistro: entity.pessoa.tipoRegistro,
+        registroFederal: entity.pessoa.registroFederal
+      }
+    };
+  }
+
+  private async fetchAllEntitiesByGroup(tipoEntidadeId: number, groupId: number): Promise<RegistroEntidade[]> {
+    const size = 200;
+    let page = 0;
+    const all: RegistroEntidade[] = [];
+    while (true) {
+      const response = await firstValueFrom(this.service.list(tipoEntidadeId, {
+        page,
+        size,
+        grupoId: groupId,
+        ativo: ''
+      }));
+      const items = response?.content || [];
+      all.push(...items);
+      if (items.length < size) break;
+      page++;
+    }
+    return all;
+  }
+
+  private readEntityIdFromDrag(event: DragEvent): number | null {
+    const rawEntity = event.dataTransfer?.getData('application/x-entity-row') || '';
+    if (rawEntity) {
+      try {
+        const parsed = JSON.parse(rawEntity);
+        const id = Number(parsed?.entityId || 0);
+        return Number.isFinite(id) && id > 0 ? id : null;
+      } catch {
+        return null;
+      }
+    }
+    const rawText = event.dataTransfer?.getData('text/plain') || '';
+    if (rawText.startsWith('group:')) return null;
+    try {
+      const parsed = JSON.parse(rawText);
+      const id = Number(parsed?.entityId || 0);
+      if (Number.isFinite(id) && id > 0) return id;
+    } catch {
+      const id = Number(rawText);
+      if (Number.isFinite(id) && id > 0) return id;
+    }
+    return null;
+  }
+
+  private readGroupIdFromDrag(event: DragEvent): number | null {
+    const rawGroup = event.dataTransfer?.getData('application/x-entity-group') || '';
+    if (rawGroup) {
+      try {
+        const parsed = JSON.parse(rawGroup);
+        const id = Number(parsed?.groupId || 0);
+        return Number.isFinite(id) && id > 0 ? id : null;
+      } catch {
+        return null;
+      }
+    }
+    const rawText = event.dataTransfer?.getData('text/plain') || '';
+    if (!rawText.startsWith('group:')) return null;
+    const id = Number(rawText.replace('group:', '').trim());
+    return Number.isFinite(id) && id > 0 ? id : null;
+  }
+
   selectedTipoEntidadeId(): number {
     return Number(this.selectedTipo?.id || 0);
   }
@@ -341,6 +557,20 @@ export class EntityRecordsListComponent implements OnInit {
   headerTitle(): string {
     const nome = this.selectedTipoNome();
     return nome ? `Cadastro ${nome}` : 'Cadastro de Entidades';
+  }
+
+  newEntityButtonLabel(): string {
+    const nome = this.selectedTipoNome().trim();
+    if (!nome) return 'Nova entidade';
+    const nomeLower = nome.toLowerCase();
+    const artigo = this.isFeminineTypeName(nomeLower) ? 'Nova' : 'Novo';
+    return `${artigo} ${nomeLower}`;
+  }
+
+  selectedGroupHeader(): string {
+    if (!this.selectedGroupId) return 'Todos';
+    const selected = this.gruposFiltro.find(item => item.id === this.selectedGroupId);
+    return selected?.nome || 'Todos';
   }
 
   activeFiltersCount(): number {
@@ -436,5 +666,19 @@ export class EntityRecordsListComponent implements OnInit {
         .join(' ');
     }
     return raw;
+  }
+
+  private isFeminineTypeName(value: string): boolean {
+    const normalized = (value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+    if (!normalized) return false;
+    const token = normalized.split(' ').filter(part => !!part).pop() || normalized;
+    return token.endsWith('a')
+      || token.endsWith('cao')
+      || token.endsWith('sao')
+      || token.endsWith('dade')
+      || token.endsWith('gem');
   }
 }
