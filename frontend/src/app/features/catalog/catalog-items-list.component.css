@@ -1,0 +1,228 @@
+﻿:host {
+  display: block;
+  min-width: 0;
+}
+
+.header-context-line {
+  margin-top: -2px;
+  padding: 0 2px 2px;
+}
+
+.filters-group-toggle {
+  min-height: 26px !important;
+  padding: 0 6px !important;
+  border-radius: 6px !important;
+  color: var(--ink) !important;
+  font-weight: 600;
+}
+
+.filters-group-toggle .mat-icon {
+  font-size: 17px !important;
+  width: 17px !important;
+  height: 17px !important;
+}
+
+.filters-group-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.selected-group-label {
+  min-width: 0;
+  flex: 1 1 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-tree-inline {
+  border-top: 1px solid var(--border-light);
+  padding-top: 8px;
+}
+
+.catalog-destination-panel {
+  border-top: 1px solid var(--border-light);
+  padding-top: 6px;
+}
+
+.catalog-destination-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.catalog-destination-title {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.catalog-destination-hint {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1;
+}
+
+.catalog-destination-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 300px) minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.catalog-destination-select {
+  width: 100%;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  padding: 0 28px 0 10px;
+  appearance: none;
+  outline: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #6b7280 50%),
+    linear-gradient(135deg, #6b7280 50%, transparent 50%);
+  background-position:
+    calc(100% - 13px) calc(50% - 2px),
+    calc(100% - 8px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.catalog-destination-select:focus {
+  border-color: #9ca3af;
+}
+
+.catalog-destination-dropzone {
+  min-height: 30px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: var(--surface-muted);
+  color: var(--muted-strong);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+
+.catalog-destination-dropzone .mat-icon {
+  font-size: 16px !important;
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.catalog-destination-dropzone-active {
+  border-color: #2563eb;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.catalog-destination-dropzone-disabled {
+  opacity: 0.72;
+}
+
+.catalog-destination-dropzone-busy {
+  border-style: solid;
+}
+
+.catalog-items-list-col {
+  min-width: 0;
+}
+
+.catalog-row-draggable {
+  cursor: grab;
+}
+
+.catalog-row-draggable:active {
+  cursor: grabbing;
+}
+
+.catalog-empty {
+  margin-top: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-size: 12px;
+  padding: 10px;
+}
+
+.catalog-status-toggle {
+  transform: scale(0.9);
+  transform-origin: left center;
+}
+
+.status-search-like {
+  min-height: 52px;
+  display: grid;
+}
+
+.status-native-select {
+  width: 100%;
+  height: 52px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #ededed;
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 38px 0 16px;
+  appearance: none;
+  outline: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #6b7280 50%),
+    linear-gradient(135deg, #6b7280 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) calc(50% - 3px),
+    calc(100% - 10px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+}
+
+.status-native-select:focus {
+  border-color: #9ca3af;
+}
+
+:host ::ng-deep .mat-mdc-header-row {
+  height: 40px;
+}
+
+:host ::ng-deep .mat-mdc-row {
+  height: 40px;
+}
+
+:host ::ng-deep .mat-mdc-cell,
+:host ::ng-deep .mat-mdc-header-cell {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+@media (max-width: 899px) {
+  .filters-group-row {
+    gap: 8px;
+    align-items: flex-start;
+  }
+
+  .filters-group-toggle {
+    min-height: 28px !important;
+    padding: 0 8px !important;
+  }
+
+  .selected-group-label {
+    flex-basis: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  :host ::ng-deep .mat-mdc-paginator-container {
+    justify-content: flex-start;
+    row-gap: 8px;
+  }
+}

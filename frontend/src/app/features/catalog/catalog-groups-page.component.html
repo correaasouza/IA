@@ -1,0 +1,39 @@
+﻿<div class="grid gap-3">
+  <div class="page-list-sticky grid gap-3">
+    <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+      <div>
+        <h1 class="m-0 text-lg font-bold">{{ pageTitle() }}</h1>
+        <p class="mt-1 text-xs text-[var(--muted)]">Gerencie niveis e subniveis do catálogo no contexto da empresa selecionada.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button mat-stroked-button type="button" (click)="backToList()">
+          <mat-icon>arrow_back</mat-icon>
+          Voltar
+        </button>
+      </div>
+    </header>
+  </div>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="context?.vinculado">
+    <div class="text-xs text-[var(--muted)]">
+      Empresa: <strong>{{ context?.empresaNome }}</strong> |
+      Grupo de Empresas: <strong>{{ context?.agrupadorNome || '-' }}</strong> |
+      Numeração: <strong>{{ context?.numberingMode === 'AUTOMATICA' ? 'Automatica' : 'Manual' }}</strong>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-dashed border-[#fda29b] bg-[#fef3f2] p-3 text-sm text-[#b42318]" *ngIf="contextWarning">
+    {{ contextWarning }}
+  </section>
+
+  <section *ngIf="loadingContext" class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-xs text-[var(--muted)]">
+    Resolvendo contexto da empresa...
+  </section>
+
+  <app-catalog-groups-tree
+    *ngIf="context?.vinculado"
+    [type]="type"
+    [canManage]="true"
+    (changed)="onGroupsChanged()">
+  </app-catalog-groups-tree>
+</div>

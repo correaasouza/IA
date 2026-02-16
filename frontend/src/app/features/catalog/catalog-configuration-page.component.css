@@ -1,0 +1,19 @@
+:host {
+  display: block;
+}
+
+.catalog-tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.catalog-tab-btn {
+  min-width: 120px;
+}
+
+.catalog-tab-active {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: #eef4ff;
+}

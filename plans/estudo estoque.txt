@@ -1,0 +1,56 @@
+produto 1 (configuracao do agrupador A "filial A e B")
+    estoques (cada configuração de agrupador poderá definir n estoques para trabalhar)
+        estoque A (quantidade geral (gf1)) 
+           filial A(gf1)   1 UN
+           filial B(gf1)   2 UN
+           consolidado     3 UN (soma de todas as filais)
+        estoque B (quantidade consignada (gf1))    
+           filial A(gf1)   0 UN
+           filial B(gf1)   1 UN
+           consolidado     1 UN (soma de todas as filais)
+        estoque C (quantidade reservada (gf1))    
+           filial A(gf1)   1 UN
+           filial B(gf1)   0 UN 
+           consolidado     1 UN (soma de todas as filais)   
+    historico (estoque)
+        origemMovimentacaoTipo (Movimento de estoque manual, nota de compra, nota de venda, etc)              
+        origemMovimentacaoCodigo (Código do Movimento de estoque manual, nota de compra, nota de venda, etc)  
+        origemMovimentoItemCodigo (Código do item que movimentou o estoque)
+        dataHoraMovimentacao 
+        estoque (estoque A, B, C, etc)
+        quantidadeAnterior
+        quantidadeMovimentada
+        quantidadeAtual
+    historico (preço)  
+        origemMovimentacaoTipo (Movimento de estoque manual, nota de compra, nota de venda, etc)              
+        origemMovimentacaoCodigo (Código do Movimento de estoque manual, nota de compra, nota de venda, etc)  
+        origemMovimentoItemCodigo (Código do item que movimentou o estoque)
+        dataHoraMovimentacao 
+        estoque (estoque A, B, C, etc)
+        precoAnterior
+        precoMovimentada
+        precoAtual      
+
+        
+
+produto 2 (configuracao do agrupador B "filial C")
+    estoques
+        estoque A (quantidade total (gf2)) 
+           filial C(gf2)   1 UN
+           consolidado     1 UN (soma de todas as filais)
+        estoque B (em consignação (gf2))    
+           filial C(gf2)   1 UN
+           consolidado     1 UN (soma de todas as filais)
+        estoque C (estoque reservado (gf2))    
+           filial C(gf2)  1 UN
+           consolidado    1 UN (soma de todas as filais)
+    historico (estoque)
+    historico (preço) 
+
+ajusteEstoque (cada locatário poderá cadastrar N ajustes de estoque)
+    tipo (ENTRADA, SAÍDA ou TRANSFERENCIA)
+    estoqueOrigem  (qualquer estoque do locatário, exemplo: filial B(gf1) do estoque estoque A (quantidade geral (gf1)) ), ou nulo) 
+    estoqueDestino estoque C (qualquer estoque do locatário, exemplo: filial C(gf2) do estoque C (estoque reservado (gf2))) 
+
+
+

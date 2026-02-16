@@ -20,7 +20,8 @@ public class ConfiguracaoPermissaoGuard {
     String normalized = configType.trim().toUpperCase(Locale.ROOT);
     return switch (normalized) {
       case ConfiguracaoScopeService.TYPE_FORMULARIO,
-           ConfiguracaoScopeService.TYPE_COLUNA -> permissaoGuard.hasPermissao("CONFIG_EDITOR");
+           ConfiguracaoScopeService.TYPE_COLUNA,
+           ConfiguracaoScopeService.TYPE_CATALOGO -> permissaoGuard.hasPermissao("CONFIG_EDITOR");
       case ConfiguracaoScopeService.TYPE_TIPO_ENTIDADE -> permissaoGuard.hasPermissao("ENTIDADE_EDIT");
       default -> false;
     };

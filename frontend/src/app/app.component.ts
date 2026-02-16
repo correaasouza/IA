@@ -708,8 +708,14 @@ export class AppComponent {
       children: item.children ? [...item.children] : undefined
     }));
     const cadastros = source.find(item => item.id === 'group-cadastros');
-    if (cadastros && this.dynamicEntityTypeItems.length > 0) {
-      cadastros.children = [...this.dynamicEntityTypeItems];
+    if (cadastros) {
+      const staticChildren = cadastros.children || [];
+      const staticNonEntityChildren = staticChildren.filter(child => !child.id.startsWith('entities-'));
+      const staticEntityChildren = staticChildren.filter(child => child.id.startsWith('entities-'));
+      const entityChildren = this.dynamicEntityTypeItems.length > 0
+        ? this.dynamicEntityTypeItems
+        : staticEntityChildren;
+      cadastros.children = [...entityChildren, ...staticNonEntityChildren];
     }
     return source;
   }

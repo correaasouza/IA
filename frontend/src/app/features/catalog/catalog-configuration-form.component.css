@@ -1,0 +1,35 @@
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.catalog-numbering-options {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-muted);
+  padding: 10px 12px;
+}
+
+.catalog-group-config-modal {
+  min-width: 0;
+}
+
+.catalog-group-empresa-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.catalog-group-empresa-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-light);
+  background: var(--surface-muted);
+  font-size: 11px;
+  color: var(--muted-strong);
+  line-height: 1.2;
+}

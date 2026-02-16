@@ -30,6 +30,7 @@ public class AgrupadorEmpresaService {
   private final EmpresaRepository empresaRepository;
   private final ConfiguracaoScopeService configuracaoScopeService;
   private final TipoEntidadeConfigAgrupadorSyncService tipoEntidadeConfigAgrupadorSyncService;
+  private final CatalogConfigurationGroupSyncService catalogConfigurationGroupSyncService;
   private final AuditService auditService;
   private final MeterRegistry meterRegistry;
 
@@ -39,6 +40,7 @@ public class AgrupadorEmpresaService {
       EmpresaRepository empresaRepository,
       ConfiguracaoScopeService configuracaoScopeService,
       TipoEntidadeConfigAgrupadorSyncService tipoEntidadeConfigAgrupadorSyncService,
+      CatalogConfigurationGroupSyncService catalogConfigurationGroupSyncService,
       AuditService auditService,
       MeterRegistry meterRegistry) {
     this.agrupadorRepository = agrupadorRepository;
@@ -46,6 +48,7 @@ public class AgrupadorEmpresaService {
     this.empresaRepository = empresaRepository;
     this.configuracaoScopeService = configuracaoScopeService;
     this.tipoEntidadeConfigAgrupadorSyncService = tipoEntidadeConfigAgrupadorSyncService;
+    this.catalogConfigurationGroupSyncService = catalogConfigurationGroupSyncService;
     this.auditService = auditService;
     this.meterRegistry = meterRegistry;
   }
@@ -86,6 +89,8 @@ public class AgrupadorEmpresaService {
       AgrupadorEmpresa saved = agrupadorRepository.save(entity);
       if (ConfiguracaoScopeService.TYPE_TIPO_ENTIDADE.equals(normalizedType)) {
         tipoEntidadeConfigAgrupadorSyncService.onAgrupadorCreated(tenantId, configId, saved.getId());
+      } else if (ConfiguracaoScopeService.TYPE_CATALOGO.equals(normalizedType)) {
+        catalogConfigurationGroupSyncService.onAgrupadorCreated(tenantId, configId, saved.getId());
       }
       metric("create", "success");
       auditService.log(tenantId, "AGRUPADOR_EMPRESA_CRIADO", "agrupador_empresa", String.valueOf(saved.getId()),
@@ -183,6 +188,8 @@ public class AgrupadorEmpresaService {
     AgrupadorEmpresa agrupador = findAgrupador(tenantId, normalizedType, configId, agrupadorId);
     if (ConfiguracaoScopeService.TYPE_TIPO_ENTIDADE.equals(normalizedType)) {
       tipoEntidadeConfigAgrupadorSyncService.onAgrupadorRemoved(tenantId, configId, agrupadorId);
+    } else if (ConfiguracaoScopeService.TYPE_CATALOGO.equals(normalizedType)) {
+      catalogConfigurationGroupSyncService.onAgrupadorRemoved(tenantId, configId, agrupadorId);
     }
     auditService.log(tenantId, "AGRUPADOR_EMPRESA_EXCLUIDO", "agrupador_empresa", String.valueOf(agrupadorId),
       "configType=" + normalizedType + ";configId=" + configId + ";nome=" + agrupador.getNome());

@@ -1,0 +1,95 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
+
+export type CatalogCrudType = 'PRODUCTS' | 'SERVICES';
+export type CatalogNumberingMode = 'AUTOMATICA' | 'MANUAL';
+
+export interface CatalogItemContext {
+  empresaId: number;
+  empresaNome: string;
+  type: CatalogCrudType;
+  catalogConfigurationId: number;
+  agrupadorId?: number | null;
+  agrupadorNome?: string | null;
+  numberingMode: CatalogNumberingMode;
+  vinculado: boolean;
+  motivo?: string | null;
+  mensagem?: string | null;
+}
+
+export interface CatalogItemPayload {
+  codigo?: number | null;
+  nome: string;
+  descricao?: string | null;
+  catalogGroupId?: number | null;
+  ativo: boolean;
+}
+
+export interface CatalogItem {
+  id: number;
+  type: CatalogCrudType;
+  catalogConfigurationId: number;
+  agrupadorEmpresaId: number;
+  agrupadorEmpresaNome?: string | null;
+  catalogGroupId?: number | null;
+  catalogGroupNome?: string | null;
+  codigo: number;
+  nome: string;
+  descricao?: string | null;
+  ativo: boolean;
+}
+
+export interface CatalogItemListResponse {
+  content: CatalogItem[];
+  totalElements?: number;
+  page?: {
+    totalElements: number;
+  };
+}
+
+@Injectable({ providedIn: 'root' })
+export class CatalogItemService {
+  private baseUrl = `${environment.apiBaseUrl}/api/catalog`;
+
+  constructor(private http: HttpClient) {}
+
+  contextoEmpresa(type: CatalogCrudType): Observable<CatalogItemContext> {
+    return this.http.get<CatalogItemContext>(`${this.baseUrl}/${type}/contexto-empresa`);
+  }
+
+  list(
+    type: CatalogCrudType,
+    params: {
+      page?: number;
+      size?: number;
+      codigo?: number | null;
+      text?: string;
+      grupoId?: number | null;
+      ativo?: boolean | '';
+    }
+  ): Observable<CatalogItemListResponse> {
+    const query = new URLSearchParams();
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && `${value}` !== '') query.set(key, `${value}`);
+    });
+    return this.http.get<CatalogItemListResponse>(`${this.baseUrl}/${type}/items?${query.toString()}`);
+  }
+
+  get(type: CatalogCrudType, id: number): Observable<CatalogItem> {
+    return this.http.get<CatalogItem>(`${this.baseUrl}/${type}/items/${id}`);
+  }
+
+  create(type: CatalogCrudType, payload: CatalogItemPayload): Observable<CatalogItem> {
+    return this.http.post<CatalogItem>(`${this.baseUrl}/${type}/items`, payload);
+  }
+
+  update(type: CatalogCrudType, id: number, payload: CatalogItemPayload): Observable<CatalogItem> {
+    return this.http.put<CatalogItem>(`${this.baseUrl}/${type}/items/${id}`, payload);
+  }
+
+  delete(type: CatalogCrudType, id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/${type}/items/${id}`);
+  }
+}

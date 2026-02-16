@@ -1,0 +1,78 @@
+﻿<section class="catalog-tree rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+  <div class="catalog-tree-header" *ngIf="canManage">
+    <button mat-stroked-button type="button" (click)="addRoot()">
+      <mat-icon>add</mat-icon>
+      Novo grupo
+    </button>
+  </div>
+
+  <div class="catalog-tree-state" *ngIf="loading">Carregando grupos...</div>
+  <div class="catalog-tree-state" *ngIf="!loading && nodes.length === 0">Nenhum grupo cadastrado.</div>
+
+  <ng-container *ngIf="!loading && nodes.length > 0">
+    <ng-template #nodeTpl let-node>
+      <li class="catalog-node">
+        <div
+          class="catalog-node-row"
+          [class.catalog-node-row-selected]="isSelected(node)"
+          (click)="selectGroup(node.id)"
+          [attr.draggable]="allowGroupDrag ? true : null"
+          (dragstart)="onGroupDragStart($event, node)">
+          <button
+            *ngIf="hasChildren(node)"
+            mat-icon-button
+            type="button"
+            class="catalog-node-toggle"
+            (click)="toggleExpand(node, $event)"
+            [attr.aria-label]="isExpanded(node) ? 'Recolher grupo' : 'Expandir grupo'">
+            <mat-icon>{{ isExpanded(node) ? 'expand_more' : 'chevron_right' }}</mat-icon>
+          </button>
+          <span *ngIf="!hasChildren(node)" class="catalog-node-toggle-placeholder"></span>
+
+          <span class="catalog-node-title">{{ node.nome }}</span>
+          <span class="catalog-node-count">{{ node.totalItems || 0 }}</span>
+
+          <span class="catalog-node-actions" *ngIf="canManage">
+            <button
+              mat-icon-button
+              type="button"
+              matTooltip="Adicionar subgrupo"
+              aria-label="Adicionar subgrupo"
+              (click)="addChild(node); $event.stopPropagation()">
+              <mat-icon>subdirectory_arrow_right</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              matTooltip="Renomear"
+              aria-label="Renomear"
+              (click)="rename(node); $event.stopPropagation()">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button
+              mat-icon-button
+              type="button"
+              color="warn"
+              matTooltip="Excluir"
+              aria-label="Excluir"
+              (click)="remove(node); $event.stopPropagation()">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </span>
+        </div>
+
+        <ul class="catalog-children" *ngIf="node.children?.length && isExpanded(node)">
+          <ng-container *ngFor="let child of node.children">
+            <ng-container *ngTemplateOutlet="nodeTpl; context: { $implicit: child }"></ng-container>
+          </ng-container>
+        </ul>
+      </li>
+    </ng-template>
+
+    <ul class="catalog-root">
+      <ng-container *ngFor="let node of nodes">
+        <ng-container *ngTemplateOutlet="nodeTpl; context: { $implicit: node }"></ng-container>
+      </ng-container>
+    </ul>
+  </ng-container>
+</section>

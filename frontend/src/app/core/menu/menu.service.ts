@@ -60,6 +60,24 @@ export class MenuService {
           icon: 'groups',
           roles: ['MASTER', 'ADMIN'],
           perms: ['ENTIDADE_EDIT']
+        },
+        {
+          id: 'catalog-products',
+          label: 'Produtos',
+          route: '/catalog/products',
+          accessKey: 'menu.catalog-products',
+          icon: 'inventory_2',
+          roles: ['MASTER', 'ADMIN'],
+          perms: ['CONFIG_EDITOR']
+        },
+        {
+          id: 'catalog-services',
+          label: 'Servicos',
+          route: '/catalog/services',
+          accessKey: 'menu.catalog-services',
+          icon: 'design_services',
+          roles: ['MASTER', 'ADMIN'],
+          perms: ['CONFIG_EDITOR']
         }
       ]
     },
@@ -68,6 +86,15 @@ export class MenuService {
       label: 'Configurações',
       icon: 'settings',
       children: [
+        {
+          id: 'catalog-config',
+          label: 'Catálogo',
+          route: '/catalog/configuration',
+          accessKey: 'menu.catalog-config',
+          icon: 'inventory_2',
+          roles: ['MASTER', 'ADMIN'],
+          perms: ['CONFIG_EDITOR']
+        },
         { id: 'entity-types', label: 'Tipos Ent.', route: '/entity-types', icon: 'category', roles: ['MASTER', 'ADMIN'], perms: ['ENTIDADE_EDIT'] }
       ]
     }

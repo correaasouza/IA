@@ -12,6 +12,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs';
 import { NotificationService } from '../../core/notifications/notification.service';
+import { ConfigSectionShellComponent } from '../../shared/config-section-shell.component';
 import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 import { CompanyService, EmpresaResponse } from '../companies/company.service';
 import { AgrupadorEmpresa, AgrupadorEmpresaService } from './agrupador-empresa.service';
@@ -31,6 +32,7 @@ import { AgrupadorEmpresa, AgrupadorEmpresaService } from './agrupador-empresa.s
     MatSelectModule,
     MatTableModule,
     MatTooltipModule,
+    ConfigSectionShellComponent,
     FieldSearchComponent
   ],
   templateUrl: './agrupadores-empresa.component.html',

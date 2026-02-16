@@ -21,7 +21,10 @@ export class IconService {
     'entities-outras': 'view_list',
     metadata: 'view_list',
     'entities-config': 'fact_check',
-    reports: 'bar_chart'
+    reports: 'bar_chart',
+    'catalog-config': 'inventory_2',
+    'catalog-products': 'inventory_2',
+    'catalog-services': 'design_services'
   };
 
   resolveIcon(menuId: string, defaultIcon: string) {

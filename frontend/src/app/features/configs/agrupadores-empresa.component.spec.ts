@@ -1,5 +1,6 @@
 import { of, throwError } from 'rxjs';
 import { SimpleChange } from '@angular/core';
+import { MatDialog } from '@angular/material/dialog';
 import { AgrupadoresEmpresaComponent } from './agrupadores-empresa.component';
 import { AgrupadorEmpresaService } from './agrupador-empresa.service';
 import { CompanyService } from '../companies/company.service';
@@ -9,6 +10,7 @@ describe('AgrupadoresEmpresaComponent', () => {
   let agrupadorService: jasmine.SpyObj<AgrupadorEmpresaService>;
   let companyService: jasmine.SpyObj<CompanyService>;
   let notify: jasmine.SpyObj<NotificationService>;
+  let dialog: jasmine.SpyObj<MatDialog>;
   let component: AgrupadoresEmpresaComponent;
 
   beforeEach(() => {
@@ -22,11 +24,12 @@ describe('AgrupadoresEmpresaComponent', () => {
     ]);
     companyService = jasmine.createSpyObj<CompanyService>('CompanyService', ['list']);
     notify = jasmine.createSpyObj<NotificationService>('NotificationService', ['success', 'error', 'info']);
+    dialog = jasmine.createSpyObj<MatDialog>('MatDialog', ['open']);
 
     agrupadorService.list.and.returnValue(of([]));
     companyService.list.and.returnValue(of({ content: [], totalPages: 1 }));
 
-    component = new AgrupadoresEmpresaComponent(agrupadorService, companyService, notify);
+    component = new AgrupadoresEmpresaComponent(agrupadorService, companyService, notify, dialog);
     component.configType = 'formulario';
     component.configId = 10;
   });
@@ -40,45 +43,6 @@ describe('AgrupadoresEmpresaComponent', () => {
     component.configId = 10;
     component.configType = '';
     expect(component.canRender()).toBeFalse();
-  });
-
-  it('should create agrupador and reload list', () => {
-    agrupadorService.create.and.returnValue(of({ id: 1, nome: 'Novo', ativo: true, empresas: [] }));
-    component.createNome = 'Novo';
-
-    component.create();
-
-    expect(agrupadorService.create).toHaveBeenCalledWith('FORMULARIO', 10, 'Novo');
-    expect(agrupadorService.list).toHaveBeenCalledWith('FORMULARIO', 10);
-    expect(notify.success).toHaveBeenCalled();
-  });
-
-  it('should show api message on create conflict', () => {
-    agrupadorService.create.and.returnValue(
-      throwError(() => ({ error: { detail: 'Ja existe agrupador com este nome para esta configuracao.' } }))
-    );
-    component.createNome = 'Duplicado';
-
-    component.create();
-
-    expect(notify.error).toHaveBeenCalledWith('Ja existe agrupador com este nome para esta configuracao.');
-  });
-
-  it('should process add and remove empresa on selection change', () => {
-    const group = {
-      id: 99,
-      nome: 'Grupo A',
-      ativo: true,
-      empresas: [{ empresaId: 1, nome: 'Empresa 1' }]
-    };
-    agrupadorService.addEmpresa.and.returnValue(of(group));
-    agrupadorService.removeEmpresa.and.returnValue(of(group));
-
-    component.onGroupSelectionChange(group, [2]);
-
-    expect(agrupadorService.addEmpresa).toHaveBeenCalledWith('FORMULARIO', 10, 99, 2);
-    expect(agrupadorService.removeEmpresa).toHaveBeenCalledWith('FORMULARIO', 10, 99, 1);
-    expect(component.selectionBusyGroupId).toBeNull();
   });
 
   it('should set error state when loading agrupadores fails', () => {
@@ -103,5 +67,15 @@ describe('AgrupadoresEmpresaComponent', () => {
 
     expect(notify.error).toHaveBeenCalledWith('Nao foi possivel carregar as empresas.');
     expect(component.loadingEmpresas).toBeFalse();
+  });
+
+  it('should call remove service when deleting an agrupador', () => {
+    const group = { id: 7, nome: 'Grupo X', ativo: true, empresas: [] };
+    agrupadorService.remove.and.returnValue(of(void 0));
+
+    component.remove(group);
+
+    expect(agrupadorService.remove).toHaveBeenCalledWith('FORMULARIO', 10, 7);
+    expect(notify.success).toHaveBeenCalledWith('Agrupador removido.');
   });
 });

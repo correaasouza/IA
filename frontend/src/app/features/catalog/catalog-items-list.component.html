@@ -1,0 +1,254 @@
+﻿<div class="grid gap-3">
+  <div class="page-list-sticky grid gap-3">
+    <div class="flex flex-col items-start justify-between gap-2 md:flex-row md:items-start">
+      <div>
+        <h1 class="m-0 text-lg font-bold">{{ pageTitle() }}</h1>
+        <p class="mt-1 text-xs text-[var(--muted)]">Listagem no contexto da empresa selecionada no sistema.</p>
+      </div>
+
+      <button mat-flat-button color="primary" type="button" (click)="goNew()" [disabled]="!context?.vinculado">
+        <mat-icon>add</mat-icon>
+        {{ newButtonLabel() }}
+      </button>
+    </div>
+
+    <div class="header-context-line text-xs text-[var(--muted)]" *ngIf="context?.vinculado">
+      Empresa: <strong>{{ context?.empresaNome }}</strong> |
+      Grupo de Empresas: <strong>{{ context?.agrupadorNome || '-' }}</strong> |
+      Numeracao: <strong>{{ numberingModeLabel() }}</strong>
+    </div>
+
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <div class="text-sm font-semibold">Filtros</div>
+        <div class="flex items-center gap-2">
+          <button mat-button type="button" class="mobile-filter-toggle md:!hidden" (click)="toggleMobileFilters()">
+            <mat-icon>tune</mat-icon>
+            Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
+            <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+          <div class="text-xs text-[var(--muted)]">{{ totalElements }} registro(s)</div>
+        </div>
+      </div>
+
+      <ng-container *ngIf="!isMobile || mobileFiltersOpen">
+        <form
+          [formGroup]="filters"
+          class="grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1fr)_220px]"
+          role="search">
+          <div class="min-w-0">
+            <app-field-search
+              [options]="searchOptions"
+              [defaultFields]="searchFields"
+              [showActions]="false"
+              placeholder="Digite e selecione os campos"
+              (searchChange)="onSearchChange($event)">
+            </app-field-search>
+          </div>
+
+          <div class="status-search-like">
+            <select class="status-native-select" formControlName="status" (change)="applyFilters()" aria-label="Status">
+              <option value="">Status: Todos</option>
+              <option value="ativo">Status: Ativo</option>
+              <option value="inativo">Status: Inativo</option>
+            </select>
+          </div>
+        </form>
+      </ng-container>
+
+      <div class="filters-group-row mt-2" *ngIf="context?.vinculado">
+        <button mat-button type="button" class="filters-group-toggle" (click)="toggleGroupTree()">
+          <mat-icon>account_tree</mat-icon>
+          {{ groupTreeOpen ? 'Fechar grupos' : 'Grupos' }}
+        </button>
+        <button mat-button type="button" class="filters-group-toggle" (click)="showAllGroups()" [disabled]="!selectedGroupId">
+          <mat-icon>list</mat-icon>
+          Todos
+        </button>
+        <button
+          *ngIf="!isMobile"
+          mat-button
+          class="filters-group-toggle"
+          type="button"
+          (click)="toggleMovementArea()"
+          [disabled]="!context?.vinculado"
+          [matTooltip]="movementAreaOpen ? 'Fechar area de movimentacao de grupos' : 'Abrir area de movimentacao de grupos'"
+          aria-label="Abrir ou fechar area de movimentacao">
+          <mat-icon>swap_horiz</mat-icon>
+          {{ movementAreaOpen ? 'Fechar movimentacao' : 'Movimentacao' }}
+        </button>
+        <span class="selected-group-label" [attr.title]="selectedGroupLabel()">
+          Grupo selecionado: <strong>{{ selectedGroupLabel() }}</strong>
+        </span>
+      </div>
+
+      <div class="group-tree-inline mt-2" *ngIf="groupTreeOpen && context?.vinculado">
+        <app-catalog-groups-tree
+          [type]="type"
+          [canManage]="true"
+          [allowGroupDrag]="!isMobile && movementAreaOpen"
+          [selectedGroupId]="selectedGroupId"
+          (selectedGroupIdChange)="onGroupSelected($event)"
+          (changed)="onGroupsChanged()">
+        </app-catalog-groups-tree>
+      </div>
+
+      <div class="catalog-destination-panel mt-1" *ngIf="!isMobile && context?.vinculado && movementAreaOpen">
+        <div class="catalog-destination-header">
+          <span class="catalog-destination-title">Area de movimentacao de grupos</span>
+          <span class="catalog-destination-hint">Arraste item ou grupo e solte na area ao lado.</span>
+        </div>
+        <div class="catalog-destination-controls">
+          <select
+            class="catalog-destination-select"
+            [value]="dropTargetGroupId || ''"
+            (change)="onDropTargetGroupChange($any($event.target).value)"
+            aria-label="Grupo de destino para movimentacao">
+            <option value="">Selecione o grupo de destino</option>
+            <option *ngFor="let grupo of groupOptions" [value]="grupo.id">{{ grupo.nome }}</option>
+          </select>
+
+          <div
+            class="catalog-destination-dropzone"
+            [class.catalog-destination-dropzone-active]="dropZoneActive"
+            [class.catalog-destination-dropzone-disabled]="!dropTargetGroupId || dropZoneBusy"
+            [class.catalog-destination-dropzone-busy]="dropZoneBusy"
+            (dragover)="onDestinationDragOver($event)"
+            (dragleave)="onDestinationDragLeave()"
+            (drop)="onDestinationDrop($event)">
+            <mat-icon>move_down</mat-icon>
+            <span *ngIf="dropZoneBusy">Movendo itens...</span>
+            <span *ngIf="!dropZoneBusy && dropTargetGroupId">Solte aqui para mover para: <strong>{{ dropTargetGroupLabel() }}</strong></span>
+            <span *ngIf="!dropZoneBusy && !dropTargetGroupId">Selecione um destino para habilitar o drop.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-2 text-xs text-[var(--muted)]" *ngIf="loadingContext">Resolvendo contexto da empresa...</div>
+    </section>
+  </div>
+
+  <section class="rounded-xl border border-dashed border-[#fda29b] bg-[#fef3f2] p-3 text-sm text-[#b42318]" *ngIf="contextWarning">
+    {{ contextWarning }}
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="context?.vinculado">
+    <div class="p-3 pt-2">
+      <div class="catalog-items-list-col">
+        <div class="hidden overflow-auto border-b border-[var(--border-light)] md:block">
+          <table mat-table [dataSource]="items" class="w-full">
+            <ng-container matColumnDef="codigo">
+              <th mat-header-cell *matHeaderCellDef>Codigo</th>
+              <td mat-cell *matCellDef="let row">{{ row.codigo }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="nome">
+              <th mat-header-cell *matHeaderCellDef>Nome</th>
+              <td mat-cell *matCellDef="let row">{{ row.nome }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="descricao">
+              <th mat-header-cell *matHeaderCellDef>Descricao</th>
+              <td mat-cell *matCellDef="let row">{{ row.descricao || '-' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="grupo">
+              <th mat-header-cell *matHeaderCellDef>Grupo</th>
+              <td mat-cell *matCellDef="let row">{{ row.catalogGroupNome || '-' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="ativo">
+              <th mat-header-cell *matHeaderCellDef>Status</th>
+              <td mat-cell *matCellDef="let row">
+                <mat-slide-toggle
+                  class="catalog-status-toggle"
+                  [checked]="row.ativo"
+                  [disabled]="loading"
+                  (change)="onStatusToggle(row, $event.checked)">
+                  {{ row.ativo ? 'Ativo' : 'Inativo' }}
+                </mat-slide-toggle>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="acoes">
+              <th mat-header-cell *matHeaderCellDef class="text-right">Acoes</th>
+              <td mat-cell *matCellDef="let row">
+                <div class="flex justify-end gap-1">
+                  <button mat-icon-button type="button" (click)="view(row)" matTooltip="Consultar">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                  <button mat-icon-button type="button" (click)="edit(row)" matTooltip="Editar">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button color="warn" type="button" (click)="remove(row)" matTooltip="Excluir">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: displayedColumns"
+              class="catalog-row-draggable"
+              draggable="true"
+              (dragstart)="onItemRowDragStart($event, row)"
+              matTooltip="Arraste esta linha para a area de movimentacao">
+            </tr>
+          </table>
+        </div>
+
+        <div class="grid gap-2.5 md:hidden" *ngIf="items.length > 0">
+          <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5" *ngFor="let row of items">
+            <div class="flex items-center justify-between gap-2">
+              <div class="text-sm font-semibold">#{{ row.codigo }}</div>
+              <mat-slide-toggle class="catalog-status-toggle" [checked]="row.ativo" [disabled]="loading" (change)="onStatusToggle(row, $event.checked)">
+                {{ row.ativo ? 'Ativo' : 'Inativo' }}
+              </mat-slide-toggle>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div class="flex flex-col gap-0.5">
+                <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Nome</span>
+                <span class="text-xs">{{ row.nome }}</span>
+              </div>
+              <div class="flex flex-col gap-0.5">
+                <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Grupo</span>
+                <span class="text-xs">{{ row.catalogGroupNome || '-' }}</span>
+              </div>
+              <div class="col-span-2 flex flex-col gap-0.5">
+                <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Descricao</span>
+                <span class="text-xs">{{ row.descricao || '-' }}</span>
+              </div>
+            </div>
+
+            <div class="flex justify-end gap-1.5">
+              <button mat-icon-button type="button" (click)="view(row)" matTooltip="Consultar">
+                <mat-icon>visibility</mat-icon>
+              </button>
+              <button mat-icon-button type="button" (click)="edit(row)" matTooltip="Editar">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button color="warn" type="button" (click)="remove(row)" matTooltip="Excluir">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </article>
+        </div>
+
+        <div class="catalog-empty" *ngIf="!loading && items.length === 0">
+          Nenhum item encontrado para os filtros e contexto atuais.
+        </div>
+
+        <mat-paginator
+          [length]="totalElements"
+          [pageIndex]="pageIndex"
+          [pageSize]="pageSize"
+          [pageSizeOptions]="[10, 20, 50]"
+          (page)="pageChange($event)">
+        </mat-paginator>
+      </div>
+    </div>
+  </section>
+</div>

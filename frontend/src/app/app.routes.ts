@@ -20,6 +20,10 @@ import { EntityTypeFormComponent } from './features/entity-types/entity-type-for
 import { EntityRecordsListComponent } from './features/entity-records/entity-records-list.component';
 import { EntityRecordFormComponent } from './features/entity-records/entity-record-form.component';
 import { EntityGroupsPageComponent } from './features/entity-records/entity-groups-page.component';
+import { CatalogConfigurationPageComponent } from './features/catalog/catalog-configuration-page.component';
+import { CatalogItemsListComponent } from './features/catalog/catalog-items-list.component';
+import { CatalogItemFormComponent } from './features/catalog/catalog-item-form.component';
+import { CatalogGroupsPageComponent } from './features/catalog/catalog-groups-page.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent, canActivate: [AuthGuard] },
@@ -45,6 +49,67 @@ export const routes: Routes = [
   { path: 'access-controls/:key', component: AccessControlFormComponent, canActivate: [AuthGuard] },
   { path: 'access-controls/:key/edit', component: AccessControlFormComponent, canActivate: [AuthGuard] },
   { path: 'configs', component: ConfigsComponent, canActivate: [AuthGuard] },
+  { path: 'catalog/configuration', component: CatalogConfigurationPageComponent, canActivate: [AuthGuard] },
+  {
+    path: 'catalog/products',
+    component: CatalogItemsListComponent,
+    canActivate: [AuthGuard],
+    data: { type: 'PRODUCTS', title: 'Produtos', singular: 'produto' }
+  },
+  {
+    path: 'catalog/products/new',
+    component: CatalogItemFormComponent,
+    canActivate: [AuthGuard],
+    data: { type: 'PRODUCTS', title: 'Produtos', singular: 'produto' }
+  },
+  {
+    path: 'catalog/products/groups',
+    component: CatalogGroupsPageComponent,
+    canActivate: [AuthGuard],
+    data: { type: 'PRODUCTS', title: 'Produtos' }
+  },
+  {
+    path: 'catalog/products/:id/edit',
+    component: CatalogItemFormComponent,
+    canActivate: [AuthGuard],
+    data: { type: 'PRODUCTS', title: 'Produtos', singular: 'produto' }
+  },
+  {
+    path: 'catalog/products/:id',
+    component: CatalogItemFormComponent,
+    canActivate: [AuthGuard],
+    data: { type: 'PRODUCTS', title: 'Produtos', singular: 'produto' }
+  },
+  {
+    path: 'catalog/services',
+    component: CatalogItemsListComponent,
+    canActivate: [AuthGuard],
+    data: { type: 'SERVICES', title: 'Servicos', singular: 'servico' }
+  },
+  {
+    path: 'catalog/services/new',
+    component: CatalogItemFormComponent,
+    canActivate: [AuthGuard],
+    data: { type: 'SERVICES', title: 'Servicos', singular: 'servico' }
+  },
+  {
+    path: 'catalog/services/groups',
+    component: CatalogGroupsPageComponent,
+    canActivate: [AuthGuard],
+    data: { type: 'SERVICES', title: 'Servicos' }
+  },
+  {
+    path: 'catalog/services/:id/edit',
+    component: CatalogItemFormComponent,
+    canActivate: [AuthGuard],
+    data: { type: 'SERVICES', title: 'Servicos', singular: 'servico' }
+  },
+  {
+    path: 'catalog/services/:id',
+    component: CatalogItemFormComponent,
+    canActivate: [AuthGuard],
+    data: { type: 'SERVICES', title: 'Servicos', singular: 'servico' }
+  },
   { path: 'entity-types', component: EntityTypesListComponent, canActivate: [AuthGuard] },
   { path: 'entity-types/new', component: EntityTypeFormComponent, canActivate: [AuthGuard] },
   { path: 'entity-types/:id', component: EntityTypeFormComponent, canActivate: [AuthGuard] },

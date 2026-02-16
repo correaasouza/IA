@@ -4,6 +4,7 @@ import jakarta.persistence.EntityNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -68,9 +69,47 @@ public class ApiExceptionHandler {
       pd.setDetail("Nao e possivel excluir o grupo pois existem entidades vinculadas.");
     } else if (message.startsWith("grupo_entidade_ciclo_invalido")) {
       pd.setDetail("Nao e possivel mover o grupo para dentro da propria subarvore.");
+    } else if (message.startsWith("catalog_configuration_type_invalid")) {
+      pd.setDetail("Tipo de configuracao de catalogo invalido. Use PRODUCTS ou SERVICES.");
+    } else if (message.startsWith("catalog_configuration_numbering_required")) {
+      pd.setDetail("O campo numeracao e obrigatorio.");
+    } else if (message.startsWith("catalog_configuration_group_duplicated")) {
+      pd.setDetail("Ja existe configuracao ativa para este agrupador no catalogo.");
+    } else if (message.startsWith("catalog_context_required")) {
+      pd.setDetail("Selecione uma empresa no sistema para continuar.");
+    } else if (message.startsWith("catalog_context_sem_grupo")) {
+      pd.setDetail("A empresa selecionada nao esta vinculada a nenhum Grupo de Empresas para este catalogo.");
+    } else if (message.startsWith("catalog_item_codigo_duplicado")) {
+      pd.setDetail("Ja existe item com este codigo no escopo atual.");
+    } else if (message.startsWith("catalog_item_codigo_required_manual")) {
+      pd.setDetail("Informe o codigo manual para o item.");
+    } else if (message.startsWith("catalog_item_nome_required")) {
+      pd.setDetail("Informe o nome do item.");
+    } else if (message.startsWith("catalog_item_nome_too_long")) {
+      pd.setDetail("Nome do item excede o tamanho maximo permitido.");
+    } else if (message.startsWith("catalog_item_descricao_too_long")) {
+      pd.setDetail("Descricao do item excede o tamanho maximo permitido.");
+    } else if (message.startsWith("catalog_group_nome_duplicado_mesmo_pai")) {
+      pd.setDetail("Ja existe grupo com este nome no mesmo nivel.");
+    } else if (message.startsWith("catalog_group_possui_itens")) {
+      pd.setDetail("Nao e possivel excluir o grupo pois existem itens vinculados.");
+    } else if (message.startsWith("catalog_group_ciclo_invalido")) {
+      pd.setDetail("Nao e possivel mover o grupo para dentro da propria subarvore.");
+    } else if (message.startsWith("catalog_group_nome_required")) {
+      pd.setDetail("Informe o nome do grupo.");
+    } else if (message.startsWith("catalog_group_nome_too_long")) {
+      pd.setDetail("Nome do grupo excede o tamanho maximo permitido.");
     } else {
       pd.setDetail(ex.getMessage());
     }
+    return pd;
+  }
+
+  @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+  public ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.CONFLICT);
+    pd.setTitle("Conflito de concorrencia");
+    pd.setDetail("catalog_configuration_version_conflict");
     return pd;
   }
 
@@ -84,11 +123,18 @@ public class ApiExceptionHandler {
       pd.setDetail("Esta empresa ja esta vinculada a outro agrupador nesta configuracao.");
     } else if (normalized.contains("ux_agrupador_empresa_config_nome")) {
       pd.setDetail("Ja existe agrupador com este nome para esta configuracao.");
+    } else if (normalized.contains("ux_catalog_configuration_tenant_type")) {
+      pd.setDetail("Ja existe configuracao de catalogo para este tipo no locatario.");
     } else if (normalized.contains("ux_registro_entidade_codigo_scope")) {
       pd.setDetail("Ja existe entidade com este codigo na configuracao atual.");
     } else if (normalized.contains("ux_pessoa_tenant_tipo_registro_federal_norm")) {
       pd.setDetail("Ja existe pessoa com este documento neste locatario.");
     } else if (normalized.contains("ux_grupo_entidade_nome_parent_ativo")) {
+      pd.setDetail("Ja existe grupo com este nome no mesmo nivel.");
+    } else if (normalized.contains("ux_catalog_product_codigo_scope")
+      || normalized.contains("ux_catalog_service_item_codigo_scope")) {
+      pd.setDetail("Ja existe item com este codigo no escopo atual.");
+    } else if (normalized.contains("ux_catalog_group_nome_parent_ativo")) {
       pd.setDetail("Ja existe grupo com este nome no mesmo nivel.");
     } else {
       pd.setDetail("Operacao violou uma restricao de integridade.");
@@ -111,6 +157,14 @@ public class ApiExceptionHandler {
       || message.startsWith("pessoa_registro_federal_duplicado")
       || message.startsWith("grupo_entidade_nome_duplicado_mesmo_pai")
       || message.startsWith("grupo_entidade_possui_entidades")
-      || message.startsWith("grupo_entidade_ciclo_invalido");
+      || message.startsWith("grupo_entidade_ciclo_invalido")
+      || message.startsWith("catalog_configuration_version_conflict")
+      || message.startsWith("catalog_configuration_group_duplicated")
+      || message.startsWith("catalog_context_required")
+      || message.startsWith("catalog_context_sem_grupo")
+      || message.startsWith("catalog_item_codigo_duplicado")
+      || message.startsWith("catalog_group_nome_duplicado_mesmo_pai")
+      || message.startsWith("catalog_group_possui_itens")
+      || message.startsWith("catalog_group_ciclo_invalido");
   }
 }

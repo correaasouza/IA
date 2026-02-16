@@ -1,4 +1,4 @@
-<section class="group-shell rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+<app-config-section-shell class="group-shell">
   <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5" *ngIf="!canRender()">
     <div class="text-xs text-[var(--muted)]">Informe um tipo e ID de configuracao validos para gerenciar agrupadores.</div>
   </div>
@@ -125,7 +125,7 @@
       </ng-template>
     </section>
   </div>
-</section>
+</app-config-section-shell>
 
 <ng-template #agrupadorFormDialog>
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">

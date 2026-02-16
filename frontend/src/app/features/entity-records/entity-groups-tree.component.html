@@ -1,4 +1,11 @@
 <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+  <div class="group-tree-header" *ngIf="canManage">
+    <button mat-stroked-button type="button" (click)="addRoot()">
+      <mat-icon>add</mat-icon>
+      Novo grupo
+    </button>
+  </div>
+
   <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="loading">
     Carregando grupos...
   </div>
