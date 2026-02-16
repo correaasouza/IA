@@ -3,6 +3,38 @@
   min-width: 0;
 }
 
+.catalog-config-tab-shell {
+  display: grid;
+  gap: 10px;
+}
+
+.catalog-config-group-ref {
+  font-size: 12px;
+  color: var(--muted-strong);
+}
+
+.catalog-config-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.catalog-config-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.catalog-config-card-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted-strong);
+}
+
 .catalog-numbering-options {
   display: grid;
   gap: 10px;
@@ -12,24 +44,157 @@
   padding: 10px 12px;
 }
 
-.catalog-group-config-modal {
+.catalog-config-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.catalog-config-card-desc {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.catalog-adjustment-summary {
+  display: grid;
+  gap: 2px;
+  font-size: 12px;
+  color: var(--muted-strong);
+}
+
+.catalog-adjustment-summary-error {
+  color: #b42318;
+}
+
+.catalog-stock-layout {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(250px, 1fr) minmax(280px, 1.15fr);
+  align-items: start;
+}
+
+.catalog-stock-list-panel,
+.catalog-stock-form-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-muted);
+  padding: 8px;
+}
+
+.catalog-stock-list-head,
+.catalog-stock-form-head {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted-strong);
+  margin-bottom: 6px;
+}
+
+.catalog-stock-list-empty {
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.catalog-stock-list-row {
+  width: 100%;
+  margin-bottom: 6px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--surface);
+  text-align: left;
+  padding: 8px;
+  display: grid;
+  gap: 2px;
+  cursor: pointer;
+}
+
+.catalog-stock-list-row:last-child {
+  margin-bottom: 0;
+}
+
+.catalog-stock-list-row.selected {
+  border-color: #7da6d8;
+  background: #edf4ff;
+}
+
+.catalog-stock-list-main {
+  font-size: 12.5px;
+  color: var(--ink);
+}
+
+.catalog-stock-list-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.catalog-stock-form-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.catalog-field {
+  display: grid;
+  gap: 4px;
   min-width: 0;
 }
 
-.catalog-group-empresa-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+.catalog-field span {
+  font-size: 11.5px;
+  color: var(--muted-strong);
 }
 
-.catalog-group-empresa-chip {
+.catalog-field input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 12px;
+  padding: 0 10px;
+  outline: none;
+}
+
+.catalog-field input:focus {
+  border-color: #9ca3af;
+}
+
+.catalog-field-small {
+  max-width: 140px;
+}
+
+.catalog-field-checkbox {
   display: inline-flex;
   align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border-light);
-  background: var(--surface-muted);
-  font-size: 11px;
+  gap: 6px;
+  align-self: end;
+  min-height: 34px;
+  font-size: 12px;
   color: var(--muted-strong);
-  line-height: 1.2;
+}
+
+.catalog-stock-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+@media (max-width: 980px) {
+  .catalog-stock-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .catalog-stock-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .catalog-field-small {
+    max-width: 100%;
+  }
 }

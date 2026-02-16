@@ -1,0 +1,100 @@
+<div class="adjustment-form-dialog-title" role="heading" aria-level="2">
+  <div class="adjustment-form-header-card">
+    <div class="adjustment-form-title-main">
+      <div class="adjustment-form-title-label">{{ title() }}</div>
+      <div class="adjustment-form-title-meta" *ngIf="data.adjustment?.id">ID {{ data.adjustment?.id }}</div>
+      <div class="adjustment-form-title-origin">
+        Escopo: {{ data.type === 'PRODUCTS' ? 'Produtos' : 'Servicos' }}
+      </div>
+      <div class="adjustment-form-title-origin">
+        Codigo: {{ codeLabel() }}
+      </div>
+    </div>
+    <div class="adjustment-form-header-actions">
+      <button class="adjustment-form-header-btn" mat-stroked-button type="button" (click)="close(false)" [disabled]="saving || loading">
+        <mat-icon>arrow_back</mat-icon>
+        Cancelar
+      </button>
+      <button class="adjustment-form-header-btn" mat-flat-button color="primary" type="button" (click)="save()" [disabled]="!canSave()">
+        <mat-icon>save</mat-icon>
+        Salvar
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="adjustment-form-dialog-content">
+  <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="loading">
+    Carregando opcoes de estoque...
+  </div>
+
+  <div class="rounded-lg border border-dashed border-[#fda29b] bg-[#fef3f2] p-2.5 text-xs text-[#b42318]" *ngIf="!loading && error">
+    {{ error }}
+  </div>
+
+  <section class="adjustment-form-card">
+    <div class="adjustment-form-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Nome</mat-label>
+        <input matInput [(ngModel)]="form.nome" [disabled]="saving" maxlength="120" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo</mat-label>
+        <mat-select [(ngModel)]="form.tipo" (selectionChange)="onTypeChanged()" [disabled]="saving">
+          <mat-option value="ENTRADA">ENTRADA</mat-option>
+          <mat-option value="SAIDA">SAIDA</mat-option>
+          <mat-option value="TRANSFERENCIA">TRANSFERENCIA</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Ordem</mat-label>
+        <input matInput type="number" min="1" [(ngModel)]="form.ordem" [disabled]="saving" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Status</mat-label>
+        <mat-select [(ngModel)]="form.active" [disabled]="saving">
+          <mat-option [value]="true">Ativo</mat-option>
+          <mat-option [value]="false">Inativo</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </section>
+
+  <section class="adjustment-form-card">
+    <div class="adjustment-form-card-title">Escopo de estoque</div>
+    <div class="adjustment-form-grid adjustment-form-grid-scope">
+      <mat-form-field appearance="outline">
+        <mat-label>Estoque origem</mat-label>
+        <mat-select
+          [(ngModel)]="form.origemKey"
+          [disabled]="!requiresOrigin() || saving || loading">
+          <mat-option [value]="null">Sem origem</mat-option>
+          <mat-option *ngFor="let option of originOptions()" [value]="option.agrupadorId + '|' + option.estoqueTipoId + '|' + option.filialId">
+            {{ option.label }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Estoque destino</mat-label>
+        <mat-select
+          [(ngModel)]="form.destinoKey"
+          [disabled]="!requiresDestination() || saving || loading">
+          <mat-option [value]="null">Sem destino</mat-option>
+          <mat-option *ngFor="let option of destinationOptions()" [value]="option.agrupadorId + '|' + option.estoqueTipoId + '|' + option.filialId">
+            {{ option.label }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+
+    <div class="adjustment-form-note">
+      <span *ngIf="form.tipo === 'ENTRADA'">ENTRADA exige apenas estoque destino.</span>
+      <span *ngIf="form.tipo === 'SAIDA'">SAIDA exige apenas estoque origem.</span>
+      <span *ngIf="form.tipo === 'TRANSFERENCIA'">TRANSFERENCIA exige origem e destino diferentes.</span>
+    </div>
+  </section>
+</div>

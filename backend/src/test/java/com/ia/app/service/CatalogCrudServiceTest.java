@@ -40,7 +40,9 @@ import org.springframework.transaction.annotation.Transactional;
   CatalogConfigurationService.class,
   CatalogConfigurationByGroupService.class,
   CatalogConfigurationGroupSyncService.class,
+  CatalogStockTypeSyncService.class,
   CatalogItemContextService.class,
+  CatalogStockQueryService.class,
   CatalogItemCodeService.class,
   CatalogItemCrudSupportService.class,
   CatalogProductService.class,
@@ -65,6 +67,9 @@ class CatalogCrudServiceTest {
 
   @Autowired
   private CatalogGroupService groupService;
+
+  @Autowired
+  private CatalogStockQueryService stockQueryService;
 
   @Autowired
   private AgrupadorEmpresaRepository agrupadorRepository;
@@ -174,6 +179,56 @@ class CatalogCrudServiceTest {
     assertThatThrownBy(() -> groupService.delete(CatalogConfigurationType.PRODUCTS, root.getId()))
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessageContaining("catalog_group_possui_itens");
+  }
+
+  @Test
+  void shouldAllowGetAndReactivateInactiveItemInSameScope() {
+    Long tenantId = 106L;
+    Long empresaId = createEmpresa(tenantId, "10600000000001");
+    setupCatalogGroupLink(tenantId, empresaId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    TenantContext.setTenantId(tenantId);
+    EmpresaContext.setEmpresaId(empresaId);
+
+    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM INATIVO", null, null, true));
+
+    CatalogItemResponse inactive = productService.update(
+      created.id(),
+      new CatalogItemRequest(null, created.nome(), created.descricao(), created.catalogGroupId(), false));
+    assertThat(inactive.ativo()).isFalse();
+
+    CatalogItemResponse loadedInactive = productService.get(created.id());
+    assertThat(loadedInactive.ativo()).isFalse();
+
+    CatalogItemResponse reactivated = productService.update(
+      created.id(),
+      new CatalogItemRequest(null, created.nome(), created.descricao(), created.catalogGroupId(), true));
+    assertThat(reactivated.ativo()).isTrue();
+  }
+
+  @Test
+  void shouldReturnEmptyLedgerWithoutError() {
+    Long tenantId = 107L;
+    Long empresaId = createEmpresa(tenantId, "10700000000001");
+    setupCatalogGroupLink(tenantId, empresaId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    TenantContext.setTenantId(tenantId);
+    EmpresaContext.setEmpresaId(empresaId);
+
+    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM SEM MOV", null, null, true));
+
+    var page = stockQueryService.loadLedger(
+      CatalogConfigurationType.PRODUCTS,
+      created.id(),
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      PageRequest.of(0, 10));
+
+    assertThat(page.getTotalElements()).isZero();
+    assertThat(page.getContent()).isEmpty();
   }
 
   private Long createProductWithSync(

@@ -13,9 +13,16 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(EntityNotFoundException.class)
   public ProblemDetail handleNotFound(EntityNotFoundException ex) {
+    String message = ex.getMessage() == null ? "" : ex.getMessage();
     ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.NOT_FOUND);
     pd.setTitle("Recurso nao encontrado");
-    pd.setDetail(ex.getMessage());
+    if (message.startsWith("catalog_item_not_found")) {
+      pd.setDetail("Item de catalogo nao encontrado no contexto atual (empresa/grupo).");
+    } else if (message.startsWith("registro_entidade_not_found")) {
+      pd.setDetail("Entidade nao encontrada no contexto atual (empresa/grupo).");
+    } else {
+      pd.setDetail(ex.getMessage());
+    }
     return pd;
   }
 
@@ -99,6 +106,66 @@ public class ApiExceptionHandler {
       pd.setDetail("Informe o nome do grupo.");
     } else if (message.startsWith("catalog_group_nome_too_long")) {
       pd.setDetail("Nome do grupo excede o tamanho maximo permitido.");
+    } else if (message.startsWith("catalog_stock_metric_invalid")) {
+      pd.setDetail("Metrica de movimentacao invalida. Use QUANTIDADE ou PRECO.");
+    } else if (message.startsWith("catalog_stock_origin_invalid")) {
+      pd.setDetail("Origem de movimentacao invalida.");
+    } else if (message.startsWith("catalog_stock_type_not_found")) {
+      pd.setDetail("Tipo de estoque nao encontrado para o agrupador informado.");
+    } else if (message.startsWith("catalog_stock_filial_not_found")) {
+      pd.setDetail("Filial nao encontrada no locatario atual.");
+    } else if (message.startsWith("catalog_stock_impact_required")) {
+      pd.setDetail("Informe ao menos um impacto para registrar movimentacao de estoque.");
+    } else if (message.startsWith("catalog_stock_delta_required")) {
+      pd.setDetail("Delta do impacto de estoque e obrigatorio.");
+    } else if (message.startsWith("catalog_stock_idempotency_required")) {
+      pd.setDetail("A chave de idempotencia da movimentacao e obrigatoria.");
+    } else if (message.startsWith("catalog_stock_type_codigo_required")) {
+      pd.setDetail("Informe o codigo do tipo de estoque.");
+    } else if (message.startsWith("catalog_stock_type_nome_required")) {
+      pd.setDetail("Informe o nome do tipo de estoque.");
+    } else if (message.startsWith("catalog_stock_type_codigo_duplicado")) {
+      pd.setDetail("Ja existe tipo de estoque com este codigo no agrupador.");
+    } else if (message.startsWith("catalog_stock_type_last_active")) {
+      pd.setDetail("Mantenha ao menos um tipo de estoque ativo no agrupador.");
+    } else if (message.startsWith("catalog_stock_type_id_invalid")) {
+      pd.setDetail("Identificador do tipo de estoque invalido.");
+    } else if (message.startsWith("catalog_stock_adjustment_codigo_required")) {
+      pd.setDetail("Informe o codigo do ajuste de estoque.");
+    } else if (message.startsWith("catalog_stock_adjustment_nome_required")) {
+      pd.setDetail("Informe o nome do ajuste de estoque.");
+    } else if (message.startsWith("catalog_stock_adjustment_tipo_required")) {
+      pd.setDetail("Informe o tipo do ajuste de estoque.");
+    } else if (message.startsWith("catalog_stock_adjustment_tipo_invalid")) {
+      pd.setDetail("Tipo de ajuste invalido. Use ENTRADA, SAIDA ou TRANSFERENCIA.");
+    } else if (message.startsWith("catalog_stock_adjustment_origem_required")) {
+      pd.setDetail("Origem obrigatoria para ajuste do tipo SAIDA/TRANSFERENCIA.");
+    } else if (message.startsWith("catalog_stock_adjustment_destino_required")) {
+      pd.setDetail("Destino obrigatorio para ajuste do tipo ENTRADA/TRANSFERENCIA.");
+    } else if (message.startsWith("catalog_stock_adjustment_origem_not_allowed")) {
+      pd.setDetail("Origem nao deve ser informada para ajuste do tipo ENTRADA.");
+    } else if (message.startsWith("catalog_stock_adjustment_destino_not_allowed")) {
+      pd.setDetail("Destino nao deve ser informado para ajuste do tipo SAIDA.");
+    } else if (message.startsWith("catalog_stock_adjustment_transferencia_requer_origem_destino")) {
+      pd.setDetail("Transferencia requer origem e destino.");
+    } else if (message.startsWith("catalog_stock_adjustment_same_origin_destination")) {
+      pd.setDetail("Origem e destino nao podem ser iguais.");
+    } else if (message.startsWith("catalog_stock_adjustment_origem_incompleto")) {
+      pd.setDetail("Origem do ajuste esta incompleta.");
+    } else if (message.startsWith("catalog_stock_adjustment_destino_incompleto")) {
+      pd.setDetail("Destino do ajuste esta incompleto.");
+    } else if (message.startsWith("catalog_stock_adjustment_agrupador_not_found")) {
+      pd.setDetail("Agrupador informado no ajuste nao encontrado.");
+    } else if (message.startsWith("catalog_stock_adjustment_stock_type_not_found")) {
+      pd.setDetail("Tipo de estoque informado no ajuste nao encontrado.");
+    } else if (message.startsWith("catalog_stock_adjustment_filial_not_found")) {
+      pd.setDetail("Filial informada no ajuste nao pertence ao agrupador selecionado.");
+    } else if (message.startsWith("catalog_stock_adjustment_codigo_duplicado")) {
+      pd.setDetail("Ja existe ajuste de estoque com este codigo na configuracao.");
+    } else if (message.startsWith("catalog_stock_adjustment_id_invalid")) {
+      pd.setDetail("Identificador do ajuste de estoque invalido.");
+    } else if (message.startsWith("catalog_stock_adjustment_codigo_auto_fail")) {
+      pd.setDetail("Nao foi possivel gerar codigo automatico para o ajuste de estoque.");
     } else {
       pd.setDetail(ex.getMessage());
     }
@@ -136,6 +203,16 @@ public class ApiExceptionHandler {
       pd.setDetail("Ja existe item com este codigo no escopo atual.");
     } else if (normalized.contains("ux_catalog_group_nome_parent_ativo")) {
       pd.setDetail("Ja existe grupo com este nome no mesmo nivel.");
+    } else if (normalized.contains("ux_catalog_stock_balance_scope")) {
+      pd.setDetail("Conflito de saldo de estoque no escopo atual. Tente novamente.");
+    } else if (normalized.contains("ux_catalog_movement_idempotency")) {
+      pd.setDetail("Movimentacao de estoque duplicada para a mesma chave de idempotencia.");
+    } else if (normalized.contains("ux_catalog_stock_type_scope_codigo_active")) {
+      pd.setDetail("Ja existe tipo de estoque com este codigo no agrupador.");
+    } else if (normalized.contains("ux_catalog_stock_adjustment_scope_codigo_active")) {
+      pd.setDetail("Ja existe ajuste de estoque com este codigo na configuracao.");
+    } else if (normalized.contains("ux_catalog_stock_adjustment_tenant_codigo")) {
+      pd.setDetail("Ja existe ajuste de estoque com este codigo na configuracao.");
     } else {
       pd.setDetail("Operacao violou uma restricao de integridade.");
     }
@@ -165,6 +242,9 @@ public class ApiExceptionHandler {
       || message.startsWith("catalog_item_codigo_duplicado")
       || message.startsWith("catalog_group_nome_duplicado_mesmo_pai")
       || message.startsWith("catalog_group_possui_itens")
-      || message.startsWith("catalog_group_ciclo_invalido");
+      || message.startsWith("catalog_group_ciclo_invalido")
+      || message.startsWith("catalog_stock_type_codigo_duplicado")
+      || message.startsWith("catalog_stock_type_last_active")
+      || message.startsWith("catalog_stock_adjustment_codigo_duplicado");
   }
 }

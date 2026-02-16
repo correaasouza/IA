@@ -1,6 +1,6 @@
-﻿<app-config-section-shell
+<app-config-section-shell
   [title]="'Configuracoes por Grupo de Empresas - ' + typeLabel()"
-  subtitle="Cada agrupador possui configuracao propria de numeracao."
+  subtitle="Use a ficha do agrupador com guias de Filiais e Configuracoes."
   [hasActions]="true">
   <div shell-actions>
     <span class="inline-flex items-center rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--muted-strong)]">
@@ -24,68 +24,125 @@
     {{ groupsError }}
   </div>
 
+  <section class="catalog-config-card" *ngIf="!loading && config?.id && !error">
+    <div class="catalog-config-card-head">
+      <div class="catalog-config-card-title">Tipos de ajuste de estoque do locatario</div>
+      <button mat-flat-button color="primary" type="button" (click)="openStockAdjustmentList()">
+        <mat-icon>tune</mat-icon>
+        Abrir lista
+      </button>
+    </div>
+    <div class="catalog-config-card-desc">
+      Configure os tipos de ajuste (ENTRADA, SAIDA e TRANSFERENCIA) em lista separada com formulario em modal.
+    </div>
+
+    <div class="catalog-adjustment-summary">
+      <span>{{ stockAdjustmentCountLoading ? 'Carregando...' : (stockAdjustmentCount + ' tipo(s) de ajuste cadastrados') }}</span>
+      <span class="catalog-adjustment-summary-error" *ngIf="stockAdjustmentCountError">{{ stockAdjustmentCountError }}</span>
+    </div>
+  </section>
+
   <app-agrupadores-empresa
     *ngIf="!loading && config?.id && !error"
     [configType]="'CATALOGO'"
     [configId]="config.id"
+    [extraTabLabel]="'Tipos de estoque'"
     [configReferenceName]="configReferenceName()"
-    (configure)="openGroupConfigModal($event)"
+    (groupEditStarted)="onGroupEditStarted($event)"
     (changed)="onGroupsChanged()">
+
+    <ng-template #agrupadorConfigTab let-group="group">
+      <section class="catalog-config-tab-shell">
+        <div class="catalog-config-group-ref">Grupo em edicao: <strong>{{ group?.nome || currentGroupNome || '-' }}</strong></div>
+        <div class="catalog-config-card">
+          <div class="catalog-config-card-title">Numeracao do agrupador</div>
+          <mat-radio-group
+            [(ngModel)]="currentGroupNumberingMode"
+            [ngModelOptions]="{ standalone: true }"
+            class="catalog-numbering-options"
+            aria-label="Selecionar modo de numeracao do agrupador">
+            <mat-radio-button value="AUTOMATICA">Numeracao automatica</mat-radio-button>
+            <mat-radio-button value="MANUAL">Numeracao manual</mat-radio-button>
+          </mat-radio-group>
+          <div class="catalog-config-actions">
+            <button mat-flat-button color="primary" type="button" (click)="saveCurrentGroupConfig()" [disabled]="currentGroupConfigSaving || !currentGroupId">
+              <mat-icon>save</mat-icon>
+              Salvar configuracao
+            </button>
+          </div>
+        </div>
+      </section>
+    </ng-template>
+
+    <ng-template #agrupadorExtraTab>
+      <section class="catalog-config-tab-shell">
+        <div class="catalog-config-group-ref">Grupo em edicao: <strong>{{ currentGroupNome || '-' }}</strong></div>
+        <div class="catalog-config-card">
+          <div class="catalog-config-card-head">
+            <div class="catalog-config-card-title">Tipos de estoque</div>
+            <button mat-stroked-button type="button" (click)="startNewStockType()" [disabled]="groupStockTypesLoading || groupStockTypesSaving">
+              <mat-icon>add</mat-icon>
+              Novo
+            </button>
+          </div>
+
+          <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="groupStockTypesLoading">
+            Carregando tipos de estoque...
+          </div>
+
+          <div class="rounded-lg border border-dashed border-[#fda29b] bg-[#fef3f2] p-2.5 text-xs text-[#b42318]" *ngIf="!groupStockTypesLoading && groupStockTypesError">
+            {{ groupStockTypesError }}
+          </div>
+
+          <div class="catalog-stock-layout" *ngIf="!groupStockTypesLoading && !groupStockTypesError">
+            <aside class="catalog-stock-list-panel">
+              <div class="catalog-stock-list-head">Lista</div>
+              <div class="catalog-stock-list-empty" *ngIf="groupStockTypes.length === 0">Nenhum tipo de estoque configurado.</div>
+              <button
+                type="button"
+                class="catalog-stock-list-row"
+                *ngFor="let row of groupStockTypes"
+                [class.selected]="row.id === selectedStockTypeId"
+                (click)="selectStockType(row)">
+                <span class="catalog-stock-list-main">{{ row.codigo }} - {{ row.nome }}</span>
+                <span class="catalog-stock-list-meta">Ordem {{ row.ordem }} | {{ row.active ? 'Ativo' : 'Inativo' }}</span>
+              </button>
+            </aside>
+
+            <section class="catalog-stock-form-panel">
+              <div class="catalog-stock-form-head">Ficha</div>
+              <div class="catalog-stock-form-grid">
+                <label class="catalog-field">
+                  <span>Codigo</span>
+                  <input type="text" [(ngModel)]="stockTypeForm.codigo" [ngModelOptions]="{ standalone: true }" placeholder="Ex.: GERAL" />
+                </label>
+                <label class="catalog-field">
+                  <span>Nome</span>
+                  <input type="text" [(ngModel)]="stockTypeForm.nome" [ngModelOptions]="{ standalone: true }" placeholder="Ex.: Estoque Geral" />
+                </label>
+                <label class="catalog-field catalog-field-small">
+                  <span>Ordem</span>
+                  <input type="number" min="1" [(ngModel)]="stockTypeForm.ordem" [ngModelOptions]="{ standalone: true }" />
+                </label>
+                <label class="catalog-field-checkbox">
+                  <input type="checkbox" [(ngModel)]="stockTypeForm.active" [ngModelOptions]="{ standalone: true }" />
+                  Ativo
+                </label>
+              </div>
+              <div class="catalog-stock-form-actions">
+                <button mat-flat-button color="primary" type="button" (click)="saveStockTypeFicha()" [disabled]="!canSaveStockTypeForm()">
+                  <mat-icon>save</mat-icon>
+                  Salvar ficha
+                </button>
+              </div>
+            </section>
+          </div>
+
+          <div class="mt-1 flex justify-end" *ngIf="groupStockTypesSaving">
+            <app-inline-loader label="Salvando ficha de tipo de estoque"></app-inline-loader>
+          </div>
+        </div>
+      </section>
+    </ng-template>
   </app-agrupadores-empresa>
 </app-config-section-shell>
-
-<ng-template #groupConfigDialog>
-  <section class="catalog-group-config-modal rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-    <div class="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-      <div class="min-w-0">
-        <div class="text-sm font-semibold">Configuracao por Grupo de Empresas</div>
-        <div class="text-xs text-[var(--muted)]">Defina a numeracao especifica para o agrupador selecionado.</div>
-        <div class="mt-2 text-xs text-[var(--muted-strong)]"><strong>Origem:</strong> {{ configReferenceName() }}</div>
-        <div class="mt-1 text-xs text-[var(--muted-strong)]"><strong>Grupo:</strong> {{ groupReference() }}</div>
-        <div class="mt-2">
-          <div class="text-xs font-semibold text-[var(--muted-strong)]">Empresas do grupo ({{ groupModalEmpresas.length }})</div>
-          <div class="catalog-group-empresa-list mt-1" *ngIf="groupModalEmpresas.length > 0; else noEmpresaOnGroupModal">
-            <span class="catalog-group-empresa-chip" *ngFor="let item of groupModalEmpresas">{{ item.nome }}</span>
-          </div>
-          <ng-template #noEmpresaOnGroupModal>
-            <div class="text-xs text-[var(--muted)]">Nenhuma empresa vinculada neste grupo.</div>
-          </ng-template>
-        </div>
-      </div>
-      <div class="flex flex-wrap justify-end gap-2">
-        <button
-          mat-stroked-button
-          type="button"
-          (click)="openGroupEditorFromModal()"
-          [disabled]="!groupModalId || groupModalSaving">
-          <mat-icon>tune</mat-icon>
-          Configurar grupo
-        </button>
-        <button mat-stroked-button type="button" (click)="closeGroupConfigModal()" [disabled]="groupModalSaving">
-          <mat-icon>close</mat-icon>
-          Cancelar
-        </button>
-        <button mat-flat-button color="primary" type="button" (click)="saveGroupConfigModal()" [disabled]="groupModalSaving || !groupModalId">
-          <mat-icon>save</mat-icon>
-          Salvar
-        </button>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 gap-2.5">
-      <div class="text-xs font-semibold uppercase tracking-[0.4px] text-[var(--muted-strong)]">Numeracao</div>
-      <mat-radio-group
-        [(ngModel)]="groupModalNumberingMode"
-        [ngModelOptions]="{ standalone: true }"
-        class="catalog-numbering-options"
-        aria-label="Selecionar modo de numeracao do agrupador">
-        <mat-radio-button value="AUTOMATICA">Numeracao automatica</mat-radio-button>
-        <mat-radio-button value="MANUAL">Numeracao manual</mat-radio-button>
-      </mat-radio-group>
-    </div>
-
-    <div class="mt-2 flex justify-end" *ngIf="groupModalSaving">
-      <app-inline-loader label="Salvando configuracao"></app-inline-loader>
-    </div>
-  </section>
-</ng-template>

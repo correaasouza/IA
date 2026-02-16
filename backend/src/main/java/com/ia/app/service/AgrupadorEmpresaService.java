@@ -31,6 +31,7 @@ public class AgrupadorEmpresaService {
   private final ConfiguracaoScopeService configuracaoScopeService;
   private final TipoEntidadeConfigAgrupadorSyncService tipoEntidadeConfigAgrupadorSyncService;
   private final CatalogConfigurationGroupSyncService catalogConfigurationGroupSyncService;
+  private final CatalogGroupTransferService catalogGroupTransferService;
   private final AuditService auditService;
   private final MeterRegistry meterRegistry;
 
@@ -41,6 +42,7 @@ public class AgrupadorEmpresaService {
       ConfiguracaoScopeService configuracaoScopeService,
       TipoEntidadeConfigAgrupadorSyncService tipoEntidadeConfigAgrupadorSyncService,
       CatalogConfigurationGroupSyncService catalogConfigurationGroupSyncService,
+      CatalogGroupTransferService catalogGroupTransferService,
       AuditService auditService,
       MeterRegistry meterRegistry) {
     this.agrupadorRepository = agrupadorRepository;
@@ -49,6 +51,7 @@ public class AgrupadorEmpresaService {
     this.configuracaoScopeService = configuracaoScopeService;
     this.tipoEntidadeConfigAgrupadorSyncService = tipoEntidadeConfigAgrupadorSyncService;
     this.catalogConfigurationGroupSyncService = catalogConfigurationGroupSyncService;
+    this.catalogGroupTransferService = catalogGroupTransferService;
     this.auditService = auditService;
     this.meterRegistry = meterRegistry;
   }
@@ -130,26 +133,58 @@ public class AgrupadorEmpresaService {
     AgrupadorEmpresa agrupador = findAgrupador(tenantId, normalizedType, configId, agrupadorId);
     validateEmpresa(tenantId, empresaId);
 
-    boolean alreadyAdded = itemRepository.findByTenantIdAndConfigTypeAndConfigIdAndAgrupadorIdAndEmpresaId(
-      tenantId, normalizedType, configId, agrupadorId, empresaId).isPresent();
-    if (alreadyAdded) {
+    AgrupadorEmpresaItem currentLink = itemRepository.findWithLockByTenantIdAndConfigTypeAndConfigIdAndEmpresaId(
+      tenantId, normalizedType, configId, empresaId).orElse(null);
+
+    if (currentLink != null && currentLink.getAgrupador() != null && currentLink.getAgrupador().getId().equals(agrupadorId)) {
       metric("add_empresa", "noop");
       return toResponseList(tenantId, List.of(agrupador)).get(0);
     }
 
-    AgrupadorEmpresaItem item = new AgrupadorEmpresaItem();
-    item.setTenantId(tenantId);
-    item.setConfigType(normalizedType);
-    item.setConfigId(configId);
-    item.setAgrupador(agrupador);
-    item.setEmpresaId(empresaId);
-    try {
-      itemRepository.save(item);
-      metric("add_empresa", "success");
-      auditService.log(tenantId, "AGRUPADOR_EMPRESA_EMPRESA_ADICIONADA", "agrupador_empresa", String.valueOf(agrupadorId),
-        "configType=" + normalizedType + ";configId=" + configId + ";empresaId=" + empresaId);
-    } catch (DataIntegrityViolationException ex) {
-      throw mapIntegrityViolation(ex);
+    if (currentLink != null) {
+      if (!ConfiguracaoScopeService.TYPE_CATALOGO.equals(normalizedType)) {
+        metric("add_empresa", "conflict");
+        throw new IllegalArgumentException("empresa_ja_vinculada_outro_agrupador");
+      }
+
+      Long fromAgrupadorId = currentLink.getAgrupador() == null ? null : currentLink.getAgrupador().getId();
+      String transferKey = buildCatalogTransferKey(currentLink, agrupadorId);
+      catalogGroupTransferService.transferOnEmpresaGroupChange(
+        tenantId,
+        configId,
+        empresaId,
+        fromAgrupadorId,
+        agrupadorId,
+        transferKey);
+
+      currentLink.setAgrupador(agrupador);
+      itemRepository.save(currentLink);
+      metric("move_empresa", "success");
+      auditService.log(
+        tenantId,
+        "AGRUPADOR_EMPRESA_EMPRESA_MOVIDA",
+        "agrupador_empresa",
+        String.valueOf(agrupadorId),
+        "configType=" + normalizedType
+          + ";configId=" + configId
+          + ";empresaId=" + empresaId
+          + ";deAgrupadorId=" + fromAgrupadorId
+          + ";paraAgrupadorId=" + agrupadorId);
+    } else {
+      AgrupadorEmpresaItem item = new AgrupadorEmpresaItem();
+      item.setTenantId(tenantId);
+      item.setConfigType(normalizedType);
+      item.setConfigId(configId);
+      item.setAgrupador(agrupador);
+      item.setEmpresaId(empresaId);
+      try {
+        itemRepository.save(item);
+        metric("add_empresa", "success");
+        auditService.log(tenantId, "AGRUPADOR_EMPRESA_EMPRESA_ADICIONADA", "agrupador_empresa", String.valueOf(agrupadorId),
+          "configType=" + normalizedType + ";configId=" + configId + ";empresaId=" + empresaId);
+      } catch (DataIntegrityViolationException ex) {
+        throw mapIntegrityViolation(ex);
+      }
     }
     AgrupadorEmpresa refreshed = findAgrupador(tenantId, normalizedType, configId, agrupadorId);
     return toResponseList(tenantId, List.of(refreshed)).get(0);
@@ -280,5 +315,16 @@ public class AgrupadorEmpresaService {
 
   private void metric(String action, String status) {
     meterRegistry.counter("agrupador_empresa_operacao_total", "action", action, "status", status).increment();
+  }
+
+  private String buildCatalogTransferKey(AgrupadorEmpresaItem item, Long targetAgrupadorId) {
+    long updatedAt = item.getUpdatedAt() == null
+      ? System.currentTimeMillis()
+      : item.getUpdatedAt().toEpochMilli();
+    return "agrupador-item:"
+      + item.getId()
+      + ":empresa:" + item.getEmpresaId()
+      + ":v:" + updatedAt
+      + ":to:" + targetAgrupadorId;
   }
 }

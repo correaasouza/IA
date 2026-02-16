@@ -1,0 +1,210 @@
+<mat-dialog-content class="dialog-content">
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="history-header-row">
+      <div class="history-header-text">
+        <h2 class="m-0 text-lg font-bold">Historico do item #{{ data.itemCodigo }} - {{ data.itemNome }}</h2>
+        <p class="mt-1 text-xs text-[var(--muted)]">Movimentacoes de estoque e preco registradas para este item.</p>
+      </div>
+      <button mat-icon-button type="button" class="history-header-close" (click)="close()" aria-label="Fechar">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="catalog-filters-head mb-2">
+      <div class="text-sm font-semibold">Filtros</div>
+      <div class="catalog-filters-head-right">
+        <button mat-button type="button" class="mobile-filter-toggle md:!hidden" (click)="toggleMobileFilters()">
+          <mat-icon>tune</mat-icon>
+          Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
+          <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
+        <div class="catalog-filters-count text-xs text-[var(--muted)]">{{ ledgerTotalElements }} registro(s)</div>
+      </div>
+    </div>
+
+    <ng-container *ngIf="!isMobile || mobileFiltersOpen">
+      <form class="catalog-ledger-filters" [formGroup]="ledgerFilters" role="search">
+        <label class="catalog-filter-field">
+          <span class="catalog-filter-label">Ordem</span>
+          <select
+            class="catalog-filter-control"
+            [value]="ledgerSortOrder"
+            (change)="setLedgerSortOrder($any($event.target).value)">
+            <option value="RECENT">Mais recentes</option>
+            <option value="OLDEST">Mais antigas</option>
+          </select>
+        </label>
+
+        <label class="catalog-filter-field">
+          <span class="catalog-filter-label">Origem</span>
+          <select class="catalog-filter-control" formControlName="origemTipo" (change)="applyLedgerFilters()">
+            <option value="">Todas</option>
+            <option *ngFor="let origin of ledgerOrigins" [value]="origin.value">{{ origin.label }}</option>
+          </select>
+        </label>
+
+        <label class="catalog-filter-field">
+          <span class="catalog-filter-label">Metrica</span>
+          <select class="catalog-filter-control" formControlName="metricType" (change)="applyLedgerFilters()">
+            <option value="">Todas</option>
+            <option *ngFor="let metric of ledgerMetrics" [value]="metric.value">{{ metric.label }}</option>
+          </select>
+        </label>
+
+        <label class="catalog-filter-field">
+          <span class="catalog-filter-label">Estoque</span>
+          <select class="catalog-filter-control" formControlName="estoqueTipoId" (change)="applyLedgerFilters()">
+            <option value="">Todos</option>
+            <option *ngFor="let stockType of ledgerStockTypeOptions()" [value]="stockType.id">
+              {{ stockType.label }}
+            </option>
+          </select>
+        </label>
+
+        <label class="catalog-filter-field">
+          <span class="catalog-filter-label">Filial</span>
+          <select class="catalog-filter-control" formControlName="filialId" (change)="applyLedgerFilters()">
+            <option value="">Todas</option>
+            <option *ngFor="let filial of ledgerFilialOptions()" [value]="filial.id">
+              {{ filial.label }}
+            </option>
+          </select>
+        </label>
+
+        <label class="catalog-filter-field">
+          <span class="catalog-filter-label">De</span>
+          <input class="catalog-filter-control" type="date" formControlName="fromDate" (change)="applyLedgerFilters()" />
+        </label>
+
+        <label class="catalog-filter-field">
+          <span class="catalog-filter-label">Ate</span>
+          <input class="catalog-filter-control" type="date" formControlName="toDate" (change)="applyLedgerFilters()" />
+        </label>
+
+        <div class="catalog-ledger-filter-actions">
+          <button mat-button type="button" (click)="clearLedgerFilters()" [disabled]="!hasLedgerFiltersActive() || loading">
+            Limpar
+          </button>
+        </div>
+      </form>
+    </ng-container>
+
+    <div class="catalog-ledger-filter-chips" *ngIf="hasLedgerFiltersActive()">
+      <span class="catalog-ledger-chip" *ngFor="let chip of activeLedgerFilterChips()">
+        {{ chip.label }}
+        <button type="button" class="catalog-ledger-chip-remove" (click)="clearLedgerFilter(chip.key)" aria-label="Remover filtro">
+          <mat-icon>close</mat-icon>
+        </button>
+      </span>
+    </div>
+  </section>
+
+  <section class="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]">
+    <div class="flex justify-end px-3 pb-0 pt-2.5" *ngIf="loading">
+      <app-inline-loader label="Carregando historico"></app-inline-loader>
+    </div>
+
+    <div class="catalog-stock-error m-3 mb-0" *ngIf="error">{{ error }}</div>
+
+    <div class="hidden overflow-auto border-b border-[var(--border-light)] md:block" *ngIf="ledgerDisplayLines.length > 0">
+      <table mat-table [dataSource]="ledgerDisplayLines" class="w-full">
+        <ng-container matColumnDef="dataHora">
+          <th mat-header-cell *matHeaderCellDef>Data/Hora</th>
+          <td mat-cell *matCellDef="let row">{{ row.dataHoraMovimentacao | date:'dd/MM/yyyy HH:mm' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="origem">
+          <th mat-header-cell *matHeaderCellDef>Origem</th>
+          <td mat-cell *matCellDef="let row">{{ originLabel(row.origemMovimentacaoTipo) }} #{{ row.movementId }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="metrica">
+          <th mat-header-cell *matHeaderCellDef>Metrica</th>
+          <td mat-cell *matCellDef="let row">{{ row.metricType ? metricLabel(row.metricType) : '-' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="estoque">
+          <th mat-header-cell *matHeaderCellDef>Estoque</th>
+          <td mat-cell *matCellDef="let row">{{ row.estoqueTipoNome }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="filial">
+          <th mat-header-cell *matHeaderCellDef>Filial</th>
+          <td mat-cell *matCellDef="let row">{{ row.filialNome }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="antes">
+          <th mat-header-cell *matHeaderCellDef class="text-right">Antes</th>
+          <td mat-cell *matCellDef="let row" class="text-right">{{ formatMetricValue(row.beforeValue) }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="delta">
+          <th mat-header-cell *matHeaderCellDef class="text-right">Delta</th>
+          <td mat-cell *matCellDef="let row" class="text-right">{{ formatMetricValue(row.delta) }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="depois">
+          <th mat-header-cell *matHeaderCellDef class="text-right">Depois</th>
+          <td mat-cell *matCellDef="let row" class="text-right">{{ formatMetricValue(row.afterValue) }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="obs">
+          <th mat-header-cell *matHeaderCellDef>Observacao</th>
+          <td mat-cell *matCellDef="let row">{{ row.observacao || '-' }}</td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="['dataHora','origem','metrica','estoque','filial','antes','delta','depois','obs']"></tr>
+        <tr mat-row *matRowDef="let row; columns: ['dataHora','origem','metrica','estoque','filial','antes','delta','depois','obs'];"></tr>
+      </table>
+    </div>
+
+    <div class="grid gap-2.5 p-3 pt-2.5 md:hidden" *ngIf="ledgerDisplayLines.length > 0">
+      <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]" *ngFor="let row of ledgerDisplayLines">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-sm font-semibold">{{ originLabel(row.origemMovimentacaoTipo) }} #{{ row.movementId }}</div>
+          <span class="text-xs text-[var(--muted)]">{{ row.dataHoraMovimentacao | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div class="flex flex-col gap-0.5">
+            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Metrica</span>
+            <span class="text-xs">{{ row.metricType ? metricLabel(row.metricType) : '-' }}</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Estoque</span>
+            <span class="text-xs">{{ row.estoqueTipoNome }}</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Filial</span>
+            <span class="text-xs">{{ row.filialNome }}</span>
+          </div>
+          <div class="flex flex-col gap-0.5">
+            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Antes / Delta / Depois</span>
+            <span class="text-xs">{{ formatMetricValue(row.beforeValue) }} / {{ formatMetricValue(row.delta) }} / {{ formatMetricValue(row.afterValue) }}</span>
+          </div>
+          <div class="col-span-2 flex flex-col gap-0.5">
+            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Observacao</span>
+            <span class="text-xs">{{ row.observacao || '-' }}</span>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="catalog-empty m-3 mt-2.5" *ngIf="!loading && ledgerDisplayLines.length === 0">
+      Nenhuma movimentacao encontrada para os filtros atuais.
+    </div>
+
+    <mat-paginator
+      [length]="ledgerTotalElements"
+      [pageIndex]="ledgerPageIndex"
+      [pageSize]="ledgerPageSize"
+      [pageSizeOptions]="[10, 20, 50]"
+      (page)="onLedgerPageChange($event)">
+    </mat-paginator>
+  </section>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button type="button" (click)="close()">Fechar</button>
+</mat-dialog-actions>

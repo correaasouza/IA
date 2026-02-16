@@ -10,6 +10,7 @@ import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog } from '@angular/material/dialog';
 import {
   FieldSearchComponent,
   FieldSearchOption,
@@ -25,6 +26,7 @@ import {
 } from './catalog-item.service';
 import { CatalogGroupNode, CatalogGroupService } from './catalog-group.service';
 import { CatalogGroupsTreeComponent } from './catalog-groups-tree.component';
+import { CatalogItemHistoryDialogComponent } from './catalog-item-history-dialog.component';
 
 @Component({
   selector: 'app-catalog-items-list',
@@ -90,7 +92,8 @@ export class CatalogItemsListComponent implements OnInit {
     private router: Router,
     private itemService: CatalogItemService,
     private groupService: CatalogGroupService,
-    private notify: NotificationService
+    private notify: NotificationService,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -328,6 +331,20 @@ export class CatalogItemsListComponent implements OnInit {
 
   edit(row: CatalogItem): void {
     this.router.navigate([`/catalog/${this.routeSegment()}/${row.id}/edit`]);
+  }
+
+  openHistory(row: CatalogItem): void {
+    this.dialog.open(CatalogItemHistoryDialogComponent, {
+      width: '1200px',
+      maxWidth: '96vw',
+      autoFocus: false,
+      data: {
+        type: this.type,
+        itemId: row.id,
+        itemCodigo: row.codigo,
+        itemNome: row.nome
+      }
+    });
   }
 
   onStatusToggle(row: CatalogItem, nextAtivo: boolean): void {

@@ -37,6 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
   ConfiguracaoScopeService.class,
   TipoEntidadeConfigAgrupadorSyncService.class,
   CatalogConfigurationGroupSyncService.class,
+  CatalogStockTypeSyncService.class,
+  CatalogMovementEngine.class,
+  CatalogGroupTransferService.class,
   AuditService.class,
   AgrupadorEmpresaServiceTest.TestMetricsConfig.class
 })

@@ -19,6 +19,14 @@ import {
   CatalogItemService
 } from './catalog-item.service';
 import { CatalogGroupNode, CatalogGroupService } from './catalog-group.service';
+import {
+  CatalogMovementMetricType,
+  CatalogMovementOriginType,
+  CatalogMovement,
+  CatalogStockBalanceRow,
+  CatalogStockConsolidatedRow,
+  CatalogStockService
+} from './catalog-stock.service';
 
 @Component({
   selector: 'app-catalog-item-form',
@@ -53,6 +61,25 @@ export class CatalogItemFormComponent implements OnInit {
   saving = false;
   deleting = false;
   codigoInfo = 'Gerado ao salvar';
+  stockLoading = false;
+  ledgerLoading = false;
+  stockError = '';
+  stockRows: CatalogStockBalanceRow[] = [];
+  stockConsolidatedRows: CatalogStockConsolidatedRow[] = [];
+  ledgerEntries: CatalogMovement[] = [];
+  ledgerDisplayEntries: CatalogMovement[] = [];
+  ledgerPageIndex = 0;
+  ledgerPageSize = 10;
+  ledgerTotalElements = 0;
+  ledgerSortOrder: 'RECENT' | 'OLDEST' = 'RECENT';
+  ledgerOrigins: Array<{ value: CatalogMovementOriginType; label: string }> = [
+    { value: 'MUDANCA_GRUPO', label: 'Mudanca de grupo' },
+    { value: 'SYSTEM', label: 'Sistema' }
+  ];
+  ledgerMetrics: Array<{ value: CatalogMovementMetricType; label: string }> = [
+    { value: 'QUANTIDADE', label: 'Quantidade' },
+    { value: 'PRECO', label: 'Preco' }
+  ];
 
   form = this.fb.group({
     codigo: [null as number | null],
@@ -62,12 +89,22 @@ export class CatalogItemFormComponent implements OnInit {
     ativo: [true, Validators.required]
   });
 
+  ledgerFilters = this.fb.group({
+    origemTipo: [''],
+    metricType: [''],
+    estoqueTipoId: [''],
+    filialId: [''],
+    fromDate: [''],
+    toDate: ['']
+  });
+
   constructor(
     private fb: FormBuilder,
     private route: ActivatedRoute,
     private router: Router,
     private itemService: CatalogItemService,
     private groupService: CatalogGroupService,
+    private stockService: CatalogStockService,
     private notify: NotificationService
   ) {}
 
@@ -189,6 +226,7 @@ export class CatalogItemFormComponent implements OnInit {
     if (!this.hasEmpresaContext()) {
       this.context = null;
       this.contextWarning = 'Selecione uma empresa no topo do sistema para continuar.';
+      this.clearStockData();
       this.form.disable();
       return;
     }
@@ -201,6 +239,7 @@ export class CatalogItemFormComponent implements OnInit {
           this.context = context;
           if (!context.vinculado) {
             this.contextWarning = context.mensagem || 'Empresa sem grupo configurado para este catalogo.';
+            this.clearStockData();
             this.form.disable();
             return;
           }
@@ -212,12 +251,14 @@ export class CatalogItemFormComponent implements OnInit {
           if (this.itemId) {
             this.loadItem(this.itemId);
           } else {
+            this.clearStockData();
             this.applyModeState();
           }
         },
         error: err => {
           this.context = null;
           this.contextWarning = err?.error?.detail || 'Nao foi possivel resolver o contexto da empresa.';
+          this.clearStockData();
           this.form.disable();
         }
       });
@@ -231,9 +272,11 @@ export class CatalogItemFormComponent implements OnInit {
         next: item => {
           this.patchForm(item);
           this.applyModeState();
+          this.refreshStockData(true);
         },
         error: err => {
           this.notify.error(err?.error?.detail || 'Nao foi possivel carregar item do catalogo.');
+          this.clearStockData();
           this.back();
         }
       });
@@ -328,6 +371,256 @@ export class CatalogItemFormComponent implements OnInit {
 
   private routeSegment(): string {
     return this.type === 'PRODUCTS' ? 'products' : 'services';
+  }
+
+  showStockSections(): boolean {
+    return !!this.itemId && !!this.context?.vinculado;
+  }
+
+  refreshStockData(resetLedgerPage = false): void {
+    if (!this.showStockSections() || !this.itemId) {
+      this.clearStockData();
+      return;
+    }
+    if (resetLedgerPage) {
+      this.ledgerPageIndex = 0;
+    }
+    this.loadStockBalances(this.itemId);
+    this.loadLedger(this.itemId);
+  }
+
+  prevLedgerPage(): void {
+    if (this.ledgerPageIndex <= 0 || !this.itemId) return;
+    this.ledgerPageIndex--;
+    this.loadLedger(this.itemId);
+  }
+
+  nextLedgerPage(): void {
+    if (!this.itemId || !this.canNextLedgerPage()) return;
+    this.ledgerPageIndex++;
+    this.loadLedger(this.itemId);
+  }
+
+  canNextLedgerPage(): boolean {
+    return (this.ledgerPageIndex + 1) * this.ledgerPageSize < this.ledgerTotalElements;
+  }
+
+  applyLedgerFilters(): void {
+    if (!this.itemId) return;
+    this.ledgerPageIndex = 0;
+    this.loadLedger(this.itemId);
+  }
+
+  clearLedgerFilters(): void {
+    this.ledgerFilters.patchValue({
+      origemTipo: '',
+      metricType: '',
+      estoqueTipoId: '',
+      filialId: '',
+      fromDate: '',
+      toDate: ''
+    });
+    this.applyLedgerFilters();
+  }
+
+  setLedgerSortOrder(value: 'RECENT' | 'OLDEST'): void {
+    this.ledgerSortOrder = value === 'OLDEST' ? 'OLDEST' : 'RECENT';
+    this.applyLedgerSort();
+  }
+
+  activeLedgerFilterChips(): Array<{ key: string; label: string }> {
+    const chips: Array<{ key: string; label: string }> = [];
+    const value = this.ledgerFilters.value;
+
+    const origem = (value.origemTipo || '').trim();
+    if (origem) {
+      chips.push({ key: 'origemTipo', label: `Origem: ${this.originLabel(origem)}` });
+    }
+
+    const metric = (value.metricType || '').trim();
+    if (metric) {
+      chips.push({ key: 'metricType', label: `Metrica: ${this.metricLabel(metric)}` });
+    }
+
+    const estoqueTipoId = this.toPositive((value.estoqueTipoId || '').trim());
+    if (estoqueTipoId) {
+      const stockType = this.ledgerStockTypeOptions().find(item => item.id === estoqueTipoId);
+      chips.push({
+        key: 'estoqueTipoId',
+        label: `Estoque: ${stockType?.label || '#' + estoqueTipoId}`
+      });
+    }
+
+    const filialId = this.toPositive((value.filialId || '').trim());
+    if (filialId) {
+      const filial = this.ledgerFilialOptions().find(item => item.id === filialId);
+      chips.push({
+        key: 'filialId',
+        label: `Filial: ${filial?.label || '#' + filialId}`
+      });
+    }
+
+    const fromDate = (value.fromDate || '').trim();
+    if (fromDate) {
+      chips.push({ key: 'fromDate', label: `De: ${this.formatDateLabel(fromDate)}` });
+    }
+
+    const toDate = (value.toDate || '').trim();
+    if (toDate) {
+      chips.push({ key: 'toDate', label: `Ate: ${this.formatDateLabel(toDate)}` });
+    }
+
+    return chips;
+  }
+
+  clearLedgerFilter(key: string): void {
+    const control = this.ledgerFilters.get(key);
+    if (!control) return;
+    control.setValue('');
+    this.applyLedgerFilters();
+  }
+
+  hasLedgerFiltersActive(): boolean {
+    const value = this.ledgerFilters.value;
+    return !!((value.origemTipo || '').trim()
+      || (value.metricType || '').trim()
+      || `${value.estoqueTipoId || ''}`.trim()
+      || `${value.filialId || ''}`.trim()
+      || (value.fromDate || '').trim()
+      || (value.toDate || '').trim());
+  }
+
+  ledgerStockTypeOptions(): Array<{ id: number; label: string }> {
+    const map = new Map<number, string>();
+    for (const row of this.stockConsolidatedRows || []) {
+      map.set(row.estoqueTipoId, row.estoqueTipoNome || row.estoqueTipoCodigo || `#${row.estoqueTipoId}`);
+    }
+    return [...map.entries()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' }));
+  }
+
+  ledgerFilialOptions(): Array<{ id: number; label: string }> {
+    const map = new Map<number, string>();
+    for (const row of this.stockRows || []) {
+      map.set(row.filialId, row.filialNome || `Filial #${row.filialId}`);
+    }
+    return [...map.entries()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'pt-BR', { sensitivity: 'base' }));
+  }
+
+  ledgerRangeLabel(): string {
+    if (this.ledgerTotalElements <= 0) return '0 de 0';
+    const start = this.ledgerPageIndex * this.ledgerPageSize + 1;
+    const end = Math.min((this.ledgerPageIndex + 1) * this.ledgerPageSize, this.ledgerTotalElements);
+    return `${start}-${end} de ${this.ledgerTotalElements}`;
+  }
+
+  originLabel(value: string | undefined | null): string {
+    if (value === 'MUDANCA_GRUPO') return 'Mudanca de grupo';
+    if (value === 'SYSTEM') return 'Sistema';
+    return value || '-';
+  }
+
+  metricLabel(value: string): string {
+    return value === 'PRECO' ? 'Preco' : 'Quantidade';
+  }
+
+  private loadStockBalances(itemId: number): void {
+    this.stockLoading = true;
+    this.stockError = '';
+    this.stockService.getBalances(this.type, itemId)
+      .pipe(finalize(() => (this.stockLoading = false)))
+      .subscribe({
+        next: view => {
+          this.stockRows = view?.rows || [];
+          this.stockConsolidatedRows = view?.consolidado || [];
+        },
+        error: err => {
+          this.stockRows = [];
+          this.stockConsolidatedRows = [];
+          this.stockError = err?.error?.detail || 'Nao foi possivel carregar os saldos de estoque.';
+        }
+      });
+  }
+
+  private loadLedger(itemId: number): void {
+    const filters = this.ledgerFilters.value;
+    this.ledgerLoading = true;
+    this.stockService.getLedger(this.type, itemId, {
+      page: this.ledgerPageIndex,
+      size: this.ledgerPageSize,
+      origemTipo: (filters.origemTipo || '').trim() as CatalogMovementOriginType | '',
+      metricType: (filters.metricType || '').trim() as CatalogMovementMetricType | '',
+      estoqueTipoId: this.toPositive((filters.estoqueTipoId || '').trim()),
+      filialId: this.toPositive((filters.filialId || '').trim()),
+      fromDate: this.toLedgerDateIsoStart((filters.fromDate || '').trim()),
+      toDate: this.toLedgerDateIsoEnd((filters.toDate || '').trim())
+    }).pipe(finalize(() => (this.ledgerLoading = false)))
+      .subscribe({
+        next: payload => {
+          this.ledgerEntries = payload?.content || [];
+          this.applyLedgerSort();
+          this.ledgerTotalElements = this.extractTotalElements(payload);
+        },
+        error: err => {
+          this.ledgerEntries = [];
+          this.ledgerDisplayEntries = [];
+          this.ledgerTotalElements = 0;
+          this.stockError = err?.error?.detail || 'Nao foi possivel carregar o historico de movimentacoes.';
+        }
+      });
+  }
+
+  private clearStockData(): void {
+    this.stockRows = [];
+    this.stockConsolidatedRows = [];
+    this.ledgerEntries = [];
+    this.ledgerDisplayEntries = [];
+    this.ledgerTotalElements = 0;
+    this.ledgerPageIndex = 0;
+    this.stockError = '';
+    this.stockLoading = false;
+    this.ledgerLoading = false;
+  }
+
+  private extractTotalElements(payload: any): number {
+    if (typeof payload?.totalElements === 'number') return payload.totalElements;
+    if (typeof payload?.page?.totalElements === 'number') return payload.page.totalElements;
+    return (payload?.content || []).length;
+  }
+
+  private applyLedgerSort(): void {
+    const sorted = [...(this.ledgerEntries || [])].sort((a, b) => {
+      const aTime = new Date(a?.dataHoraMovimentacao || 0).getTime();
+      const bTime = new Date(b?.dataHoraMovimentacao || 0).getTime();
+      if (aTime !== bTime) {
+        return this.ledgerSortOrder === 'OLDEST' ? aTime - bTime : bTime - aTime;
+      }
+      const aid = Number(a?.id || 0);
+      const bid = Number(b?.id || 0);
+      return this.ledgerSortOrder === 'OLDEST' ? aid - bid : bid - aid;
+    });
+    this.ledgerDisplayEntries = sorted;
+  }
+
+  private formatDateLabel(value: string): string {
+    const parsed = new Date(`${value}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return value;
+    return parsed.toLocaleDateString('pt-BR');
+  }
+
+  private toLedgerDateIsoStart(value: string): string | undefined {
+    if (!value) return undefined;
+    const date = new Date(`${value}T00:00:00`);
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  }
+
+  private toLedgerDateIsoEnd(value: string): string | undefined {
+    if (!value) return undefined;
+    const date = new Date(`${value}T23:59:59`);
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
   }
 
   private titleLabel(): string {

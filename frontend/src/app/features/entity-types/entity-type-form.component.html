@@ -70,69 +70,43 @@
     class="entity-type-card rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
     <div class="mb-2.5">
       <div class="text-sm font-semibold">Configuracoes por Grupo de Empresas</div>
-      <div class="text-xs text-[var(--muted)]">Uma empresa pode participar de apenas um agrupador nesta configuracao.</div>
+      <div class="text-xs text-[var(--muted)]">Use a ficha do agrupador com guias de Filiais e Configuracoes.</div>
     </div>
+
     <app-agrupadores-empresa
       [configType]="'TIPO_ENTIDADE'"
       [configId]="tipoEntidade!.id"
       [configReferenceName]="configOriginName()"
-      (configure)="openConfigPorGrupoModal($event)"
+      (groupEditStarted)="onGroupEditStarted($event)"
       (changed)="onAgrupadoresChanged()">
+
+      <ng-template #agrupadorConfigTab let-group="group">
+        <section class="entity-type-config-tab-shell">
+          <div class="entity-type-config-ref">Grupo em edicao: <strong>{{ group?.nome || configTabGroupNome || '-' }}</strong></div>
+
+          <div class="entity-type-config-card">
+            <div class="entity-type-config-title">Regras do agrupador</div>
+            <div class="flex items-center pt-2">
+              <mat-slide-toggle
+                [(ngModel)]="configTabObrigarUmTelefone"
+                [ngModelOptions]="{ standalone: true }"
+                [disabled]="mode === 'view' || configTabSaving">
+                Obrigar um telefone
+              </mat-slide-toggle>
+            </div>
+            <div class="entity-type-config-actions">
+              <button mat-flat-button color="primary" type="button" (click)="saveConfigTab()" [disabled]="mode === 'view' || configTabSaving || !configTabGroupId">
+                <mat-icon>save</mat-icon>
+                Salvar configuracao
+              </button>
+            </div>
+          </div>
+
+          <div class="mt-2 flex justify-end" *ngIf="configTabSaving">
+            <app-inline-loader label="Salvando configuracao"></app-inline-loader>
+          </div>
+        </section>
+      </ng-template>
     </app-agrupadores-empresa>
   </section>
 </div>
-
-<ng-template #configPorGrupoDialog>
-  <section class="entity-type-config-modal rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-    <div class="entity-type-config-modal-header entity-type-config-modal-header-shell mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-      <div class="min-w-0">
-        <div class="text-sm font-semibold">Configuracoes por Grupo de Empresas</div>
-        <div class="text-xs text-[var(--muted)]">Defina regras especificas para o agrupador selecionado.</div>
-        <div class="mt-2 text-xs text-[var(--muted-strong)]"><strong>Origem:</strong> {{ configOriginReference() }}</div>
-        <div class="mt-1 text-xs text-[var(--muted-strong)]"><strong>Grupo:</strong> {{ configGroupReference() }}</div>
-        <div class="mt-2">
-          <div class="text-xs font-semibold text-[var(--muted-strong)]">Empresas do grupo ({{ configModalGroupEmpresas.length }})</div>
-          <div class="entity-type-config-empresa-list mt-1" *ngIf="configModalGroupEmpresas.length > 0; else noEmpresaOnHeader">
-            <span class="entity-type-config-empresa-chip" *ngFor="let item of configModalGroupEmpresas">{{ item.nome }}</span>
-          </div>
-          <ng-template #noEmpresaOnHeader>
-            <div class="text-xs text-[var(--muted)]">Nenhuma empresa vinculada neste grupo.</div>
-          </ng-template>
-        </div>
-      </div>
-      <div class="entity-type-config-modal-actions flex gap-2">
-        <button
-          mat-stroked-button
-          type="button"
-          (click)="openAgrupadorFormFromConfigModal()"
-          [disabled]="!configModalGroupId || configModalSaving || mode === 'view'">
-          <mat-icon>tune</mat-icon>
-          Configurar grupo
-        </button>
-        <button mat-stroked-button type="button" (click)="closeConfigPorGrupoModal()" [disabled]="configModalSaving">
-          <mat-icon>close</mat-icon>
-          Cancelar
-        </button>
-        <button class="entity-type-config-save-btn" mat-flat-button color="primary" type="button" (click)="saveConfigPorGrupoModal()" [disabled]="mode === 'view' || configModalSaving">
-          <mat-icon class="entity-type-config-save-icon">save</mat-icon>
-          Salvar
-        </button>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 gap-2.5">
-      <div class="flex items-center pt-2">
-        <mat-slide-toggle
-          [(ngModel)]="configModalObrigarUmTelefone"
-          [ngModelOptions]="{ standalone: true }"
-          [disabled]="mode === 'view' || configModalSaving">
-          Obrigar um telefone
-        </mat-slide-toggle>
-      </div>
-    </div>
-
-    <div class="mt-2 flex justify-end" *ngIf="configModalSaving">
-      <app-inline-loader label="Salvando configuracao"></app-inline-loader>
-    </div>
-  </section>
-</ng-template>

@@ -18,6 +18,18 @@ Regra estrutural: formulario/ficha nao deve permanecer embutido em tela de lista
    - `padding-top` equivalente para manter o espacamento interno.
 8. O fundo opaco deve cobrir toda a area sticky para impedir vazamento visual (incluindo pseudo-elemento de cobertura).
 
+## Header de ficha em dialog/modal
+
+1. Quando a ficha for renderizada em `mat-dialog`, o bloco de `mat-dialog-title` deve usar o mesmo conceito visual do header de ficha: **card superior unico** com borda, raio e fundo `var(--surface)`.
+2. Estrutura obrigatoria do card:
+   - esquerda: titulo da ficha + metadados (`ID`, `Origem`, `Nome: <valor atual>` quando aplicavel);
+   - direita: acoes principais da ficha (`Cancelar/Voltar` e `Salvar`) com os mesmos estilos de botao usados nas fichas de pagina.
+3. O alinhamento deve ser `justify-between`, sem icone de fechar solto fora do padrao do card.
+4. Em mobile, as acoes devem quebrar para duas colunas e depois uma coluna em telas muito estreitas.
+5. O `mat-dialog-content` deve iniciar com espacamento vertical suficiente para nao cortar `mat-form-field`/label flutuante da primeira linha.
+6. Footer de acoes (`mat-dialog-actions`) so deve existir quando houver necessidade funcional adicional; para fichas padrao, as acoes ficam no header-card.
+7. Quando a ficha tiver abas contextuais (ex.: `Filiais`, `Configuracoes`, `Tipos de estoque`), todas devem ficar na mesma linha de navegacao da ficha, evitando subnivel de abas escondido dentro do corpo.
+
 ## Regras de navegacao
 
 1. Toda ficha deve ter rota dedicada para `novo`, `consultar` e `editar` quando aplicavel.
@@ -32,6 +44,7 @@ Regra estrutural: formulario/ficha nao deve permanecer embutido em tela de lista
 - Ficha de empresa: `frontend/src/app/features/companies/company-form.component.html`
 - Ficha de papel: `frontend/src/app/features/roles/role-form.component.html`
 - Ficha de acessos UI: `frontend/src/app/features/access-controls/access-control-form.component.html`
+- Ficha em dialog (agrupadores): `frontend/src/app/features/configs/agrupadores-empresa.component.html`
 
 ## Observacao
 

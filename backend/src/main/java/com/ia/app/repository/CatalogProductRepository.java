@@ -17,7 +17,12 @@ public interface CatalogProductRepository extends JpaRepository<CatalogProduct, 
     Long getTotal();
   }
 
+  Optional<CatalogProduct> findByIdAndTenantId(Long id, Long tenantId);
+
   Optional<CatalogProduct> findByIdAndTenantIdAndCatalogConfigurationIdAndAgrupadorEmpresaIdAndAtivoTrue(
+    Long id, Long tenantId, Long catalogConfigurationId, Long agrupadorEmpresaId);
+
+  Optional<CatalogProduct> findByIdAndTenantIdAndCatalogConfigurationIdAndAgrupadorEmpresaId(
     Long id, Long tenantId, Long catalogConfigurationId, Long agrupadorEmpresaId);
 
   boolean existsByTenantIdAndCatalogConfigurationIdAndCatalogGroupIdInAndAtivoTrue(

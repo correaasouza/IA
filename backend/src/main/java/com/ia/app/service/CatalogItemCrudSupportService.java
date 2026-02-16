@@ -92,7 +92,7 @@ public class CatalogItemCrudSupportService {
   @Transactional(readOnly = true)
   public CatalogItemResponse get(CatalogConfigurationType type, Long id) {
     var scope = contextService.resolveObrigatorio(type);
-    CatalogItemBase entity = findAtivoByScope(type, id, scope);
+    CatalogItemBase entity = findByScope(type, id, scope);
     String groupName = resolveGroupName(scope.tenantId(), scope.catalogConfigurationId(), entity.getCatalogGroupId());
     return toResponse(type, scope.agrupadorNome(), entity, singleGroupNameMap(entity.getCatalogGroupId(), groupName));
   }
@@ -129,7 +129,7 @@ public class CatalogItemCrudSupportService {
   @Transactional
   public CatalogItemResponse update(CatalogConfigurationType type, Long id, CatalogItemRequest request) {
     var scope = contextService.resolveObrigatorio(type);
-    CatalogItemBase entity = findAtivoByScope(type, id, scope);
+    CatalogItemBase entity = findByScope(type, id, scope);
     Long catalogGroupId = validateGroup(scope.tenantId(), scope.catalogConfigurationId(), request.catalogGroupId());
 
     entity.setCatalogGroupId(catalogGroupId);
@@ -163,7 +163,7 @@ public class CatalogItemCrudSupportService {
   @Transactional
   public void delete(CatalogConfigurationType type, Long id) {
     var scope = contextService.resolveObrigatorio(type);
-    CatalogItemBase entity = findAtivoByScope(type, id, scope);
+    CatalogItemBase entity = findByScope(type, id, scope);
     entity.setAtivo(false);
     save(type, entity);
     auditService.log(
@@ -188,14 +188,14 @@ public class CatalogItemCrudSupportService {
     }
   }
 
-  private CatalogItemBase findAtivoByScope(CatalogConfigurationType type, Long id, CatalogItemContextService.CatalogItemScope scope) {
+  private CatalogItemBase findByScope(CatalogConfigurationType type, Long id, CatalogItemContextService.CatalogItemScope scope) {
     return switch (type) {
       case PRODUCTS -> productRepository
-        .findByIdAndTenantIdAndCatalogConfigurationIdAndAgrupadorEmpresaIdAndAtivoTrue(
+        .findByIdAndTenantIdAndCatalogConfigurationIdAndAgrupadorEmpresaId(
           id, scope.tenantId(), scope.catalogConfigurationId(), scope.agrupadorId())
         .orElseThrow(() -> new EntityNotFoundException("catalog_item_not_found"));
       case SERVICES -> serviceItemRepository
-        .findByIdAndTenantIdAndCatalogConfigurationIdAndAgrupadorEmpresaIdAndAtivoTrue(
+        .findByIdAndTenantIdAndCatalogConfigurationIdAndAgrupadorEmpresaId(
           id, scope.tenantId(), scope.catalogConfigurationId(), scope.agrupadorId())
         .orElseThrow(() -> new EntityNotFoundException("catalog_item_not_found"));
     };

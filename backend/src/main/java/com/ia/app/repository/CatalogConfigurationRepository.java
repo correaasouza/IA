@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface CatalogConfigurationRepository extends JpaRepository<CatalogConfiguration, Long> {
   Optional<CatalogConfiguration> findByTenantIdAndType(Long tenantId, CatalogConfigurationType type);
 
+  Optional<CatalogConfiguration> findByIdAndTenantId(Long id, Long tenantId);
+
   boolean existsByIdAndTenantId(Long id, Long tenantId);
 
   boolean existsByTenantIdAndType(Long tenantId, CatalogConfigurationType type);

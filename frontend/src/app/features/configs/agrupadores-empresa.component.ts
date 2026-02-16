@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges, TemplateRef, ViewChild } from '@angular/core';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
+import { Component, ContentChild, EventEmitter, Input, OnChanges, Output, SimpleChanges, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -42,9 +42,12 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   @Input() configType = '';
   @Input() configId: number | null = null;
   @Input() configReferenceName = '';
+  @Input() extraTabLabel = '';
   @Output() changed = new EventEmitter<void>();
-  @Output() configure = new EventEmitter<AgrupadorEmpresa>();
+  @Output() groupEditStarted = new EventEmitter<AgrupadorEmpresa>();
   @ViewChild('agrupadorFormDialog') formDialogTpl?: TemplateRef<unknown>;
+  @ContentChild('agrupadorConfigTab', { read: TemplateRef }) configTabTpl?: TemplateRef<unknown>;
+  @ContentChild('agrupadorExtraTab', { read: TemplateRef }) extraTabTpl?: TemplateRef<unknown>;
 
   loading = false;
   saving = false;
@@ -60,6 +63,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   addedEmpresasForFormList: Array<{ id: number; label: string }> = [];
   selectedAvailableEmpresaIds: number[] = [];
   selectedAddedEmpresaIds: number[] = [];
+  activeFormTab: 'FILIAIS' | 'CONFIGURACOES' | 'EXTRA' = 'FILIAIS';
   private dialogRef: MatDialogRef<unknown> | null = null;
   private originalNome = '';
   private originalEmpresaIds: number[] = [];
@@ -71,10 +75,10 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   empresaIdToGroup: Record<number, { groupId: number; groupName: string }> = {};
 
   constructor(
-      private agrupadorService: AgrupadorEmpresaService,
-      private companyService: CompanyService,
-      private notify: NotificationService,
-      private dialog: MatDialog) {}
+    private agrupadorService: AgrupadorEmpresaService,
+    private companyService: CompanyService,
+    private notify: NotificationService,
+    private dialog: MatDialog) {}
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['configType'] || changes['configId']) {
@@ -86,13 +90,41 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     return !!this.normalizedType() && !!this.configId && this.configId > 0;
   }
 
+  hasConfigTab(): boolean {
+    return !!this.configTabTpl && !!this.editingGroupId;
+  }
+
+  hasExtraTab(): boolean {
+    return !!this.extraTabTpl && !!this.editingGroupId && !!(this.extraTabLabel || '').trim();
+  }
+
+  setFormTab(tab: 'FILIAIS' | 'CONFIGURACOES' | 'EXTRA'): void {
+    if (tab === 'CONFIGURACOES' && !this.hasConfigTab()) return;
+    if (tab === 'EXTRA' && !this.hasExtraTab()) return;
+    this.activeFormTab = tab;
+  }
+
+  configTabContext(): Record<string, unknown> {
+    return {
+      group: this.currentGroupContext(),
+      saving: this.saving,
+      loading: this.loading
+    };
+  }
+
+  extraTabContext(): Record<string, unknown> {
+    return this.configTabContext();
+  }
+
   startCreateForm(): void {
     this.resetFormState();
+    this.activeFormTab = 'FILIAIS';
     this.openFormDialog();
   }
 
   startEditForm(group: AgrupadorEmpresa): void {
-    this.applyGroupToForm(group);
+    this.applyGroupToForm(group, true);
+    this.activeFormTab = 'FILIAIS';
     this.openFormDialog();
   }
 
@@ -104,7 +136,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     this.resetFormState();
   }
 
-  private applyGroupToForm(group: AgrupadorEmpresa): void {
+  private applyGroupToForm(group: AgrupadorEmpresa, emit = false): void {
     this.editingGroupId = group.id;
     this.formNome = group.nome;
     this.formEmpresaIds = (group.empresas || []).map(item => item.empresaId);
@@ -117,6 +149,14 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     this.originalNome = group.nome;
     this.originalEmpresaIds = [...this.formEmpresaIds];
     this.rebuildFormEmpresaLists();
+    if (emit) {
+      this.groupEditStarted.emit({
+        id: group.id,
+        nome: group.nome,
+        ativo: group.ativo,
+        empresas: [...(group.empresas || [])]
+      });
+    }
   }
 
   private resetFormState(): void {
@@ -130,6 +170,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     this.originalEmpresaIds = [];
     this.availableEmpresasForFormList = [];
     this.addedEmpresasForFormList = [];
+    this.activeFormTab = 'FILIAIS';
   }
 
   saveForm(): void {
@@ -209,12 +250,16 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
 
   isEmpresaDisabledForForm(empresaId: number): boolean {
     const target = this.empresaIdToGroup[empresaId];
-    return !!target && target.groupId !== this.editingGroupId;
+    if (!target || target.groupId === this.editingGroupId) return false;
+    return this.normalizedType() !== 'CATALOGO';
   }
 
   occupiedLabelForForm(empresaId: number): string {
     const target = this.empresaIdToGroup[empresaId];
     if (!target || target.groupId === this.editingGroupId) return '';
+    if (this.normalizedType() === 'CATALOGO') {
+      return `Atualmente em: ${target.groupName}. Ao salvar, sera movida.`;
+    }
     return `Ja vinculada em: ${target.groupName}`;
   }
 
@@ -305,6 +350,49 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     this.normalizeSelections();
   }
 
+  refresh(): void {
+    this.tryLoad();
+  }
+
+  empresasCount(group: AgrupadorEmpresa): number {
+    return (group.empresas || []).length;
+  }
+
+  editingModeLabel(): string {
+    return this.editingGroupId ? 'Ficha do agrupador' : 'Novo agrupador';
+  }
+
+  isGroupBeingEdited(groupId: number): boolean {
+    return this.editingGroupId === groupId;
+  }
+
+  configContextLabel(): string {
+    const normalized = this.normalizedType();
+    if (normalized === 'TIPO_ENTIDADE') return 'Tipo de entidade';
+    if (normalized === 'FORMULARIO') return 'Configuracao de formulario';
+    if (normalized === 'COLUNA') return 'Configuracao de coluna';
+    return normalized || 'Configuracao';
+  }
+
+  configContextReference(): string {
+    const id = this.configId || '-';
+    const name = (this.configReferenceName || '').trim();
+    if (name) {
+      return `${this.configContextLabel()} #${id} - ${name}`;
+    }
+    return `${this.configContextLabel()} #${id}`;
+  }
+
+  private currentGroupContext(): AgrupadorEmpresa | null {
+    if (!this.editingGroupId) return null;
+    return {
+      id: this.editingGroupId,
+      nome: (this.formNome || '').trim(),
+      ativo: true,
+      empresas: this.addedEmpresasForForm().map(item => ({ empresaId: item.id, nome: item.label }))
+    };
+  }
+
   private tryLoad(): void {
     if (!this.canRender()) {
       this.agrupadores = [];
@@ -328,9 +416,8 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     ).subscribe({
       next: data => {
         const items = ((data?.content || []) as EmpresaResponse[]).slice();
-        const next = [...items];
         const dedup = new Map<number, EmpresaResponse>();
-        for (const empresa of next) {
+        for (const empresa of items) {
           dedup.set(empresa.id, empresa);
         }
         this.empresas = [...dedup.values()].sort((a, b) => {
@@ -355,7 +442,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
           if (this.dialogRef && this.editingGroupId) {
             const edited = this.agrupadores.find(item => item.id === this.editingGroupId);
             if (edited) {
-              this.applyGroupToForm(edited);
+              this.applyGroupToForm(edited, true);
             } else {
               this.cancelForm();
             }
@@ -408,51 +495,6 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     run(0);
   }
 
-  empresasCount(group: AgrupadorEmpresa): number {
-    return (group.empresas || []).length;
-  }
-
-  editingModeLabel(): string {
-    return this.editingGroupId ? 'Ficha do agrupador' : 'Novo agrupador';
-  }
-
-  isGroupBeingEdited(groupId: number): boolean {
-    return this.editingGroupId === groupId;
-  }
-
-  openGroupConfig(group: AgrupadorEmpresa): void {
-    this.configure.emit(group);
-  }
-
-  openCurrentGroupConfig(): void {
-    if (!this.editingGroupId) return;
-    const group = this.agrupadores.find(item => item.id === this.editingGroupId) || {
-      id: this.editingGroupId,
-      nome: (this.formNome || '').trim() || `Agrupador ${this.editingGroupId}`,
-      ativo: true,
-      empresas: []
-    };
-    this.cancelForm();
-    this.configure.emit(group);
-  }
-
-  configContextLabel(): string {
-    const normalized = this.normalizedType();
-    if (normalized === 'TIPO_ENTIDADE') return 'Tipo de entidade';
-    if (normalized === 'FORMULARIO') return 'Configuração de formulário';
-    if (normalized === 'COLUNA') return 'Configuração de coluna';
-    return normalized || 'Configuração';
-  }
-
-  configContextReference(): string {
-    const id = this.configId || '-';
-    const name = (this.configReferenceName || '').trim();
-    if (name) {
-      return `${this.configContextLabel()} #${id} - ${name}`;
-    }
-    return `${this.configContextLabel()} #${id}`;
-  }
-
   private rebuildEmpresaLocks(): void {
     const next: Record<number, { groupId: number; groupName: string }> = {};
     for (const group of this.agrupadores) {
@@ -477,9 +519,13 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
       this.dialogRef.updateSize('960px');
       return;
     }
+    const topOffset = '104px';
     this.dialogRef = this.dialog.open(this.formDialogTpl, {
       width: '960px',
       maxWidth: '95vw',
+      maxHeight: 'calc(100dvh - 124px)',
+      position: { top: topOffset },
+      panelClass: 'agrupador-dialog-panel',
       autoFocus: false,
       restoreFocus: true
     });

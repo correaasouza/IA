@@ -17,70 +17,34 @@
   min-width: 120px;
 }
 
-.entity-type-config-modal {
-  min-width: 0;
+.entity-type-config-tab-shell {
+  display: grid;
+  gap: 10px;
 }
 
-.entity-type-config-modal-header,
-.entity-type-config-modal-actions {
-  min-width: 0;
+.entity-type-config-ref {
+  font-size: 12px;
+  color: var(--muted-strong);
 }
 
-.entity-type-config-modal-header-shell {
-  margin-top: 0;
-  padding: 10px 12px 8px;
+.entity-type-config-card {
   border: 1px solid var(--border);
   border-radius: 10px;
-  box-shadow: var(--shadow-xs);
-  background: var(--surface);
-}
-
-.entity-type-config-modal-actions {
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  align-items: center;
-  row-gap: 8px;
-  column-gap: 8px;
-}
-
-.entity-type-config-modal-actions .mat-mdc-button-base {
-  white-space: nowrap;
-  flex: 0 0 auto;
-  min-width: 120px;
-}
-
-.entity-type-config-save-btn .mdc-button__label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.entity-type-config-save-icon {
-  width: 16px;
-  height: 16px;
-  min-width: 16px;
-  min-height: 16px;
-  font-size: 16px;
-  line-height: 16px;
-  overflow: visible;
-}
-
-.entity-type-config-empresa-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.entity-type-config-empresa-chip {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border-light);
   background: var(--surface-muted);
-  font-size: 11px;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.entity-type-config-title {
+  font-size: 12.5px;
+  font-weight: 700;
   color: var(--muted-strong);
-  line-height: 1.2;
+}
+
+.entity-type-config-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 @media (max-width: 767px) {

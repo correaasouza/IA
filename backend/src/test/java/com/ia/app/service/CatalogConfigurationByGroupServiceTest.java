@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Import;
   CatalogConfigurationService.class,
   CatalogConfigurationByGroupService.class,
   CatalogConfigurationGroupSyncService.class,
+  CatalogStockTypeSyncService.class,
   AuditService.class
 })
 class CatalogConfigurationByGroupServiceTest {

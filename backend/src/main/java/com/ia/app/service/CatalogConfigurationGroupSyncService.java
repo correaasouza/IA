@@ -11,9 +11,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class CatalogConfigurationGroupSyncService {
 
   private final CatalogConfigurationByGroupRepository repository;
+  private final CatalogStockTypeSyncService stockTypeSyncService;
 
-  public CatalogConfigurationGroupSyncService(CatalogConfigurationByGroupRepository repository) {
+  public CatalogConfigurationGroupSyncService(
+      CatalogConfigurationByGroupRepository repository,
+      CatalogStockTypeSyncService stockTypeSyncService) {
     this.repository = repository;
+    this.stockTypeSyncService = stockTypeSyncService;
   }
 
   @Transactional
@@ -23,6 +27,7 @@ public class CatalogConfigurationGroupSyncService {
     }
     if (repository.findByTenantIdAndCatalogConfigurationIdAndAgrupadorIdAndActiveTrue(
       tenantId, catalogConfigurationId, agrupadorId).isPresent()) {
+      stockTypeSyncService.ensureDefaultForGroup(tenantId, catalogConfigurationId, agrupadorId);
       return;
     }
     CatalogConfigurationByGroup config = new CatalogConfigurationByGroup();
@@ -33,11 +38,13 @@ public class CatalogConfigurationGroupSyncService {
     config.setActive(true);
     try {
       repository.save(config);
+      stockTypeSyncService.ensureDefaultForGroup(tenantId, catalogConfigurationId, agrupadorId);
     } catch (DataIntegrityViolationException ex) {
       if (repository.findByTenantIdAndCatalogConfigurationIdAndAgrupadorIdAndActiveTrue(
         tenantId, catalogConfigurationId, agrupadorId).isEmpty()) {
         throw ex;
       }
+      stockTypeSyncService.ensureDefaultForGroup(tenantId, catalogConfigurationId, agrupadorId);
     }
   }
 
@@ -48,5 +55,6 @@ public class CatalogConfigurationGroupSyncService {
       config.setActive(false);
       repository.save(config);
     });
+    stockTypeSyncService.onGroupRemoved(tenantId, catalogConfigurationId, agrupadorId);
   }
 }

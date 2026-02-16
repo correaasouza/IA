@@ -1,9 +1,9 @@
-import { Component, OnInit, TemplateRef, ViewChild } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -25,7 +25,6 @@ import { EntityTypeService, TipoEntidade } from './entity-type.service';
     FormsModule,
     ReactiveFormsModule,
     MatButtonModule,
-    MatDialogModule,
     MatFormFieldModule,
     MatIconModule,
     MatInputModule,
@@ -37,9 +36,6 @@ import { EntityTypeService, TipoEntidade } from './entity-type.service';
   styleUrls: ['./entity-type-form.component.css']
 })
 export class EntityTypeFormComponent implements OnInit {
-  @ViewChild('configPorGrupoDialog') configPorGrupoDialogTpl?: TemplateRef<unknown>;
-  @ViewChild(AgrupadoresEmpresaComponent) agrupadoresEmpresaComponent?: AgrupadoresEmpresaComponent;
-
   mode: 'new' | 'view' | 'edit' = 'new';
   title = 'Novo tipo de entidade';
   tipoEntidade: TipoEntidade | null = null;
@@ -48,12 +44,12 @@ export class EntityTypeFormComponent implements OnInit {
   deleting = false;
   configLoading = false;
   configRows: TipoEntidadeConfigPorAgrupador[] = [];
-  configModalGroupId: number | null = null;
-  configModalGroupNome = '';
-  configModalObrigarUmTelefone = false;
-  configModalGroupEmpresas: Array<{ empresaId: number; nome: string }> = [];
-  configModalSaving = false;
-  private configDialogRef: MatDialogRef<unknown> | null = null;
+
+  configTabGroupId: number | null = null;
+  configTabGroupNome = '';
+  configTabGroupEmpresas: Array<{ empresaId: number; nome: string }> = [];
+  configTabObrigarUmTelefone = false;
+  configTabSaving = false;
 
   form = this.fb.group({
     nome: ['', Validators.required],
@@ -174,67 +170,18 @@ export class EntityTypeFormComponent implements OnInit {
     this.loadConfigPorAgrupador();
   }
 
-  openConfigPorGrupoModal(group: AgrupadorEmpresa): void {
-    if (!this.tipoEntidade?.id || !this.configPorGrupoDialogTpl) return;
-    const existing = this.configRows.find(row => row.agrupadorId === group.id);
-    this.configModalGroupId = group.id;
-    this.configModalGroupNome = group.nome;
-    this.configModalObrigarUmTelefone = !!existing?.obrigarUmTelefone;
-    this.configModalGroupEmpresas = [...(group.empresas || [])];
-    this.configModalSaving = false;
-
-    this.configDialogRef = this.dialog.open(this.configPorGrupoDialogTpl, {
-      width: '560px',
-      maxWidth: '95vw',
-      autoFocus: false,
-      restoreFocus: true
-    });
-    this.configDialogRef.afterClosed().subscribe(() => {
-      this.configDialogRef = null;
-      this.configModalGroupId = null;
-      this.configModalGroupNome = '';
-      this.configModalGroupEmpresas = [];
-      this.configModalSaving = false;
-    });
+  onGroupEditStarted(group: AgrupadorEmpresa): void {
+    this.configTabGroupId = group.id;
+    this.configTabGroupNome = group.nome;
+    this.configTabGroupEmpresas = [...(group.empresas || [])];
+    this.applyConfigFromRows(group.id);
   }
 
-  configOriginName(): string {
-    return (this.form.get('nome')?.value || this.tipoEntidade?.nome || '').trim();
-  }
-
-  configOriginReference(): string {
-    if (!this.tipoEntidade?.id) return 'Tipo de entidade';
-    const name = this.configOriginName();
-    if (name) {
-      return `Tipo de entidade #${this.tipoEntidade.id} - ${name}`;
-    }
-    return `Tipo de entidade #${this.tipoEntidade.id}`;
-  }
-
-  configGroupReference(): string {
-    if (!this.configModalGroupId) return 'Grupo';
-    const name = (this.configModalGroupNome || '').trim();
-    if (name) {
-      return `Grupo #${this.configModalGroupId} - ${name}`;
-    }
-    return `Grupo #${this.configModalGroupId}`;
-  }
-
-  closeConfigPorGrupoModal(): void {
-    if (this.configDialogRef) {
-      this.configDialogRef.close();
-      this.configDialogRef = null;
-    }
-  }
-
-  saveConfigPorGrupoModal(): void {
-    if (!this.tipoEntidade?.id || !this.configModalGroupId || this.mode === 'view') return;
-    const agrupadorId = this.configModalGroupId;
-    this.configModalSaving = true;
-    this.configByGroupService.update(this.tipoEntidade.id, agrupadorId, this.configModalObrigarUmTelefone)
-      .pipe(finalize(() => {
-        this.configModalSaving = false;
-      }))
+  saveConfigTab(): void {
+    if (!this.tipoEntidade?.id || !this.configTabGroupId || this.mode === 'view' || this.configTabSaving) return;
+    this.configTabSaving = true;
+    this.configByGroupService.update(this.tipoEntidade.id, this.configTabGroupId, this.configTabObrigarUmTelefone)
+      .pipe(finalize(() => (this.configTabSaving = false)))
       .subscribe({
         next: updated => {
           const index = this.configRows.findIndex(item => item.agrupadorId === updated.agrupadorId);
@@ -244,7 +191,6 @@ export class EntityTypeFormComponent implements OnInit {
             this.configRows = [...this.configRows, updated];
           }
           this.notify.success('Configuracao do agrupador atualizada.');
-          this.closeConfigPorGrupoModal();
         },
         error: err => {
           this.notify.error(err?.error?.detail || 'Nao foi possivel atualizar a configuracao do agrupador.');
@@ -253,19 +199,8 @@ export class EntityTypeFormComponent implements OnInit {
       });
   }
 
-  openAgrupadorFormFromConfigModal(): void {
-    if (!this.configModalGroupId || !this.agrupadoresEmpresaComponent) return;
-    const group: AgrupadorEmpresa = {
-      id: this.configModalGroupId,
-      nome: this.configModalGroupNome || `Grupo ${this.configModalGroupId}`,
-      ativo: true,
-      empresas: (this.configModalGroupEmpresas || []).map(item => ({
-        empresaId: item.empresaId,
-        nome: item.nome
-      }))
-    };
-    this.closeConfigPorGrupoModal();
-    setTimeout(() => this.agrupadoresEmpresaComponent?.startEditForm(group), 0);
+  configOriginName(): string {
+    return (this.form.get('nome')?.value || this.tipoEntidade?.nome || '').trim();
   }
 
   loadConfigPorAgrupador(): void {
@@ -277,12 +212,22 @@ export class EntityTypeFormComponent implements OnInit {
     this.configByGroupService.list(this.tipoEntidade.id)
       .pipe(finalize(() => (this.configLoading = false)))
       .subscribe({
-        next: data => this.configRows = data || [],
+        next: data => {
+          this.configRows = data || [];
+          if (this.configTabGroupId) {
+            this.applyConfigFromRows(this.configTabGroupId);
+          }
+        },
         error: () => {
           this.configRows = [];
           this.notify.error('Nao foi possivel carregar as configuracoes por agrupador.');
         }
       });
+  }
+
+  private applyConfigFromRows(groupId: number): void {
+    const row = this.configRows.find(item => item.agrupadorId === groupId);
+    this.configTabObrigarUmTelefone = !!row?.obrigarUmTelefone;
   }
 
   private applyModeState(): void {

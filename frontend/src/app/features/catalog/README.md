@@ -17,6 +17,19 @@
   - `PUT /api/catalog/configuration/{type}/group-config/{agrupadorId}`
 - Cada agrupador possui seu proprio `numberingMode`.
 
+## Ajustes de estoque do locatario
+- Endpoints:
+  - `GET /api/catalog/configuration/{type}/stock-adjustments`
+  - `GET /api/catalog/configuration/{type}/stock-adjustments/options`
+  - `PUT /api/catalog/configuration/{type}/stock-adjustments`
+  - `PUT /api/catalog/configuration/{type}/stock-adjustments/{adjustmentId}`
+  - `DELETE /api/catalog/configuration/{type}/stock-adjustments/{adjustmentId}`
+- Acesso por botao na tela de `Catalogo > Configuracao` (abas `Produtos` e `Servicos`).
+- Lista e formulario separados:
+  - lista em modal de tipos de ajuste;
+  - formulario em modal dedicado, com `tipo` (`ENTRADA`, `SAIDA`, `TRANSFERENCIA`) e selecao de `estoque origem/destino`.
+- `codigo` e gerado automaticamente por locatario (incremental) e exibido apenas no header da ficha.
+
 ## CRUD de catalogo
 ### Produtos
 - Lista: `/catalog/products`
@@ -35,6 +48,7 @@
 ## Observacoes
 - O CRUD resolve contexto por empresa selecionada no header global.
 - O modo de numeracao (`AUTOMATICA` ou `MANUAL`) vem da configuracao por agrupador da empresa.
+- Na ficha do agrupador em `Catalogo > Configuracao`, as abas seguem a mesma linha: `Filiais`, `Configuracoes` e `Tipos de estoque`.
 - Padrao de UX: as telas de Produtos e Servicos seguem o mesmo padrao base de Entidades (`EntityRecords`):
   - header compacto com contexto;
   - filtro principal com `field-search`;
