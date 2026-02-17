@@ -1,5 +1,6 @@
 ﻿import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HostListener } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -65,6 +66,8 @@ export class TenantFormComponent implements OnInit {
   ];
   empresaSearchTerm = '';
   empresaSearchFields = ['razaoSocial'];
+  isMobile = false;
+  mobileEmpresaFiltersOpen = false;
   empresaFilters = this.fb.group({
     tipo: [''],
     status: ['']
@@ -87,6 +90,7 @@ export class TenantFormComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.updateViewportMode();
     const id = this.route.snapshot.paramMap.get('id');
     const isEdit = this.route.snapshot.url.some(s => s.path === 'edit');
     if (id) {
@@ -97,6 +101,11 @@ export class TenantFormComponent implements OnInit {
       this.updateTitle();
     }
     this.empresaFilters.valueChanges.subscribe(() => this.applyEmpresaFilters());
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateViewportMode();
   }
 
   private updateTitle() {
@@ -195,6 +204,18 @@ export class TenantFormComponent implements OnInit {
     this.empresaSearchTerm = value.term;
     this.empresaSearchFields = value.fields.length ? value.fields : this.empresaSearchOptions.map(o => o.key);
     this.applyEmpresaFilters();
+  }
+
+  toggleMobileEmpresaFilters(): void {
+    this.mobileEmpresaFiltersOpen = !this.mobileEmpresaFiltersOpen;
+  }
+
+  activeEmpresaFiltersCount(): number {
+    let count = 0;
+    if ((this.empresaSearchTerm || '').trim()) count++;
+    if ((this.empresaFilters.value.tipo || '').trim()) count++;
+    if ((this.empresaFilters.value.status || '').trim()) count++;
+    return count;
   }
 
   toggleEmpresaStatus(empresa: EmpresaResponse) {
@@ -328,6 +349,13 @@ export class TenantFormComponent implements OnInit {
     if (!this.locatario.ativo) return 'Inativo';
     if (this.locatario.bloqueado) return 'Bloqueado';
     return 'Ativo';
+  }
+
+  private updateViewportMode(): void {
+    this.isMobile = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
+    if (!this.isMobile) {
+      this.mobileEmpresaFiltersOpen = false;
+    }
   }
 }
 

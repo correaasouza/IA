@@ -74,7 +74,7 @@ public class RegistroEntidadeService {
   public RegistroEntidadeResponse get(Long tipoEntidadeId, Long id) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade entity = repository
-      .findByIdAndTenantIdAndTipoEntidadeConfigAgrupadorIdAndAtivoTrue(
+      .findByIdAndTenantIdAndTipoEntidadeConfigAgrupadorId(
         id, scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId())
       .orElseThrow(() -> new EntityNotFoundException("registro_entidade_not_found"));
     return toResponse(scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId(), entity);
@@ -105,7 +105,7 @@ public class RegistroEntidadeService {
   public RegistroEntidadeResponse update(Long tipoEntidadeId, Long id, RegistroEntidadeRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade entity = repository
-      .findByIdAndTenantIdAndTipoEntidadeConfigAgrupadorIdAndAtivoTrue(
+      .findByIdAndTenantIdAndTipoEntidadeConfigAgrupadorId(
         id, scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId())
       .orElseThrow(() -> new EntityNotFoundException("registro_entidade_not_found"));
 
@@ -127,7 +127,7 @@ public class RegistroEntidadeService {
   public void delete(Long tipoEntidadeId, Long id) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade entity = repository
-      .findByIdAndTenantIdAndTipoEntidadeConfigAgrupadorIdAndAtivoTrue(
+      .findByIdAndTenantIdAndTipoEntidadeConfigAgrupadorId(
         id, scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId())
       .orElseThrow(() -> new EntityNotFoundException("registro_entidade_not_found"));
     entity.setAtivo(false);

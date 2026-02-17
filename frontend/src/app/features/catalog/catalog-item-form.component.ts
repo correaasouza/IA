@@ -3,6 +3,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
@@ -27,6 +28,7 @@ import {
   CatalogStockConsolidatedRow,
   CatalogStockService
 } from './catalog-stock.service';
+import { CatalogItemHistoryDialogComponent } from './catalog-item-history-dialog.component';
 
 @Component({
   selector: 'app-catalog-item-form',
@@ -50,6 +52,7 @@ export class CatalogItemFormComponent implements OnInit {
   type: CatalogCrudType = 'PRODUCTS';
   titlePlural = 'Produtos';
   titleSingular = 'produto';
+  activeTab: 'GERAL' | 'ESTOQUE' = 'GERAL';
 
   itemId: number | null = null;
   context: CatalogItemContext | null = null;
@@ -66,6 +69,8 @@ export class CatalogItemFormComponent implements OnInit {
   stockError = '';
   stockRows: CatalogStockBalanceRow[] = [];
   stockConsolidatedRows: CatalogStockConsolidatedRow[] = [];
+  selectedConsolidatedStockTypeId: number | null = null;
+  stockDetailRows: CatalogStockBalanceRow[] = [];
   ledgerEntries: CatalogMovement[] = [];
   ledgerDisplayEntries: CatalogMovement[] = [];
   ledgerPageIndex = 0;
@@ -105,7 +110,8 @@ export class CatalogItemFormComponent implements OnInit {
     private itemService: CatalogItemService,
     private groupService: CatalogGroupService,
     private stockService: CatalogStockService,
-    private notify: NotificationService
+    private notify: NotificationService,
+    private dialog: MatDialog
   ) {}
 
   ngOnInit(): void {
@@ -215,6 +221,7 @@ export class CatalogItemFormComponent implements OnInit {
       this.mode = 'new';
       this.itemId = null;
       this.codigoInfo = 'Gerado ao salvar';
+      this.activeTab = 'GERAL';
       return;
     }
 
@@ -272,7 +279,7 @@ export class CatalogItemFormComponent implements OnInit {
         next: item => {
           this.patchForm(item);
           this.applyModeState();
-          this.refreshStockData(true);
+          this.refreshStockData();
         },
         error: err => {
           this.notify.error(err?.error?.detail || 'Nao foi possivel carregar item do catalogo.');
@@ -373,20 +380,53 @@ export class CatalogItemFormComponent implements OnInit {
     return this.type === 'PRODUCTS' ? 'products' : 'services';
   }
 
+  setTab(tab: 'GERAL' | 'ESTOQUE'): void {
+    if (tab === 'ESTOQUE' && !this.canOpenStockTab()) return;
+    this.activeTab = tab;
+  }
+
+  isTabActive(tab: 'GERAL' | 'ESTOQUE'): boolean {
+    return this.activeTab === tab;
+  }
+
+  canOpenStockTab(): boolean {
+    return this.showStockSections();
+  }
+
+  stockTabDisabledLabel(): string {
+    if (!this.context?.vinculado) return 'Aba Estoque disponivel apenas para empresa vinculada a um grupo.';
+    if (!this.itemId) return 'Salve o cadastro para visualizar saldos e historico.';
+    return '';
+  }
+
   showStockSections(): boolean {
     return !!this.itemId && !!this.context?.vinculado;
   }
 
-  refreshStockData(resetLedgerPage = false): void {
+  refreshStockData(): void {
     if (!this.showStockSections() || !this.itemId) {
       this.clearStockData();
       return;
     }
-    if (resetLedgerPage) {
-      this.ledgerPageIndex = 0;
-    }
     this.loadStockBalances(this.itemId);
-    this.loadLedger(this.itemId);
+  }
+
+  openHistoryDialog(): void {
+    if (!this.itemId) return;
+    const parsedCodigo = Number(this.form.value.codigo || this.codigoInfo || 0);
+    const itemCodigo = Number.isFinite(parsedCodigo) ? parsedCodigo : 0;
+    const itemNome = (this.form.value.nome || '').trim() || '-';
+    this.dialog.open(CatalogItemHistoryDialogComponent, {
+      width: '1200px',
+      maxWidth: '96vw',
+      autoFocus: false,
+      data: {
+        type: this.type,
+        itemId: this.itemId,
+        itemCodigo,
+        itemNome
+      }
+    });
   }
 
   prevLedgerPage(): void {
@@ -527,6 +567,26 @@ export class CatalogItemFormComponent implements OnInit {
     return value === 'PRECO' ? 'Preco' : 'Quantidade';
   }
 
+  selectConsolidatedStockType(stockTypeId: number | null | undefined): void {
+    const normalized = Number(stockTypeId || 0);
+    if (!Number.isFinite(normalized) || normalized <= 0) return;
+    this.selectedConsolidatedStockTypeId = normalized;
+    this.syncStockDetailRows();
+  }
+
+  isConsolidatedStockTypeSelected(stockTypeId: number | null | undefined): boolean {
+    const normalized = Number(stockTypeId || 0);
+    return !!normalized && normalized === this.selectedConsolidatedStockTypeId;
+  }
+
+  selectedConsolidatedStockTypeLabel(): string {
+    const selectedId = this.selectedConsolidatedStockTypeId;
+    if (!selectedId) return '-';
+    const selected = this.stockConsolidatedRows.find(row => row.estoqueTipoId === selectedId);
+    if (!selected) return `#${selectedId}`;
+    return selected.estoqueTipoNome || selected.estoqueTipoCodigo || `#${selectedId}`;
+  }
+
   private loadStockBalances(itemId: number): void {
     this.stockLoading = true;
     this.stockError = '';
@@ -536,10 +596,14 @@ export class CatalogItemFormComponent implements OnInit {
         next: view => {
           this.stockRows = view?.rows || [];
           this.stockConsolidatedRows = view?.consolidado || [];
+          this.syncSelectedConsolidatedStockType();
+          this.syncStockDetailRows();
         },
         error: err => {
           this.stockRows = [];
           this.stockConsolidatedRows = [];
+          this.selectedConsolidatedStockTypeId = null;
+          this.stockDetailRows = [];
           this.stockError = err?.error?.detail || 'Nao foi possivel carregar os saldos de estoque.';
         }
       });
@@ -576,6 +640,8 @@ export class CatalogItemFormComponent implements OnInit {
   private clearStockData(): void {
     this.stockRows = [];
     this.stockConsolidatedRows = [];
+    this.selectedConsolidatedStockTypeId = null;
+    this.stockDetailRows = [];
     this.ledgerEntries = [];
     this.ledgerDisplayEntries = [];
     this.ledgerTotalElements = 0;
@@ -583,6 +649,34 @@ export class CatalogItemFormComponent implements OnInit {
     this.stockError = '';
     this.stockLoading = false;
     this.ledgerLoading = false;
+    this.ensureActiveTab();
+  }
+
+  private syncSelectedConsolidatedStockType(): void {
+    const selectedId = this.selectedConsolidatedStockTypeId;
+    if (selectedId && this.stockConsolidatedRows.some(row => row.estoqueTipoId === selectedId)) {
+      return;
+    }
+    const first = this.stockConsolidatedRows[0];
+    this.selectedConsolidatedStockTypeId = first ? first.estoqueTipoId : null;
+  }
+
+  private syncStockDetailRows(): void {
+    const selectedId = this.selectedConsolidatedStockTypeId;
+    if (!selectedId) {
+      this.stockDetailRows = [];
+      return;
+    }
+
+    this.stockDetailRows = [...(this.stockRows || [])]
+      .filter(row => row.estoqueTipoId === selectedId)
+      .sort((a, b) => {
+        const aName = (a.filialNome || '').trim();
+        const bName = (b.filialNome || '').trim();
+        const byName = aName.localeCompare(bName, 'pt-BR', { sensitivity: 'base' });
+        if (byName !== 0) return byName;
+        return Number(a.filialId || 0) - Number(b.filialId || 0);
+      });
   }
 
   private extractTotalElements(payload: any): number {
@@ -633,5 +727,11 @@ export class CatalogItemFormComponent implements OnInit {
 
   private hasEmpresaContext(): boolean {
     return !!(localStorage.getItem('empresaContextId') || '').trim();
+  }
+
+  private ensureActiveTab(): void {
+    if (this.activeTab === 'ESTOQUE' && !this.canOpenStockTab()) {
+      this.activeTab = 'GERAL';
+    }
   }
 }

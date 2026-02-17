@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, HostListener, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog } from '@angular/material/dialog';
@@ -7,7 +7,9 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatRadioModule } from '@angular/material/radio';
 import { finalize } from 'rxjs/operators';
 import { NotificationService } from '../../core/notifications/notification.service';
+import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ConfigSectionShellComponent } from '../../shared/config-section-shell.component';
+import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { AgrupadorEmpresa } from '../configs/agrupador-empresa.service';
 import { AgrupadoresEmpresaComponent } from '../configs/agrupadores-empresa.component';
@@ -17,9 +19,13 @@ import {
   CatalogConfigurationService,
   CatalogConfigurationType,
   CatalogNumberingMode,
+  CatalogStockAdjustment,
   CatalogStockType
 } from './catalog-configuration.service';
-import { CatalogStockAdjustmentListDialogComponent } from './catalog-stock-adjustment-list-dialog.component';
+import {
+  CatalogStockAdjustmentFormDialogComponent,
+  CatalogStockAdjustmentFormDialogData
+} from './catalog-stock-adjustment-form-dialog.component';
 
 @Component({
   selector: 'app-catalog-configuration-form',
@@ -31,6 +37,7 @@ import { CatalogStockAdjustmentListDialogComponent } from './catalog-stock-adjus
     MatIconModule,
     MatRadioModule,
     ConfigSectionShellComponent,
+    FieldSearchComponent,
     InlineLoaderComponent,
     AgrupadoresEmpresaComponent
   ],
@@ -39,6 +46,10 @@ import { CatalogStockAdjustmentListDialogComponent } from './catalog-stock-adjus
 })
 export class CatalogConfigurationFormComponent implements OnChanges {
   @Input({ required: true }) type: CatalogConfigurationType = 'PRODUCTS';
+  activeTab: 'GROUP_CONFIG' | 'STOCK_ADJUSTMENT_TYPES' = 'GROUP_CONFIG';
+
+  isMobile = false;
+  mobileStockAdjustmentFiltersOpen = false;
 
   loading = false;
   groupsLoading = false;
@@ -74,18 +85,42 @@ export class CatalogConfigurationFormComponent implements OnChanges {
   stockAdjustmentCount = 0;
   stockAdjustmentCountLoading = false;
   stockAdjustmentCountError = '';
+  stockAdjustmentRows: CatalogStockAdjustment[] = [];
+  deletingStockAdjustmentId: number | null = null;
+  stockAdjustmentSearchOptions: FieldSearchOption[] = [
+    { key: 'codigo', label: 'Codigo' },
+    { key: 'nome', label: 'Nome' }
+  ];
+  stockAdjustmentSearchFields = ['codigo', 'nome'];
+  stockAdjustmentSearchTerm = '';
+  stockAdjustmentStatusFilter: 'ALL' | 'ACTIVE' | 'INACTIVE' = 'ALL';
 
   constructor(
     private service: CatalogConfigurationService,
     private notify: NotificationService,
     private dialog: MatDialog
-  ) {}
+  ) {
+    this.updateViewportMode();
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['type']) {
       this.resetCurrentGroup();
       this.load();
     }
+  }
+
+  setTab(tab: 'GROUP_CONFIG' | 'STOCK_ADJUSTMENT_TYPES'): void {
+    this.activeTab = tab;
+  }
+
+  isTabActive(tab: 'GROUP_CONFIG' | 'STOCK_ADJUSTMENT_TYPES'): boolean {
+    return this.activeTab === tab;
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateViewportMode();
   }
 
   load(): void {
@@ -97,11 +132,15 @@ export class CatalogConfigurationFormComponent implements OnChanges {
         next: data => {
           this.config = data;
           this.loadGroupRows();
-          this.loadStockAdjustmentCount();
+          this.loadStockAdjustments();
         },
         error: err => {
           this.config = null;
           this.groupRows = [];
+          this.stockAdjustmentRows = [];
+          this.stockAdjustmentCount = 0;
+          this.stockAdjustmentCountLoading = false;
+          this.stockAdjustmentCountError = '';
           this.error = err?.error?.detail || 'Nao foi possivel carregar a configuracao do catalogo.';
         }
       });
@@ -259,20 +298,82 @@ export class CatalogConfigurationFormComponent implements OnChanges {
       });
   }
 
-  openStockAdjustmentList(): void {
-    const ref = this.dialog.open(CatalogStockAdjustmentListDialogComponent, {
-      width: '1120px',
-      maxWidth: '95vw',
-      maxHeight: 'calc(100dvh - 124px)',
-      position: { top: '104px' },
-      autoFocus: false,
-      restoreFocus: true,
-      data: { type: this.type }
+  toggleMobileStockAdjustmentFilters(): void {
+    this.mobileStockAdjustmentFiltersOpen = !this.mobileStockAdjustmentFiltersOpen;
+  }
+
+  activeStockAdjustmentFiltersCount(): number {
+    let count = 0;
+    if ((this.stockAdjustmentSearchTerm || '').trim()) count++;
+    if (this.stockAdjustmentStatusFilter !== 'ALL') count++;
+    return count;
+  }
+
+  onStockAdjustmentSearchChange(value: FieldSearchValue): void {
+    this.stockAdjustmentSearchTerm = (value.term || '').trim();
+    this.stockAdjustmentSearchFields = value.fields.length
+      ? value.fields
+      : this.stockAdjustmentSearchOptions.map(option => option.key);
+  }
+
+  onStockAdjustmentStatusChange(rawValue: string): void {
+    this.stockAdjustmentStatusFilter = rawValue === 'ACTIVE' || rawValue === 'INACTIVE' ? rawValue : 'ALL';
+  }
+
+  filteredStockAdjustmentRows(): CatalogStockAdjustment[] {
+    const term = (this.stockAdjustmentSearchTerm || '').trim().toLowerCase();
+    let rows = [...(this.stockAdjustmentRows || [])];
+
+    if (this.stockAdjustmentStatusFilter === 'ACTIVE') {
+      rows = rows.filter(item => item.active);
+    } else if (this.stockAdjustmentStatusFilter === 'INACTIVE') {
+      rows = rows.filter(item => !item.active);
+    }
+
+    if (term) {
+      rows = rows.filter(item => {
+        const byCodigo = this.stockAdjustmentSearchFields.includes('codigo')
+          && (item.codigo || '').toLowerCase().includes(term);
+        const byNome = this.stockAdjustmentSearchFields.includes('nome')
+          && (item.nome || '').toLowerCase().includes(term);
+        return byCodigo || byNome;
+      });
+    }
+
+    return rows;
+  }
+
+  openNewStockAdjustment(): void {
+    this.openStockAdjustmentForm({ type: this.type, adjustment: null });
+  }
+
+  openEditStockAdjustment(row: CatalogStockAdjustment): void {
+    this.openStockAdjustmentForm({ type: this.type, adjustment: row });
+  }
+
+  removeStockAdjustment(row: CatalogStockAdjustment): void {
+    if (!row?.id || this.deletingStockAdjustmentId) return;
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        title: 'Remover tipo de ajuste',
+        message: `Confirma remover o tipo de ajuste "${row.codigo} - ${row.nome}"?`,
+        cancelText: 'Cancelar',
+        confirmText: 'Remover',
+        confirmColor: 'warn'
+      }
     });
-    ref.afterClosed().subscribe(changed => {
-      if (!changed) return;
-      this.loadStockAdjustmentCount();
+    ref.afterClosed().subscribe(confirmed => {
+      if (!confirmed) return;
+      this.performRemoveStockAdjustment(row.id);
     });
+  }
+
+  stockAdjustmentTypeLabel(tipo: string): string {
+    if (tipo === 'ENTRADA') return 'Entrada';
+    if (tipo === 'SAIDA') return 'Saida';
+    if (tipo === 'TRANSFERENCIA') return 'Transferencia';
+    return tipo || '-';
   }
 
   typeLabel(): string {
@@ -283,16 +384,25 @@ export class CatalogConfigurationFormComponent implements OnChanges {
     return `Catalogo ${this.typeLabel()}`;
   }
 
-  private loadStockAdjustmentCount(): void {
+  private loadStockAdjustments(): void {
     this.stockAdjustmentCountLoading = true;
     this.stockAdjustmentCountError = '';
+    this.stockAdjustmentRows = [];
     this.service.listStockAdjustmentsByType(this.type)
       .pipe(finalize(() => (this.stockAdjustmentCountLoading = false)))
       .subscribe({
         next: rows => {
-          this.stockAdjustmentCount = (rows || []).length;
+          const sorted = [...(rows || [])].sort((a, b) => {
+            const ao = Number(a?.ordem || 0);
+            const bo = Number(b?.ordem || 0);
+            if (ao !== bo) return ao - bo;
+            return (a?.nome || '').localeCompare((b?.nome || ''), 'pt-BR');
+          });
+          this.stockAdjustmentRows = sorted;
+          this.stockAdjustmentCount = sorted.length;
         },
         error: err => {
+          this.stockAdjustmentRows = [];
           this.stockAdjustmentCount = 0;
           this.stockAdjustmentCountError = err?.error?.detail || 'Nao foi possivel carregar ajustes de estoque.';
         }
@@ -308,9 +418,15 @@ export class CatalogConfigurationFormComponent implements OnChanges {
     this.groupStockTypesError = '';
     this.groupStockTypesSaving = false;
     this.selectedStockTypeId = null;
+    this.stockAdjustmentRows = [];
     this.stockAdjustmentCount = 0;
     this.stockAdjustmentCountLoading = false;
     this.stockAdjustmentCountError = '';
+    this.deletingStockAdjustmentId = null;
+    this.stockAdjustmentSearchTerm = '';
+    this.stockAdjustmentSearchFields = this.stockAdjustmentSearchOptions.map(option => option.key);
+    this.stockAdjustmentStatusFilter = 'ALL';
+    this.mobileStockAdjustmentFiltersOpen = false;
     this.resetStockTypeForm();
   }
 
@@ -328,5 +444,44 @@ export class CatalogConfigurationFormComponent implements OnChanges {
     if (!this.groupStockTypes.length) return 1;
     const max = Math.max(...this.groupStockTypes.map(item => Number(item.ordem || 0)));
     return (Number.isFinite(max) ? max : 0) + 1;
+  }
+
+  private openStockAdjustmentForm(data: CatalogStockAdjustmentFormDialogData): void {
+    const ref = this.dialog.open(CatalogStockAdjustmentFormDialogComponent, {
+      width: '920px',
+      maxWidth: '95vw',
+      maxHeight: 'calc(100dvh - 124px)',
+      position: { top: '104px' },
+      autoFocus: false,
+      restoreFocus: true,
+      panelClass: 'catalog-stock-adjustment-form-dialog-panel',
+      data
+    });
+    ref.afterClosed().subscribe(saved => {
+      if (!saved) return;
+      this.loadStockAdjustments();
+    });
+  }
+
+  private performRemoveStockAdjustment(id: number): void {
+    this.deletingStockAdjustmentId = id;
+    this.service.deleteStockAdjustmentByType(this.type, id)
+      .pipe(finalize(() => (this.deletingStockAdjustmentId = null)))
+      .subscribe({
+        next: () => {
+          this.notify.success('Tipo de ajuste removido.');
+          this.loadStockAdjustments();
+        },
+        error: err => {
+          this.notify.error(err?.error?.detail || 'Nao foi possivel remover tipo de ajuste.');
+        }
+      });
+  }
+
+  private updateViewportMode(): void {
+    this.isMobile = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
+    if (!this.isMobile) {
+      this.mobileStockAdjustmentFiltersOpen = false;
+    }
   }
 }

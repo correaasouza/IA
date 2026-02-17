@@ -31,10 +31,15 @@
       </div>
 
       <div class="grid gap-2" *ngIf="!isMobile || mobileFiltersOpen">
-        <mat-form-field appearance="outline">
-          <mat-label>Buscar por chave ou papel</mat-label>
-          <input matInput [ngModel]="searchTerm" (ngModelChange)="onSearchTermChange($event)" placeholder="Ex.: menu.users" />
-        </mat-form-field>
+        <div class="min-w-0">
+          <app-field-search
+            [options]="searchOptions"
+            [defaultFields]="searchFields"
+            [showActions]="false"
+            placeholder="Buscar por chave ou papel"
+            (searchChange)="onSearchChange($event)">
+          </app-field-search>
+        </div>
       </div>
     </section>
   </div>

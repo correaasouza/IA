@@ -11,6 +11,22 @@
   width: auto;
 }
 
+.catalog-item-tab-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.catalog-item-tab-btn {
+  min-width: 120px;
+}
+
+.catalog-item-tab-active {
+  border-color: var(--brand);
+  color: var(--brand);
+  background: #eef4ff;
+}
+
 .catalog-status-chip {
   display: inline-flex;
   align-items: center;
@@ -56,10 +72,35 @@
   border-radius: 10px;
 }
 
+.catalog-stock-panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
+}
+
+.catalog-stock-panel {
+  min-width: 0;
+}
+
+.catalog-stock-flow {
+  margin-bottom: 8px;
+  padding: 6px 8px;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .catalog-stock-table {
   width: 100%;
   border-collapse: collapse;
   min-width: 580px;
+}
+
+.catalog-stock-table-consolidated {
+  min-width: 420px;
 }
 
 .catalog-stock-table th,
@@ -79,6 +120,23 @@
 
 .catalog-stock-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.catalog-stock-consolidated-row {
+  cursor: pointer;
+}
+
+.catalog-stock-consolidated-row:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+.catalog-stock-consolidated-row-selected td {
+  background: #eff6ff;
+}
+
+.catalog-stock-consolidated-row-selected td:first-child {
+  font-weight: 700;
 }
 
 .catalog-stock-table .text-right {
@@ -102,6 +160,21 @@
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 2px;
+}
+
+.catalog-ledger-filters-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.catalog-ledger-filters-head-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
 .catalog-ledger-filters {
@@ -179,6 +252,16 @@
   .catalog-ledger-order-field {
     width: 150px;
   }
+
+  .catalog-ledger-filters-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .catalog-ledger-filters-head-right {
+    width: 100%;
+    justify-content: space-between;
+  }
 }
 
 @media (max-width: 460px) {
@@ -190,7 +273,18 @@
     min-width: 500px;
   }
 
+  .catalog-stock-table-consolidated {
+    min-width: 420px;
+  }
+
   .catalog-ledger-filters {
     grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 1100px) {
+  .catalog-stock-panels {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.45fr);
+    align-items: start;
   }
 }

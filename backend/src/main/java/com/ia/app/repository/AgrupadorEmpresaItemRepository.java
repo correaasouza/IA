@@ -2,6 +2,7 @@ package com.ia.app.repository;
 
 import com.ia.app.domain.AgrupadorEmpresaItem;
 import java.util.Optional;
+import java.util.List;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -16,4 +17,10 @@ public interface AgrupadorEmpresaItemRepository extends JpaRepository<AgrupadorE
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   Optional<AgrupadorEmpresaItem> findWithLockByTenantIdAndConfigTypeAndConfigIdAndEmpresaId(
     Long tenantId, String configType, Long configId, Long empresaId);
+
+  List<AgrupadorEmpresaItem> findAllByTenantIdAndConfigTypeAndConfigIdAndAgrupadorIdOrderByEmpresaIdAsc(
+    Long tenantId, String configType, Long configId, Long agrupadorId);
+
+  List<AgrupadorEmpresaItem> findAllByTenantIdAndAgrupadorIdOrderByEmpresaIdAsc(
+    Long tenantId, Long agrupadorId);
 }

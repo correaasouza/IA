@@ -8,15 +8,18 @@ import com.ia.app.domain.AgrupadorEmpresa;
 import com.ia.app.domain.AgrupadorEmpresaItem;
 import com.ia.app.domain.CatalogConfigurationType;
 import com.ia.app.domain.CatalogNumberingMode;
+import com.ia.app.domain.CatalogStockType;
 import com.ia.app.domain.Empresa;
 import com.ia.app.dto.CatalogGroupRequest;
 import com.ia.app.dto.CatalogItemRequest;
 import com.ia.app.dto.CatalogItemResponse;
 import com.ia.app.repository.AgrupadorEmpresaItemRepository;
 import com.ia.app.repository.AgrupadorEmpresaRepository;
+import com.ia.app.repository.CatalogStockTypeRepository;
 import com.ia.app.repository.EmpresaRepository;
 import com.ia.app.tenant.EmpresaContext;
 import com.ia.app.tenant.TenantContext;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
@@ -70,6 +73,9 @@ class CatalogCrudServiceTest {
 
   @Autowired
   private CatalogStockQueryService stockQueryService;
+
+  @Autowired
+  private CatalogStockTypeRepository stockTypeRepository;
 
   @Autowired
   private AgrupadorEmpresaRepository agrupadorRepository;
@@ -231,6 +237,76 @@ class CatalogCrudServiceTest {
     assertThat(page.getContent()).isEmpty();
   }
 
+  @Test
+  void shouldListAllConfiguredStockTypesInConsolidatedBalanceEvenWithoutMovement() {
+    Long tenantId = 108L;
+    Long empresaId = createEmpresa(tenantId, "10800000000001");
+    var scope = setupCatalogGroupLink(tenantId, empresaId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    TenantContext.setTenantId(tenantId);
+    EmpresaContext.setEmpresaId(empresaId);
+
+    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM ESTOQUE", null, null, true));
+
+    CatalogStockType secondaryStockType = new CatalogStockType();
+    secondaryStockType.setTenantId(tenantId);
+    secondaryStockType.setCatalogConfigurationId(scope.catalogConfigurationId());
+    secondaryStockType.setAgrupadorEmpresaId(scope.agrupadorId());
+    secondaryStockType.setCodigo("RESERVA");
+    secondaryStockType.setNome("Estoque Reserva");
+    secondaryStockType.setOrdem(2);
+    secondaryStockType.setActive(true);
+    stockTypeRepository.saveAndFlush(secondaryStockType);
+
+    var view = stockQueryService.loadBalanceView(
+      CatalogConfigurationType.PRODUCTS,
+      created.id(),
+      null,
+      null,
+      null);
+
+    assertThat(view.consolidado())
+      .extracting(row -> row.estoqueTipoCodigo())
+      .containsExactly("GERAL", "RESERVA");
+    assertThat(view.consolidado()).allSatisfy(row -> {
+      assertThat(row.quantidadeTotal()).isNotNull();
+      assertThat(row.precoTotal()).isNotNull();
+      assertThat(row.quantidadeTotal().compareTo(BigDecimal.ZERO)).isZero();
+      assertThat(row.precoTotal().compareTo(BigDecimal.ZERO)).isZero();
+    });
+  }
+
+  @Test
+  void shouldListGroupedCompaniesInDetailEvenWithoutMovement() {
+    Long tenantId = 109L;
+    Long empresaPrincipalId = createEmpresa(tenantId, "10900000000001");
+    var scope = setupCatalogGroupLink(tenantId, empresaPrincipalId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    Long empresaSecundariaId = createEmpresa(tenantId, "10900000000002");
+    linkEmpresaToCatalogGroup(tenantId, scope.catalogConfigurationId(), scope.agrupadorId(), empresaSecundariaId);
+
+    TenantContext.setTenantId(tenantId);
+    EmpresaContext.setEmpresaId(empresaPrincipalId);
+    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM DETALHAMENTO", null, null, true));
+
+    var view = stockQueryService.loadBalanceView(
+      CatalogConfigurationType.PRODUCTS,
+      created.id(),
+      null,
+      null,
+      null);
+
+    assertThat(view.rows()).hasSize(2);
+    assertThat(view.rows()).extracting(row -> row.filialId())
+      .containsExactlyInAnyOrder(empresaPrincipalId, empresaSecundariaId);
+    assertThat(view.rows()).extracting(row -> row.filialNome())
+      .contains("Empresa 10900000000001", "Empresa 10900000000002");
+    assertThat(view.rows()).allSatisfy(row -> {
+      assertThat(row.quantidadeAtual()).isNotNull();
+      assertThat(row.precoAtual()).isNotNull();
+      assertThat(row.quantidadeAtual().compareTo(BigDecimal.ZERO)).isZero();
+      assertThat(row.precoAtual().compareTo(BigDecimal.ZERO)).isZero();
+    });
+  }
+
   private Long createProductWithSync(
       Long tenantId,
       Long empresaId,
@@ -275,6 +351,17 @@ class CatalogCrudServiceTest {
 
     EmpresaContext.setEmpresaId(empresaId);
     return contextService.resolveObrigatorio(type);
+  }
+
+  private void linkEmpresaToCatalogGroup(Long tenantId, Long configId, Long agrupadorId, Long empresaId) {
+    AgrupadorEmpresa group = agrupadorRepository.findById(agrupadorId).orElseThrow();
+    AgrupadorEmpresaItem item = new AgrupadorEmpresaItem();
+    item.setTenantId(tenantId);
+    item.setConfigType(ConfiguracaoScopeService.TYPE_CATALOGO);
+    item.setConfigId(configId);
+    item.setAgrupador(group);
+    item.setEmpresaId(empresaId);
+    agrupadorItemRepository.save(item);
   }
 
   private Long createEmpresa(Long tenantId, String cnpj) {

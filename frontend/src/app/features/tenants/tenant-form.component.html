@@ -95,6 +95,16 @@
     <div class="mb-2.5 flex items-center justify-between gap-2">
       <div class="text-sm font-semibold">Empresas do locatário</div>
       <div class="flex items-center gap-2">
+        <button
+          mat-button
+          type="button"
+          class="mobile-filter-toggle md:!hidden"
+          *ngIf="tenantContextMatches"
+          (click)="toggleMobileEmpresaFilters()">
+          <mat-icon>tune</mat-icon>
+          Filtros{{ activeEmpresaFiltersCount() > 0 ? ' (' + activeEmpresaFiltersCount() + ')' : '' }}
+          <mat-icon class="mobile-filter-chevron">{{ mobileEmpresaFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+        </button>
         <div class="text-xs text-[var(--muted)]">{{ filteredEmpresas.length }} de {{ empresas.length }} empresa(s)</div>
         <button
           mat-flat-button
@@ -108,7 +118,10 @@
       </div>
     </div>
 
-    <form [formGroup]="empresaFilters" class="mb-2.5 grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1.4fr)_220px_220px]" *ngIf="tenantContextMatches">
+    <form
+      [formGroup]="empresaFilters"
+      class="mb-2.5 grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1.4fr)_220px_220px]"
+      *ngIf="tenantContextMatches && (!isMobile || mobileEmpresaFiltersOpen)">
       <div class="min-w-0">
         <app-field-search
           [options]="empresaSearchOptions"

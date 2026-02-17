@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatOptionModule } from '@angular/material/core';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { finalize } from 'rxjs/operators';
 import { NotificationService } from '../../core/notifications/notification.service';
 import {
@@ -35,7 +36,8 @@ export interface CatalogStockAdjustmentFormDialogData {
     MatIconModule,
     MatInputModule,
     MatOptionModule,
-    MatSelectModule
+    MatSelectModule,
+    MatSlideToggleModule
   ],
   templateUrl: './catalog-stock-adjustment-form-dialog.component.html',
   styleUrls: ['./catalog-stock-adjustment-form-dialog.component.css']
@@ -84,6 +86,14 @@ export class CatalogStockAdjustmentFormDialogComponent implements OnInit {
 
   codeLabel(): string {
     return this.data.adjustment?.codigo || 'Automatico por locatario';
+  }
+
+  setAtivoFromHeader(nextValue: boolean): void {
+    this.form.active = !!nextValue;
+  }
+
+  ativoHeaderLabel(): string {
+    return this.form.active ? 'ATIVO' : 'Inativo';
   }
 
   originOptions(): CatalogStockAdjustmentScopeOption[] {

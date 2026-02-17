@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { CdkDragDrop, DragDropModule } from '@angular/cdk/drag-drop';
-import { Component, ContentChild, EventEmitter, Input, OnChanges, Output, SimpleChanges, TemplateRef, ViewChild } from '@angular/core';
+import { Component, ContentChild, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
@@ -52,6 +52,8 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   loading = false;
   saving = false;
   loadingEmpresas = false;
+  isMobile = false;
+  mobileFiltersOpen = false;
   error = '';
   empresaSearch = '';
   empresaSearchOptions: FieldSearchOption[] = [{ key: 'razaoSocial', label: 'Nome' }];
@@ -78,7 +80,14 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     private agrupadorService: AgrupadorEmpresaService,
     private companyService: CompanyService,
     private notify: NotificationService,
-    private dialog: MatDialog) {}
+    private dialog: MatDialog) {
+    this.updateViewportMode();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateViewportMode();
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['configType'] || changes['configId']) {
@@ -91,11 +100,11 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   }
 
   hasConfigTab(): boolean {
-    return !!this.configTabTpl && !!this.editingGroupId;
+    return !!this.configTabTpl;
   }
 
   hasExtraTab(): boolean {
-    return !!this.extraTabTpl && !!this.editingGroupId && !!(this.extraTabLabel || '').trim();
+    return !!this.extraTabTpl && !!(this.extraTabLabel || '').trim();
   }
 
   setFormTab(tab: 'FILIAIS' | 'CONFIGURACOES' | 'EXTRA'): void {
@@ -186,7 +195,16 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
           this.syncEmpresas(created.id, [], selectedEmpresaIds, () => {
             this.notify.success('Agrupador criado.');
             this.saving = false;
-            this.cancelForm();
+            this.editingGroupId = created.id;
+            this.originalNome = nome;
+            this.originalEmpresaIds = [...selectedEmpresaIds];
+            this.activeFormTab = this.hasConfigTab() ? 'CONFIGURACOES' : (this.hasExtraTab() ? 'EXTRA' : 'FILIAIS');
+            this.groupEditStarted.emit({
+              id: created.id,
+              nome,
+              ativo: created?.ativo ?? true,
+              empresas: this.addedEmpresasForForm().map(item => ({ empresaId: item.id, nome: item.label }))
+            });
             this.loadAgrupadores();
             this.changed.emit();
           });
@@ -246,6 +264,14 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     this.empresaSearch = (value.term || '').trim();
     this.empresaSearchFields = value.fields.length ? value.fields : this.empresaSearchOptions.map(o => o.key);
     this.loadEmpresas();
+  }
+
+  toggleMobileFilters(): void {
+    this.mobileFiltersOpen = !this.mobileFiltersOpen;
+  }
+
+  activeFiltersCount(): number {
+    return (this.empresaSearch || '').trim() ? 1 : 0;
   }
 
   isEmpresaDisabledForForm(empresaId: number): boolean {
@@ -586,5 +612,12 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
       }
     }
     return 0;
+  }
+
+  private updateViewportMode(): void {
+    this.isMobile = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
+    if (!this.isMobile) {
+      this.mobileFiltersOpen = false;
+    }
   }
 }

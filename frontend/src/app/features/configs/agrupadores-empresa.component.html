@@ -7,12 +7,20 @@
     <div class="grid gap-2">
       <div class="mb-1 flex items-center justify-between gap-2">
         <div class="text-sm font-semibold">Filtros</div>
-        <button mat-flat-button color="primary" type="button" (click)="startCreateForm()" [disabled]="saving || loading">
-          <mat-icon>add</mat-icon>
-          Novo Grupo
-        </button>
+        <div class="flex items-center gap-2">
+          <button mat-button type="button" class="mobile-filter-toggle md:!hidden" (click)="toggleMobileFilters()">
+            <mat-icon>tune</mat-icon>
+            Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
+            <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+          <div class="text-xs text-[var(--muted)]">{{ agrupadores.length }} agrupador(es)</div>
+          <button mat-flat-button color="primary" type="button" (click)="startCreateForm()" [disabled]="saving || loading">
+            <mat-icon>add</mat-icon>
+            Novo Grupo
+          </button>
+        </div>
       </div>
-      <form class="grid grid-cols-1 items-start gap-2" role="search">
+      <form class="grid grid-cols-1 items-start gap-2" *ngIf="!isMobile || mobileFiltersOpen" role="search">
         <div class="min-w-0">
           <app-field-search
             [options]="empresaSearchOptions"

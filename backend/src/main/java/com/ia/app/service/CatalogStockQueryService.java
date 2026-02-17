@@ -1,5 +1,6 @@
 package com.ia.app.service;
 
+import com.ia.app.domain.AgrupadorEmpresaItem;
 import com.ia.app.domain.CatalogConfigurationType;
 import com.ia.app.domain.CatalogMovement;
 import com.ia.app.domain.CatalogMovementLine;
@@ -15,6 +16,7 @@ import com.ia.app.dto.CatalogMovementResponse;
 import com.ia.app.dto.CatalogStockBalanceRowResponse;
 import com.ia.app.dto.CatalogStockBalanceViewResponse;
 import com.ia.app.dto.CatalogStockConsolidatedResponse;
+import com.ia.app.repository.AgrupadorEmpresaItemRepository;
 import com.ia.app.repository.CatalogMovementLineRepository;
 import com.ia.app.repository.CatalogMovementRepository;
 import com.ia.app.repository.CatalogProductRepository;
@@ -23,11 +25,13 @@ import com.ia.app.repository.CatalogStockBalanceRepository;
 import com.ia.app.repository.CatalogStockTypeRepository;
 import com.ia.app.repository.EmpresaRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -51,6 +55,7 @@ public class CatalogStockQueryService {
   private final CatalogStockBalanceRepository balanceRepository;
   private final CatalogMovementRepository movementRepository;
   private final CatalogMovementLineRepository lineRepository;
+  private final AgrupadorEmpresaItemRepository agrupadorEmpresaItemRepository;
   private final CatalogStockTypeRepository stockTypeRepository;
   private final EmpresaRepository empresaRepository;
 
@@ -61,6 +66,7 @@ public class CatalogStockQueryService {
       CatalogStockBalanceRepository balanceRepository,
       CatalogMovementRepository movementRepository,
       CatalogMovementLineRepository lineRepository,
+      AgrupadorEmpresaItemRepository agrupadorEmpresaItemRepository,
       CatalogStockTypeRepository stockTypeRepository,
       EmpresaRepository empresaRepository) {
     this.contextService = contextService;
@@ -69,6 +75,7 @@ public class CatalogStockQueryService {
     this.balanceRepository = balanceRepository;
     this.movementRepository = movementRepository;
     this.lineRepository = lineRepository;
+    this.agrupadorEmpresaItemRepository = agrupadorEmpresaItemRepository;
     this.stockTypeRepository = stockTypeRepository;
     this.empresaRepository = empresaRepository;
   }
@@ -100,36 +107,34 @@ public class CatalogStockQueryService {
       effectiveAgrupadorId,
       estoqueTipoId);
 
-    Map<Long, CatalogStockType> stockTypeById = loadStockTypes(scope.tenantId(), collectStockTypeIds(rows, consolidatedRows));
-    Map<Long, String> filialNameById = loadFilialNames(scope.tenantId(), rows.stream()
-      .map(CatalogStockBalance::getFilialId)
-      .collect(Collectors.toSet()));
+    List<CatalogStockType> configuredStockTypes = loadConfiguredStockTypes(
+      scope.tenantId(),
+      scope.catalogConfigurationId(),
+      effectiveAgrupadorId,
+      estoqueTipoId);
+    Set<Long> groupedFilialIds = loadGroupedFilialIds(
+      scope.tenantId(),
+      effectiveAgrupadorId,
+      filialId);
 
-    List<CatalogStockBalanceRowResponse> rowResponses = rows.stream()
-      .map(row -> {
-        CatalogStockType stockType = stockTypeById.get(row.getEstoqueTipoId());
-        return new CatalogStockBalanceRowResponse(
-          row.getEstoqueTipoId(),
-          stockType == null ? null : stockType.getCodigo(),
-          stockType == null ? null : stockType.getNome(),
-          row.getFilialId(),
-          filialNameById.get(row.getFilialId()),
-          row.getQuantidadeAtual(),
-          row.getPrecoAtual());
-      })
-      .toList();
+    Map<Long, CatalogStockType> stockTypeById = loadStockTypes(
+      scope.tenantId(),
+      collectStockTypeIds(rows, consolidatedRows, configuredStockTypes));
+    Set<Long> detailFilialIds = new LinkedHashSet<>(groupedFilialIds);
+    detailFilialIds.addAll(rows.stream().map(CatalogStockBalance::getFilialId).toList());
+    Map<Long, String> filialNameById = loadFilialNames(scope.tenantId(), detailFilialIds);
 
-    List<CatalogStockConsolidatedResponse> consolidatedResponses = consolidatedRows.stream()
-      .map(row -> {
-        CatalogStockType stockType = stockTypeById.get(row.getEstoqueTipoId());
-        return new CatalogStockConsolidatedResponse(
-          row.getEstoqueTipoId(),
-          stockType == null ? null : stockType.getCodigo(),
-          stockType == null ? null : stockType.getNome(),
-          row.getQuantidadeTotal(),
-          row.getPrecoTotal());
-      })
-      .toList();
+    List<CatalogStockBalanceRowResponse> rowResponses = buildDetailRows(
+      rows,
+      configuredStockTypes,
+      groupedFilialIds,
+      stockTypeById,
+      filialNameById);
+
+    List<CatalogStockConsolidatedResponse> consolidatedResponses = buildConsolidatedResponses(
+      consolidatedRows,
+      configuredStockTypes,
+      stockTypeById);
 
     return new CatalogStockBalanceViewResponse(
       catalogoId,
@@ -264,9 +269,11 @@ public class CatalogStockQueryService {
 
   private Set<Long> collectStockTypeIds(
       List<CatalogStockBalance> rows,
-      List<CatalogStockBalanceRepository.StockTypeConsolidatedRow> consolidatedRows) {
+      List<CatalogStockBalanceRepository.StockTypeConsolidatedRow> consolidatedRows,
+      List<CatalogStockType> configuredStockTypes) {
     Set<Long> ids = rows.stream().map(CatalogStockBalance::getEstoqueTipoId).collect(Collectors.toSet());
     ids.addAll(consolidatedRows.stream().map(CatalogStockBalanceRepository.StockTypeConsolidatedRow::getEstoqueTipoId).toList());
+    ids.addAll(configuredStockTypes.stream().map(CatalogStockType::getId).toList());
     return ids;
   }
 
@@ -277,6 +284,144 @@ public class CatalogStockQueryService {
     return stockTypeRepository.findAllByTenantIdAndIdIn(tenantId, ids).stream()
       .collect(Collectors.toMap(CatalogStockType::getId, stockType -> stockType, (a, b) -> a, HashMap::new));
   }
+
+  private List<CatalogStockType> loadConfiguredStockTypes(
+      Long tenantId,
+      Long catalogConfigurationId,
+      Long agrupadorEmpresaId,
+      Long estoqueTipoId) {
+    List<CatalogStockType> configured = stockTypeRepository
+      .findAllByTenantIdAndCatalogConfigurationIdAndAgrupadorEmpresaIdAndActiveTrueOrderByOrdemAscNomeAsc(
+        tenantId,
+        catalogConfigurationId,
+        agrupadorEmpresaId);
+    if (estoqueTipoId == null) {
+      return configured;
+    }
+    return configured.stream()
+      .filter(stockType -> Objects.equals(stockType.getId(), estoqueTipoId))
+      .toList();
+  }
+
+  private List<CatalogStockConsolidatedResponse> buildConsolidatedResponses(
+      List<CatalogStockBalanceRepository.StockTypeConsolidatedRow> consolidatedRows,
+      List<CatalogStockType> configuredStockTypes,
+      Map<Long, CatalogStockType> stockTypeById) {
+    Map<Long, CatalogStockBalanceRepository.StockTypeConsolidatedRow> consolidatedByStockTypeId = new LinkedHashMap<>();
+    for (CatalogStockBalanceRepository.StockTypeConsolidatedRow row : consolidatedRows) {
+      if (row == null || row.getEstoqueTipoId() == null) {
+        continue;
+      }
+      consolidatedByStockTypeId.putIfAbsent(row.getEstoqueTipoId(), row);
+    }
+
+    List<CatalogStockConsolidatedResponse> response = new ArrayList<>();
+    Set<Long> includedStockTypeIds = new LinkedHashSet<>();
+
+    for (CatalogStockType configured : configuredStockTypes) {
+      CatalogStockBalanceRepository.StockTypeConsolidatedRow consolidated = consolidatedByStockTypeId.get(configured.getId());
+      response.add(new CatalogStockConsolidatedResponse(
+        configured.getId(),
+        configured.getCodigo(),
+        configured.getNome(),
+        consolidated == null ? BigDecimal.ZERO : normalizeAmount(consolidated.getQuantidadeTotal()),
+        consolidated == null ? BigDecimal.ZERO : normalizeAmount(consolidated.getPrecoTotal())));
+      includedStockTypeIds.add(configured.getId());
+    }
+
+    for (CatalogStockBalanceRepository.StockTypeConsolidatedRow row : consolidatedRows) {
+      Long stockTypeId = row == null ? null : row.getEstoqueTipoId();
+      if (stockTypeId == null || includedStockTypeIds.contains(stockTypeId)) {
+        continue;
+      }
+      CatalogStockType stockType = stockTypeById.get(stockTypeId);
+      response.add(new CatalogStockConsolidatedResponse(
+        stockTypeId,
+        stockType == null ? null : stockType.getCodigo(),
+        stockType == null ? null : stockType.getNome(),
+        normalizeAmount(row.getQuantidadeTotal()),
+        normalizeAmount(row.getPrecoTotal())));
+    }
+
+    return response;
+  }
+
+  private List<CatalogStockBalanceRowResponse> buildDetailRows(
+      List<CatalogStockBalance> rows,
+      List<CatalogStockType> configuredStockTypes,
+      Collection<Long> groupedFilialIds,
+      Map<Long, CatalogStockType> stockTypeById,
+      Map<Long, String> filialNameById) {
+    Map<DetailRowKey, CatalogStockBalance> rowByKey = new LinkedHashMap<>();
+    for (CatalogStockBalance row : rows) {
+      if (row == null || row.getEstoqueTipoId() == null || row.getFilialId() == null) {
+        continue;
+      }
+      rowByKey.putIfAbsent(new DetailRowKey(row.getEstoqueTipoId(), row.getFilialId()), row);
+    }
+
+    List<CatalogStockBalanceRowResponse> response = new ArrayList<>();
+    Set<DetailRowKey> includedKeys = new LinkedHashSet<>();
+
+    for (CatalogStockType configuredStockType : configuredStockTypes) {
+      for (Long filialItemId : groupedFilialIds) {
+        DetailRowKey key = new DetailRowKey(configuredStockType.getId(), filialItemId);
+        CatalogStockBalance row = rowByKey.get(key);
+        response.add(new CatalogStockBalanceRowResponse(
+          configuredStockType.getId(),
+          configuredStockType.getCodigo(),
+          configuredStockType.getNome(),
+          filialItemId,
+          filialNameById.get(filialItemId),
+          row == null ? BigDecimal.ZERO : normalizeAmount(row.getQuantidadeAtual()),
+          row == null ? BigDecimal.ZERO : normalizeAmount(row.getPrecoAtual())));
+        includedKeys.add(key);
+      }
+    }
+
+    for (CatalogStockBalance row : rows) {
+      if (row == null || row.getEstoqueTipoId() == null || row.getFilialId() == null) {
+        continue;
+      }
+      DetailRowKey key = new DetailRowKey(row.getEstoqueTipoId(), row.getFilialId());
+      if (includedKeys.contains(key)) {
+        continue;
+      }
+      CatalogStockType stockType = stockTypeById.get(row.getEstoqueTipoId());
+      response.add(new CatalogStockBalanceRowResponse(
+        row.getEstoqueTipoId(),
+        stockType == null ? null : stockType.getCodigo(),
+        stockType == null ? null : stockType.getNome(),
+        row.getFilialId(),
+        filialNameById.get(row.getFilialId()),
+        normalizeAmount(row.getQuantidadeAtual()),
+        normalizeAmount(row.getPrecoAtual())));
+      includedKeys.add(key);
+    }
+
+    return response;
+  }
+
+  private Set<Long> loadGroupedFilialIds(
+      Long tenantId,
+      Long agrupadorEmpresaId,
+      Long filialId) {
+    return agrupadorEmpresaItemRepository
+      .findAllByTenantIdAndAgrupadorIdOrderByEmpresaIdAsc(
+        tenantId,
+        agrupadorEmpresaId)
+      .stream()
+      .map(AgrupadorEmpresaItem::getEmpresaId)
+      .filter(Objects::nonNull)
+      .filter(empresaId -> filialId == null || Objects.equals(empresaId, filialId))
+      .collect(Collectors.toCollection(LinkedHashSet::new));
+  }
+
+  private BigDecimal normalizeAmount(BigDecimal value) {
+    return value == null ? BigDecimal.ZERO : value;
+  }
+
+  private record DetailRowKey(Long estoqueTipoId, Long filialId) {}
 
   private Map<Long, String> loadFilialNames(Long tenantId, Collection<Long> filialIds) {
     if (filialIds == null || filialIds.isEmpty()) {

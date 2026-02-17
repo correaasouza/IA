@@ -4,35 +4,31 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import { Router, RouterLink } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
-import { FormsModule } from '@angular/forms';
 
 import { AccessControlService } from '../../core/access/access-control.service';
 import { MenuItem, MenuService } from '../../core/menu/menu.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { EntityTypeService } from '../entity-types/entity-type.service';
+import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 
 @Component({
   selector: 'app-access-controls',
   standalone: true,
   imports: [
     CommonModule,
-    FormsModule,
     RouterLink,
     MatButtonModule,
     MatIconModule,
-    MatInputModule,
-    MatFormFieldModule,
     MatTableModule,
     MatTooltipModule,
     MatDialogModule,
-    MatMenuModule
+    MatMenuModule,
+    FieldSearchComponent
   ],
   templateUrl: './access-controls.component.html'
 })
@@ -42,6 +38,11 @@ export class AccessControlsComponent implements OnInit {
   displayedColumns = ['controlKey', 'roles', 'acoes'];
   canConfigure = false;
   searchTerm = '';
+  searchOptions: FieldSearchOption[] = [
+    { key: 'controlKey', label: 'Chave' },
+    { key: 'roles', label: 'Papeis' }
+  ];
+  searchFields = ['controlKey', 'roles'];
   isMobile = false;
   mobileFiltersOpen = false;
   private fallbackRolesByKey: Record<string, string[]> = {};
@@ -118,8 +119,9 @@ export class AccessControlsComponent implements OnInit {
     return this.searchTerm.trim() ? 1 : 0;
   }
 
-  onSearchTermChange(value: string): void {
-    this.searchTerm = value || '';
+  onSearchChange(value: FieldSearchValue): void {
+    this.searchTerm = value.term || '';
+    this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(option => option.key);
     this.applyFilters();
   }
 
@@ -133,10 +135,13 @@ export class AccessControlsComponent implements OnInit {
       this.filteredPolicies = [...this.policies];
       return;
     }
-    this.filteredPolicies = this.policies.filter(p =>
-      p.controlKey.toLowerCase().includes(term) ||
-      (p.roles || []).join(' ').toLowerCase().includes(term)
-    );
+    this.filteredPolicies = this.policies.filter(policy => {
+      const byControlKey = this.searchFields.includes('controlKey')
+        && policy.controlKey.toLowerCase().includes(term);
+      const byRoles = this.searchFields.includes('roles')
+        && (policy.roles || []).join(' ').toLowerCase().includes(term);
+      return byControlKey || byRoles;
+    });
   }
 
   private normalizeRoles(values: string[]): string[] {

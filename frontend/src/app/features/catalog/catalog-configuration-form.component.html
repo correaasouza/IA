@@ -1,148 +1,282 @@
-<app-config-section-shell
-  [title]="'Configuracoes por Grupo de Empresas - ' + typeLabel()"
-  subtitle="Use a ficha do agrupador com guias de Filiais e Configuracoes."
-  [hasActions]="true">
-  <div shell-actions>
-    <span class="inline-flex items-center rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--muted-strong)]">
-      Versao base: {{ config?.version ?? '-' }}
-    </span>
-  </div>
-
-  <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="loading">
-    Carregando configuracao base...
-  </div>
-
-  <div class="rounded-lg border border-dashed border-[#fda29b] bg-[#fef3f2] p-2.5 text-xs text-[#b42318]" *ngIf="!loading && error">
-    {{ error }}
-  </div>
-
-  <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="!loading && !error && groupsLoading">
-    Carregando configuracoes por agrupador...
-  </div>
-
-  <div class="rounded-lg border border-dashed border-[#fda29b] bg-[#fef3f2] p-2.5 text-xs text-[#b42318]" *ngIf="!loading && !groupsLoading && groupsError">
-    {{ groupsError }}
-  </div>
-
-  <section class="catalog-config-card" *ngIf="!loading && config?.id && !error">
-    <div class="catalog-config-card-head">
-      <div class="catalog-config-card-title">Tipos de ajuste de estoque do locatario</div>
-      <button mat-flat-button color="primary" type="button" (click)="openStockAdjustmentList()">
-        <mat-icon>tune</mat-icon>
-        Abrir lista
+<div class="grid gap-3">
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="catalog-tab-row">
+      <button
+        mat-stroked-button
+        type="button"
+        class="catalog-tab-btn"
+        [ngClass]="isTabActive('GROUP_CONFIG') ? 'catalog-tab-active' : ''"
+        (click)="setTab('GROUP_CONFIG')">
+        Configuracoes por Grupo de Empresas
       </button>
-    </div>
-    <div class="catalog-config-card-desc">
-      Configure os tipos de ajuste (ENTRADA, SAIDA e TRANSFERENCIA) em lista separada com formulario em modal.
-    </div>
-
-    <div class="catalog-adjustment-summary">
-      <span>{{ stockAdjustmentCountLoading ? 'Carregando...' : (stockAdjustmentCount + ' tipo(s) de ajuste cadastrados') }}</span>
-      <span class="catalog-adjustment-summary-error" *ngIf="stockAdjustmentCountError">{{ stockAdjustmentCountError }}</span>
+      <button
+        mat-stroked-button
+        type="button"
+        class="catalog-tab-btn"
+        [ngClass]="isTabActive('STOCK_ADJUSTMENT_TYPES') ? 'catalog-tab-active' : ''"
+        (click)="setTab('STOCK_ADJUSTMENT_TYPES')">
+        Tipos de ajustes de estoque
+      </button>
     </div>
   </section>
 
-  <app-agrupadores-empresa
-    *ngIf="!loading && config?.id && !error"
-    [configType]="'CATALOGO'"
-    [configId]="config.id"
-    [extraTabLabel]="'Tipos de estoque'"
-    [configReferenceName]="configReferenceName()"
-    (groupEditStarted)="onGroupEditStarted($event)"
-    (changed)="onGroupsChanged()">
+  <div class="catalog-step-content" *ngIf="isTabActive('GROUP_CONFIG')">
+    <app-config-section-shell
+      [title]="'Configuracoes por Grupo de Empresas - ' + typeLabel()"
+      subtitle="Use a ficha do agrupador com guias de Filiais, Configuracoes e Tipos de Estoque."
+      [hasActions]="true">
+      <div shell-actions>
+        <span class="inline-flex items-center rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--muted-strong)]">
+          Versao base: {{ config?.version ?? '-' }}
+        </span>
+      </div>
 
-    <ng-template #agrupadorConfigTab let-group="group">
-      <section class="catalog-config-tab-shell">
-        <div class="catalog-config-group-ref">Grupo em edicao: <strong>{{ group?.nome || currentGroupNome || '-' }}</strong></div>
-        <div class="catalog-config-card">
-          <div class="catalog-config-card-title">Numeracao do agrupador</div>
-          <mat-radio-group
-            [(ngModel)]="currentGroupNumberingMode"
-            [ngModelOptions]="{ standalone: true }"
-            class="catalog-numbering-options"
-            aria-label="Selecionar modo de numeracao do agrupador">
-            <mat-radio-button value="AUTOMATICA">Numeracao automatica</mat-radio-button>
-            <mat-radio-button value="MANUAL">Numeracao manual</mat-radio-button>
-          </mat-radio-group>
-          <div class="catalog-config-actions">
-            <button mat-flat-button color="primary" type="button" (click)="saveCurrentGroupConfig()" [disabled]="currentGroupConfigSaving || !currentGroupId">
-              <mat-icon>save</mat-icon>
-              Salvar configuracao
+      <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="loading">
+        Carregando configuracao base...
+      </div>
+
+      <div class="rounded-lg border border-dashed border-[#fda29b] bg-[#fef3f2] p-2.5 text-xs text-[#b42318]" *ngIf="!loading && error">
+        {{ error }}
+      </div>
+
+      <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="!loading && !error && groupsLoading">
+        Carregando configuracoes por agrupador...
+      </div>
+
+      <div class="rounded-lg border border-dashed border-[#fda29b] bg-[#fef3f2] p-2.5 text-xs text-[#b42318]" *ngIf="!loading && !groupsLoading && groupsError">
+        {{ groupsError }}
+      </div>
+
+      <app-agrupadores-empresa
+        *ngIf="!loading && config?.id && !error"
+        [configType]="'CATALOGO'"
+        [configId]="config.id"
+        [extraTabLabel]="'Tipos de Estoque'"
+        [configReferenceName]="configReferenceName()"
+        (groupEditStarted)="onGroupEditStarted($event)"
+        (changed)="onGroupsChanged()">
+
+        <ng-template #agrupadorConfigTab let-group="group">
+          <section class="catalog-config-tab-shell">
+            <div class="catalog-config-group-ref">Grupo em edicao: <strong>{{ group?.nome || currentGroupNome || '-' }}</strong></div>
+            <div class="catalog-config-card">
+              <div class="catalog-config-card-title">Numeracao do agrupador</div>
+              <mat-radio-group
+                [(ngModel)]="currentGroupNumberingMode"
+                [ngModelOptions]="{ standalone: true }"
+                class="catalog-numbering-options"
+                aria-label="Selecionar modo de numeracao do agrupador">
+                <mat-radio-button value="AUTOMATICA">Numeracao automatica</mat-radio-button>
+                <mat-radio-button value="MANUAL">Numeracao manual</mat-radio-button>
+              </mat-radio-group>
+              <div class="catalog-config-actions">
+                <button mat-flat-button color="primary" type="button" (click)="saveCurrentGroupConfig()" [disabled]="currentGroupConfigSaving || !currentGroupId">
+                  <mat-icon>save</mat-icon>
+                  Salvar configuracao
+                </button>
+              </div>
+            </div>
+          </section>
+        </ng-template>
+
+        <ng-template #agrupadorExtraTab>
+          <section class="catalog-config-tab-shell">
+            <div class="catalog-config-group-ref">Grupo em edicao: <strong>{{ currentGroupNome || '-' }}</strong></div>
+            <div class="catalog-config-card">
+              <div class="catalog-config-card-head">
+                <div class="catalog-config-card-title">Tipos de Estoque</div>
+                <button mat-stroked-button type="button" (click)="startNewStockType()" [disabled]="groupStockTypesLoading || groupStockTypesSaving">
+                  <mat-icon>add</mat-icon>
+                  Novo
+                </button>
+              </div>
+
+              <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="groupStockTypesLoading">
+                Carregando tipos de estoque...
+              </div>
+
+              <div class="rounded-lg border border-dashed border-[#fda29b] bg-[#fef3f2] p-2.5 text-xs text-[#b42318]" *ngIf="!groupStockTypesLoading && groupStockTypesError">
+                {{ groupStockTypesError }}
+              </div>
+
+              <div class="catalog-stock-layout" *ngIf="!groupStockTypesLoading && !groupStockTypesError">
+                <aside class="catalog-stock-list-panel">
+                  <div class="catalog-stock-list-head">Lista</div>
+                  <div class="catalog-stock-list-empty" *ngIf="groupStockTypes.length === 0">Nenhum tipo de estoque configurado.</div>
+                  <button
+                    type="button"
+                    class="catalog-stock-list-row"
+                    *ngFor="let row of groupStockTypes"
+                    [class.selected]="row.id === selectedStockTypeId"
+                    (click)="selectStockType(row)">
+                    <span class="catalog-stock-list-main">{{ row.codigo }} - {{ row.nome }}</span>
+                    <span class="catalog-stock-list-meta">Ordem {{ row.ordem }} | {{ row.active ? 'Ativo' : 'Inativo' }}</span>
+                  </button>
+                </aside>
+
+                <section class="catalog-stock-form-panel">
+                  <div class="catalog-stock-form-head">Ficha</div>
+                  <div class="catalog-stock-form-grid">
+                    <label class="catalog-field">
+                      <span>Codigo</span>
+                      <input type="text" [(ngModel)]="stockTypeForm.codigo" [ngModelOptions]="{ standalone: true }" placeholder="Ex.: GERAL" />
+                    </label>
+                    <label class="catalog-field">
+                      <span>Nome</span>
+                      <input type="text" [(ngModel)]="stockTypeForm.nome" [ngModelOptions]="{ standalone: true }" placeholder="Ex.: Estoque Geral" />
+                    </label>
+                    <label class="catalog-field catalog-field-small">
+                      <span>Ordem</span>
+                      <input type="number" min="1" [(ngModel)]="stockTypeForm.ordem" [ngModelOptions]="{ standalone: true }" />
+                    </label>
+                    <label class="catalog-field-checkbox">
+                      <input type="checkbox" [(ngModel)]="stockTypeForm.active" [ngModelOptions]="{ standalone: true }" />
+                      Ativo
+                    </label>
+                  </div>
+                  <div class="catalog-stock-form-actions">
+                    <button mat-flat-button color="primary" type="button" (click)="saveStockTypeFicha()" [disabled]="!canSaveStockTypeForm()">
+                      <mat-icon>save</mat-icon>
+                      Salvar ficha
+                    </button>
+                  </div>
+                </section>
+              </div>
+
+              <div class="mt-1 flex justify-end" *ngIf="groupStockTypesSaving">
+                <app-inline-loader label="Salvando ficha de tipo de estoque"></app-inline-loader>
+              </div>
+            </div>
+          </section>
+        </ng-template>
+      </app-agrupadores-empresa>
+    </app-config-section-shell>
+  </div>
+
+  <div class="catalog-step-content" *ngIf="isTabActive('STOCK_ADJUSTMENT_TYPES')">
+    <app-config-section-shell
+      title="Tipos de ajustes de estoque"
+      subtitle="Cadastro e manutencao dos tipos ENTRADA, SAIDA e TRANSFERENCIA."
+      [hasActions]="true">
+      <div shell-actions>
+        <span class="inline-flex items-center rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--muted-strong)]">
+          {{ stockAdjustmentCountLoading ? 'Carregando...' : (stockAdjustmentCount + ' tipo(s)') }}
+        </span>
+      </div>
+
+      <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="loading">
+        Carregando configuracao base...
+      </div>
+
+      <div class="rounded-lg border border-dashed border-[#fda29b] bg-[#fef3f2] p-2.5 text-xs text-[#b42318]" *ngIf="!loading && error">
+        {{ error }}
+      </div>
+
+      <section class="catalog-config-card" *ngIf="!loading && config?.id && !error">
+        <div class="catalog-list-filters-head">
+          <div class="text-sm font-semibold">Filtros</div>
+          <div class="catalog-list-filters-head-right">
+            <button mat-button type="button" class="mobile-filter-toggle md:!hidden" (click)="toggleMobileStockAdjustmentFilters()">
+              <mat-icon>tune</mat-icon>
+              Filtros{{ activeStockAdjustmentFiltersCount() > 0 ? ' (' + activeStockAdjustmentFiltersCount() + ')' : '' }}
+              <mat-icon class="mobile-filter-chevron">{{ mobileStockAdjustmentFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
             </button>
-          </div>
-        </div>
-      </section>
-    </ng-template>
-
-    <ng-template #agrupadorExtraTab>
-      <section class="catalog-config-tab-shell">
-        <div class="catalog-config-group-ref">Grupo em edicao: <strong>{{ currentGroupNome || '-' }}</strong></div>
-        <div class="catalog-config-card">
-          <div class="catalog-config-card-head">
-            <div class="catalog-config-card-title">Tipos de estoque</div>
-            <button mat-stroked-button type="button" (click)="startNewStockType()" [disabled]="groupStockTypesLoading || groupStockTypesSaving">
+            <ng-container *ngIf="filteredStockAdjustmentRows() as rows">
+              <div class="text-xs text-[var(--muted)]">{{ rows.length }} registro(s)</div>
+            </ng-container>
+            <button mat-flat-button color="primary" type="button" (click)="openNewStockAdjustment()">
               <mat-icon>add</mat-icon>
               Novo
             </button>
           </div>
+        </div>
 
-          <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="groupStockTypesLoading">
-            Carregando tipos de estoque...
+        <form class="catalog-list-filters" *ngIf="!isMobile || mobileStockAdjustmentFiltersOpen" role="search">
+          <div class="min-w-0">
+            <app-field-search
+              [options]="stockAdjustmentSearchOptions"
+              [defaultFields]="stockAdjustmentSearchFields"
+              [showActions]="false"
+              placeholder="Pesquisar tipo de ajuste"
+              (searchChange)="onStockAdjustmentSearchChange($event)">
+            </app-field-search>
           </div>
 
-          <div class="rounded-lg border border-dashed border-[#fda29b] bg-[#fef3f2] p-2.5 text-xs text-[#b42318]" *ngIf="!groupStockTypesLoading && groupStockTypesError">
-            {{ groupStockTypesError }}
+          <div class="status-search-like">
+            <select
+              class="status-native-select"
+              [value]="stockAdjustmentStatusFilter"
+              (change)="onStockAdjustmentStatusChange($any($event.target).value)"
+              aria-label="Status">
+              <option value="ALL">Status: Todos</option>
+              <option value="ACTIVE">Status: Ativo</option>
+              <option value="INACTIVE">Status: Inativo</option>
+            </select>
+          </div>
+        </form>
+
+        <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="stockAdjustmentCountLoading">
+          Carregando tipos de ajuste...
+        </div>
+
+        <div class="rounded-lg border border-dashed border-[#fda29b] bg-[#fef3f2] p-2.5 text-xs text-[#b42318]" *ngIf="!stockAdjustmentCountLoading && stockAdjustmentCountError">
+          {{ stockAdjustmentCountError }}
+        </div>
+
+        <ng-container *ngIf="!stockAdjustmentCountLoading && !stockAdjustmentCountError && filteredStockAdjustmentRows() as rows">
+          <div class="catalog-stock-list-empty" *ngIf="rows.length === 0">Nenhum tipo de ajuste encontrado.</div>
+
+          <div class="hidden overflow-auto border border-[var(--border)] md:block" *ngIf="rows.length > 0">
+            <table class="catalog-adjustment-inline-table w-full">
+              <thead>
+                <tr>
+                  <th>Codigo</th>
+                  <th>Nome</th>
+                  <th>Tipo</th>
+                  <th>Ordem</th>
+                  <th>Status</th>
+                  <th class="text-right">Acoes</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of rows">
+                  <td>{{ row.codigo }}</td>
+                  <td>{{ row.nome }}</td>
+                  <td>{{ stockAdjustmentTypeLabel(row.tipo) }}</td>
+                  <td>{{ row.ordem }}</td>
+                  <td>{{ row.active ? 'Ativo' : 'Inativo' }}</td>
+                  <td class="text-right">
+                    <div class="inline-flex items-center justify-end gap-1.5">
+                      <button mat-icon-button type="button" (click)="openEditStockAdjustment(row)" [disabled]="!!deletingStockAdjustmentId" aria-label="Alterar tipo de ajuste">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button mat-icon-button color="warn" type="button" (click)="removeStockAdjustment(row)" [disabled]="deletingStockAdjustmentId === row.id" aria-label="Excluir tipo de ajuste">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          <div class="catalog-stock-layout" *ngIf="!groupStockTypesLoading && !groupStockTypesError">
-            <aside class="catalog-stock-list-panel">
-              <div class="catalog-stock-list-head">Lista</div>
-              <div class="catalog-stock-list-empty" *ngIf="groupStockTypes.length === 0">Nenhum tipo de estoque configurado.</div>
-              <button
-                type="button"
-                class="catalog-stock-list-row"
-                *ngFor="let row of groupStockTypes"
-                [class.selected]="row.id === selectedStockTypeId"
-                (click)="selectStockType(row)">
-                <span class="catalog-stock-list-main">{{ row.codigo }} - {{ row.nome }}</span>
-                <span class="catalog-stock-list-meta">Ordem {{ row.ordem }} | {{ row.active ? 'Ativo' : 'Inativo' }}</span>
-              </button>
-            </aside>
-
-            <section class="catalog-stock-form-panel">
-              <div class="catalog-stock-form-head">Ficha</div>
-              <div class="catalog-stock-form-grid">
-                <label class="catalog-field">
-                  <span>Codigo</span>
-                  <input type="text" [(ngModel)]="stockTypeForm.codigo" [ngModelOptions]="{ standalone: true }" placeholder="Ex.: GERAL" />
-                </label>
-                <label class="catalog-field">
-                  <span>Nome</span>
-                  <input type="text" [(ngModel)]="stockTypeForm.nome" [ngModelOptions]="{ standalone: true }" placeholder="Ex.: Estoque Geral" />
-                </label>
-                <label class="catalog-field catalog-field-small">
-                  <span>Ordem</span>
-                  <input type="number" min="1" [(ngModel)]="stockTypeForm.ordem" [ngModelOptions]="{ standalone: true }" />
-                </label>
-                <label class="catalog-field-checkbox">
-                  <input type="checkbox" [(ngModel)]="stockTypeForm.active" [ngModelOptions]="{ standalone: true }" />
-                  Ativo
-                </label>
-              </div>
-              <div class="catalog-stock-form-actions">
-                <button mat-flat-button color="primary" type="button" (click)="saveStockTypeFicha()" [disabled]="!canSaveStockTypeForm()">
-                  <mat-icon>save</mat-icon>
-                  Salvar ficha
+          <div class="grid gap-2.5 md:hidden" *ngIf="rows.length > 0">
+            <article class="grid gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5" *ngFor="let row of rows">
+              <div class="text-sm font-semibold">{{ row.codigo }} - {{ row.nome }}</div>
+              <div class="text-xs text-[var(--muted)]">Tipo: {{ stockAdjustmentTypeLabel(row.tipo) }}</div>
+              <div class="text-xs text-[var(--muted)]">Ordem: {{ row.ordem }} | {{ row.active ? 'Ativo' : 'Inativo' }}</div>
+              <div class="flex justify-end gap-1.5">
+                <button mat-icon-button type="button" (click)="openEditStockAdjustment(row)" [disabled]="!!deletingStockAdjustmentId" aria-label="Alterar tipo de ajuste">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button color="warn" type="button" (click)="removeStockAdjustment(row)" [disabled]="deletingStockAdjustmentId === row.id" aria-label="Excluir tipo de ajuste">
+                  <mat-icon>delete</mat-icon>
                 </button>
               </div>
-            </section>
+            </article>
           </div>
-
-          <div class="mt-1 flex justify-end" *ngIf="groupStockTypesSaving">
-            <app-inline-loader label="Salvando ficha de tipo de estoque"></app-inline-loader>
-          </div>
-        </div>
+        </ng-container>
       </section>
-    </ng-template>
-  </app-agrupadores-empresa>
-</app-config-section-shell>
+    </app-config-section-shell>
+  </div>
+</div>

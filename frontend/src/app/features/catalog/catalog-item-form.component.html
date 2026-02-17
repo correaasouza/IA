@@ -3,6 +3,9 @@
     <div>
       <h1 class="m-0 text-lg font-bold">{{ cadastroTitle() }}</h1>
       <p class="mt-1 text-xs text-[var(--muted)]">{{ subtitle() }}</p>
+      <p class="mt-1 text-sm font-semibold text-[var(--ink)]">
+        Nome: {{ form.get('nome')?.value || '-' }}
+      </p>
       <p class="mt-1 text-xs text-[var(--muted)]">
         Codigo: <strong>{{ form.value.codigo || codigoInfo }}</strong>
         <span class="catalog-status-chip" [class.catalog-status-chip-inactive]="!form.value.ativo">
@@ -50,6 +53,31 @@
   </section>
 
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="catalog-item-tab-row">
+      <button
+        mat-stroked-button
+        type="button"
+        class="catalog-item-tab-btn"
+        [ngClass]="isTabActive('GERAL') ? 'catalog-item-tab-active' : ''"
+        (click)="setTab('GERAL')">
+        Geral
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        class="catalog-item-tab-btn"
+        [ngClass]="isTabActive('ESTOQUE') ? 'catalog-item-tab-active' : ''"
+        [disabled]="!canOpenStockTab()"
+        (click)="setTab('ESTOQUE')">
+        Estoque
+      </button>
+    </div>
+    <div class="mt-1 text-xs text-[var(--muted)]" *ngIf="!canOpenStockTab()">
+      {{ stockTabDisabledLabel() }}
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="isTabActive('GERAL')">
     <div class="mb-2 text-sm font-semibold">Dados do catálogo</div>
 
     <form [formGroup]="form" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
@@ -91,213 +119,111 @@
     </form>
   </section>
 
-  <section
-    class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]"
-    *ngIf="showStockSections()">
-    <div class="mb-2 flex items-center justify-between gap-2">
-      <div class="text-sm font-semibold">Saldos de estoque</div>
-      <button mat-stroked-button type="button" (click)="refreshStockData()">
-        <mat-icon>refresh</mat-icon>
-        Atualizar
-      </button>
-    </div>
+  <ng-container *ngIf="isTabActive('ESTOQUE')">
+    <ng-container *ngIf="showStockSections(); else stockUnavailableTab">
+      <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+        <div class="mb-2 flex items-center justify-between gap-2">
+          <div class="text-sm font-semibold">Saldos de estoque</div>
+          <button mat-stroked-button type="button" (click)="refreshStockData()">
+            <mat-icon>refresh</mat-icon>
+            Atualizar
+          </button>
+        </div>
 
-    <div class="text-xs text-[var(--muted)] mb-2">
-      Consolidado por tipo de estoque no agrupador atual.
-    </div>
+        <div class="catalog-stock-error" *ngIf="stockError">{{ stockError }}</div>
 
-    <div class="catalog-stock-error" *ngIf="stockError">{{ stockError }}</div>
+        <div class="catalog-stock-panels">
+          <div class="catalog-stock-panel">
+            <div class="text-xs font-semibold">Consolidado do agrupador</div>
+            <div class="text-xs text-[var(--muted)] mb-2">
+              Consolidado por tipo de estoque no agrupador atual.
+            </div>
+            <div class="catalog-stock-flow">
+              Fluxo: selecione um estoque no consolidado para listar ao lado todas as empresas do grupo nesse estoque.
+            </div>
 
-    <div class="catalog-stock-table-wrap" *ngIf="stockConsolidatedRows.length > 0; else emptyConsolidated">
-      <table class="catalog-stock-table">
-        <thead>
-          <tr>
-            <th>Estoque</th>
-            <th class="text-right">Quantidade</th>
-            <th class="text-right">Preço</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let row of stockConsolidatedRows">
-            <td>{{ row.estoqueTipoNome || row.estoqueTipoCodigo || ('#' + row.estoqueTipoId) }}</td>
-            <td class="text-right">{{ row.quantidadeTotal | number:'1.0-6' }}</td>
-            <td class="text-right">{{ row.precoTotal | number:'1.0-6' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <ng-template #emptyConsolidated>
-      <div class="catalog-empty-mini">Sem saldo consolidado para o item.</div>
-    </ng-template>
-
-    <div class="mt-3 text-xs font-semibold">Detalhamento por filial</div>
-    <div class="catalog-stock-table-wrap mt-1" *ngIf="stockRows.length > 0; else emptyRows">
-      <table class="catalog-stock-table">
-        <thead>
-          <tr>
-            <th>Estoque</th>
-            <th>Filial</th>
-            <th class="text-right">Quantidade</th>
-            <th class="text-right">Preço</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let row of stockRows">
-            <td>{{ row.estoqueTipoNome || row.estoqueTipoCodigo || ('#' + row.estoqueTipoId) }}</td>
-            <td>{{ row.filialNome || ('Filial #' + row.filialId) }}</td>
-            <td class="text-right">{{ row.quantidadeAtual | number:'1.0-6' }}</td>
-            <td class="text-right">{{ row.precoAtual | number:'1.0-6' }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <ng-template #emptyRows>
-      <div class="catalog-empty-mini">Sem saldos por filial para o item.</div>
-    </ng-template>
-  </section>
-
-  <section
-    class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]"
-    *ngIf="showStockSections()">
-    <div class="mb-2 flex items-center justify-between gap-2">
-      <div class="text-sm font-semibold">Histórico de movimentações</div>
-      <div class="flex items-center gap-1">
-        <mat-form-field appearance="outline" class="catalog-ledger-order-field">
-          <mat-label>Ordem</mat-label>
-          <mat-select [value]="ledgerSortOrder" (selectionChange)="setLedgerSortOrder($event.value)">
-            <mat-option value="RECENT">Mais recentes</mat-option>
-            <mat-option value="OLDEST">Mais antigas</mat-option>
-          </mat-select>
-        </mat-form-field>
-        <button mat-icon-button type="button" [disabled]="ledgerPageIndex <= 0 || ledgerLoading" (click)="prevLedgerPage()">
-          <mat-icon>chevron_left</mat-icon>
-        </button>
-        <span class="text-xs text-[var(--muted)]">{{ ledgerRangeLabel() }}</span>
-        <button mat-icon-button type="button" [disabled]="!canNextLedgerPage() || ledgerLoading" (click)="nextLedgerPage()">
-          <mat-icon>chevron_right</mat-icon>
-        </button>
-      </div>
-    </div>
-
-    <form class="catalog-ledger-filters" [formGroup]="ledgerFilters">
-      <mat-form-field appearance="outline">
-        <mat-label>Origem</mat-label>
-        <mat-select formControlName="origemTipo">
-          <mat-option value="">Todas</mat-option>
-          <mat-option *ngFor="let origin of ledgerOrigins" [value]="origin.value">
-            {{ origin.label }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Métrica</mat-label>
-        <mat-select formControlName="metricType">
-          <mat-option value="">Todas</mat-option>
-          <mat-option *ngFor="let metric of ledgerMetrics" [value]="metric.value">
-            {{ metric.label }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Estoque</mat-label>
-        <mat-select formControlName="estoqueTipoId">
-          <mat-option value="">Todos</mat-option>
-          <mat-option *ngFor="let stockType of ledgerStockTypeOptions()" [value]="stockType.id">
-            {{ stockType.label }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Filial</mat-label>
-        <mat-select formControlName="filialId">
-          <mat-option value="">Todas</mat-option>
-          <mat-option *ngFor="let filial of ledgerFilialOptions()" [value]="filial.id">
-            {{ filial.label }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>De</mat-label>
-        <input matInput type="date" formControlName="fromDate" />
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Ate</mat-label>
-        <input matInput type="date" formControlName="toDate" />
-      </mat-form-field>
-
-      <div class="catalog-ledger-filter-actions">
-        <button mat-stroked-button type="button" (click)="applyLedgerFilters()" [disabled]="ledgerLoading">
-          <mat-icon>search</mat-icon>
-          Filtrar
-        </button>
-        <button
-          mat-button
-          type="button"
-          (click)="clearLedgerFilters()"
-          [disabled]="!hasLedgerFiltersActive() || ledgerLoading">
-          Limpar
-        </button>
-      </div>
-    </form>
-
-    <div class="catalog-ledger-filter-chips" *ngIf="hasLedgerFiltersActive()">
-      <span class="catalog-ledger-chip" *ngFor="let chip of activeLedgerFilterChips()">
-        {{ chip.label }}
-        <button type="button" class="catalog-ledger-chip-remove" (click)="clearLedgerFilter(chip.key)" aria-label="Remover filtro">
-          <mat-icon>close</mat-icon>
-        </button>
-      </span>
-    </div>
-
-    <div class="catalog-empty-mini" *ngIf="ledgerEntries.length === 0 && !ledgerLoading">
-      Nenhuma movimentação registrada para o item.
-    </div>
-
-    <div class="catalog-ledger-list" *ngIf="ledgerDisplayEntries.length > 0">
-      <article class="catalog-ledger-card" *ngFor="let movement of ledgerDisplayEntries">
-        <div class="catalog-ledger-card-header">
-          <div>
-            <strong>{{ originLabel(movement.origemMovimentacaoTipo) }}</strong>
-            <span class="text-xs text-[var(--muted)]"> #{{ movement.id }}</span>
+            <div class="catalog-stock-table-wrap catalog-stock-table-wrap-consolidated" *ngIf="stockConsolidatedRows.length > 0; else emptyConsolidated">
+              <table class="catalog-stock-table catalog-stock-table-consolidated">
+                <thead>
+                  <tr>
+                    <th>Estoque</th>
+                    <th class="text-right">Quantidade</th>
+                    <th class="text-right">Preço</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    *ngFor="let row of stockConsolidatedRows"
+                    class="catalog-stock-consolidated-row"
+                    [class.catalog-stock-consolidated-row-selected]="isConsolidatedStockTypeSelected(row.estoqueTipoId)"
+                    tabindex="0"
+                    (click)="selectConsolidatedStockType(row.estoqueTipoId)"
+                    (keydown.enter)="selectConsolidatedStockType(row.estoqueTipoId)"
+                    (keydown.space)="selectConsolidatedStockType(row.estoqueTipoId); $event.preventDefault()">
+                    <td>{{ row.estoqueTipoNome || row.estoqueTipoCodigo || ('#' + row.estoqueTipoId) }}</td>
+                    <td class="text-right">{{ row.quantidadeTotal | number:'1.0-6' }}</td>
+                    <td class="text-right">{{ row.precoTotal | number:'1.0-6' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ng-template #emptyConsolidated>
+              <div class="catalog-empty-mini">Sem saldo consolidado para o item.</div>
+            </ng-template>
           </div>
-          <div class="text-xs text-[var(--muted)]">{{ movement.dataHoraMovimentacao | date:'dd/MM/yyyy HH:mm' }}</div>
-        </div>
-        <div class="text-xs text-[var(--muted)]" *ngIf="movement.observacao">{{ movement.observacao }}</div>
 
-        <div class="catalog-stock-table-wrap mt-1">
-          <table class="catalog-stock-table">
-            <thead>
-              <tr>
-                <th>Métrica</th>
-                <th>Estoque</th>
-                <th>Filial</th>
-                <th class="text-right">Antes</th>
-                <th class="text-right">Delta</th>
-                <th class="text-right">Depois</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngFor="let line of movement.lines">
-                <td>{{ metricLabel(line.metricType) }}</td>
-                <td>{{ line.estoqueTipoNome || line.estoqueTipoCodigo || ('#' + line.estoqueTipoId) }}</td>
-                <td>{{ line.filialNome || ('Filial #' + line.filialId) }}</td>
-                <td class="text-right">{{ line.beforeValue | number:'1.0-6' }}</td>
-                <td class="text-right">{{ line.delta | number:'1.0-6' }}</td>
-                <td class="text-right">{{ line.afterValue | number:'1.0-6' }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </article>
-    </div>
+          <div class="catalog-stock-panel">
+            <div class="text-xs font-semibold">Detalhamento por empresa</div>
+            <div class="mt-1 text-xs text-[var(--muted)]">
+              Estoque selecionado: <strong>{{ selectedConsolidatedStockTypeLabel() }}</strong>
+            </div>
 
-    <div class="col-span-full flex justify-end mt-2" *ngIf="stockLoading || ledgerLoading">
-      <app-inline-loader [label]="stockLoading ? 'Carregando saldos' : 'Carregando histórico'"></app-inline-loader>
-    </div>
-  </section>
+            <div class="catalog-stock-table-wrap mt-1" *ngIf="stockDetailRows.length > 0; else emptyRows">
+              <table class="catalog-stock-table">
+                <thead>
+                  <tr>
+                    <th>Estoque</th>
+                    <th>Empresa</th>
+                    <th class="text-right">Quantidade</th>
+                    <th class="text-right">Preço</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let row of stockDetailRows">
+                    <td>{{ row.estoqueTipoNome || row.estoqueTipoCodigo || ('#' + row.estoqueTipoId) }}</td>
+                    <td>{{ row.filialNome || ('Empresa #' + row.filialId) }}</td>
+                    <td class="text-right">{{ row.quantidadeAtual | number:'1.0-6' }}</td>
+                    <td class="text-right">{{ row.precoAtual | number:'1.0-6' }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ng-template #emptyRows>
+              <div class="catalog-empty-mini" *ngIf="!selectedConsolidatedStockTypeId">
+                Selecione um estoque no consolidado para visualizar o detalhamento por empresa.
+              </div>
+              <div class="catalog-empty-mini" *ngIf="selectedConsolidatedStockTypeId">
+                Sem saldos por empresa para o estoque selecionado.
+              </div>
+            </ng-template>
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+        <div class="flex justify-end">
+          <button mat-stroked-button type="button" (click)="openHistoryDialog()">
+            <mat-icon>history</mat-icon>
+            Acessar histórico
+          </button>
+        </div>
+      </section>
+    </ng-container>
+  </ng-container>
+
+  <ng-template #stockUnavailableTab>
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+      <div class="catalog-empty-mini">{{ stockTabDisabledLabel() }}</div>
+    </section>
+  </ng-template>
 </div>

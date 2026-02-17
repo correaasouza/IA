@@ -10,20 +10,9 @@
   gap: 12px;
 }
 
-.history-header-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.history-header-text {
-  min-width: 0;
-}
-
-.history-header-close {
-  margin: 0 !important;
-  flex: 0 0 auto;
+.history-list-sticky {
+  top: 0;
+  z-index: 2;
 }
 
 .catalog-filters-head {
@@ -188,14 +177,6 @@
 }
 
 @media (max-width: 640px) {
-  .history-header-row {
-    gap: 6px;
-  }
-
-  .history-header-close {
-    align-self: flex-start;
-  }
-
   .catalog-filters-head {
     flex-direction: column;
     align-items: flex-start;

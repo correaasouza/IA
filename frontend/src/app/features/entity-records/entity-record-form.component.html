@@ -3,6 +3,7 @@
     <div>
       <h1 class="m-0 text-lg font-bold">{{ cadastroTitle() }}</h1>
       <p class="mt-1 text-xs text-[var(--muted)]">{{ title }}</p>
+      <p class="mt-1 text-xs text-[var(--muted-strong)]">Nome: {{ form.get('pessoaNome')?.value || '-' }}</p>
       <p class="mt-1 text-xs text-[var(--muted)]">
         Codigo: <strong>{{ codigoInfo }}</strong>
         <span class="entity-status-chip" [class.entity-status-chip-inactive]="!form.value.ativo">
