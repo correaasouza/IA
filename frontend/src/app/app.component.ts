@@ -786,11 +786,15 @@ export class AppComponent {
     return (types || []).map(type => {
       const codigo = (type?.codigo || '').trim().toUpperCase();
       const label = (type?.descricao || codigo || 'Movimento').trim();
+      const route = codigo === 'MOVIMENTO_ESTOQUE' ? '/movimentos/estoque' : undefined;
       return {
         id: `movement-action-${codigo.toLowerCase()}`,
         label,
-        icon: 'play_circle',
-        accessKey: `menu.movement.action.${codigo.toLowerCase()}`
+        icon: codigo === 'MOVIMENTO_ESTOQUE' ? 'inventory' : 'play_circle',
+        route,
+        accessKey: `menu.movement.action.${codigo.toLowerCase()}`,
+        roles: ['MASTER', 'ADMIN'],
+        perms: codigo === 'MOVIMENTO_ESTOQUE' ? ['MOVIMENTO_ESTOQUE_OPERAR'] : undefined
       } as MenuItem;
     });
   }

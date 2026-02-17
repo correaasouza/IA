@@ -77,6 +77,7 @@ public class PermissaoCatalogService {
     seed(tenantId, "PAPEL_MANAGE", "Gerenciar papéis");
     seed(tenantId, "RELATORIO_VIEW", "Visualizar relatórios");
     seed(tenantId, "ENTIDADE_EDIT", "Editar entidades");
+    seed(tenantId, "MOVIMENTO_ESTOQUE_OPERAR", "Operar movimento de estoque");
   }
 
   private void seed(Long tenantId, String codigo, String label) {

@@ -44,7 +44,8 @@ public class PapelSeedService {
       "USUARIO_MANAGE",
       "PAPEL_MANAGE",
       "RELATORIO_VIEW",
-      "ENTIDADE_EDIT"
+      "ENTIDADE_EDIT",
+      "MOVIMENTO_ESTOQUE_OPERAR"
     );
     List<String> existentes = papelPermissaoRepository.findAllByTenantIdAndPapelId(tenantId, admin.getId())
       .stream().map(PapelPermissao::getPermissaoCodigo).toList();

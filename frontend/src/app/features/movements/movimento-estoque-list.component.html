@@ -1,0 +1,185 @@
+<div class="grid gap-3">
+  <div class="page-list-sticky grid gap-3">
+    <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+      <div>
+        <h1 class="m-0 text-lg font-bold">Movimento de Estoque</h1>
+        <p class="mt-1 text-xs text-[var(--muted)]">Lista de movimentos de estoque da empresa selecionada no contexto.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          (click)="newMovimento()"
+          appAccessControl="movimentos.estoque.create"
+          [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+          <mat-icon>add</mat-icon>
+          Novo movimento
+        </button>
+      </div>
+    </header>
+
+    <section class="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2 text-xs text-[var(--muted-strong)]">
+      Fluxo: ao clicar em "Novo movimento", o sistema resolve a configuracao aplicavel para a empresa atual e pre-carrega a ficha.
+    </section>
+
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <div class="text-sm font-semibold">Filtros</div>
+        <div class="flex items-center gap-2">
+          <button mat-button type="button" class="mobile-filter-toggle md:!hidden" (click)="toggleMobileFilters()">
+            <mat-icon>tune</mat-icon>
+            Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
+            <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+          <div class="text-xs text-[var(--muted)]">{{ totalElements }} movimento(s)</div>
+        </div>
+      </div>
+
+      <div *ngIf="!isMobile || mobileFiltersOpen">
+        <form [formGroup]="filters" class="grid grid-cols-1 items-start gap-2 xl:grid-cols-[minmax(0,1.4fr)_180px_180px_auto]" role="search">
+          <div class="min-w-0">
+            <app-field-search
+              [options]="searchOptions"
+              label="Buscar"
+              placeholder="Digite e selecione os campos"
+              [defaultFields]="searchFields"
+              [showActions]="false"
+              (searchChange)="onSearchChange($event)">
+            </app-field-search>
+          </div>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Data inicial</mat-label>
+            <input matInput formControlName="dataInicio" placeholder="DD/MM/AAAA" appDateMask />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Data final</mat-label>
+            <input matInput formControlName="dataFim" placeholder="DD/MM/AAAA" appDateMask />
+          </mat-form-field>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button mat-flat-button color="primary" type="button" (click)="applyFilters()">
+              <mat-icon>search</mat-icon>
+              Filtrar
+            </button>
+            <button mat-stroked-button type="button" (click)="clearFilters()">
+              Limpar
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="rows.length > 0">
+    <div class="table-sticky-actions hidden overflow-auto border-b border-[var(--border-light)] md:block">
+      <table mat-table [dataSource]="rows" class="w-full">
+        <ng-container matColumnDef="nome">
+          <th mat-header-cell *matHeaderCellDef>Nome</th>
+          <td mat-cell *matCellDef="let row">{{ row.nome }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="dataMovimento">
+          <th mat-header-cell *matHeaderCellDef>Data</th>
+          <td mat-cell *matCellDef="let row">{{ row.dataMovimento ? (row.dataMovimento | date:'dd/MM/yyyy') : '-' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="movimentoConfig">
+          <th mat-header-cell *matHeaderCellDef>Configuracao</th>
+          <td mat-cell *matCellDef="let row">#{{ row.movimentoConfigId }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="tipoEntidadePadrao">
+          <th mat-header-cell *matHeaderCellDef>Destinatario padrao</th>
+          <td mat-cell *matCellDef="let row">{{ row.tipoEntidadePadraoId ? ('#' + row.tipoEntidadePadraoId) : '-' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="acoes" stickyEnd>
+          <th mat-header-cell *matHeaderCellDef class="text-right">Acoes</th>
+          <td mat-cell *matCellDef="let row" class="text-right">
+            <div class="inline-flex items-center justify-end gap-1.5">
+              <button mat-icon-button matTooltip="Consultar" (click)="view(row)" [attr.aria-label]="'Consultar ' + row.nome">
+                <mat-icon>visibility</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                matTooltip="Alterar"
+                (click)="edit(row)"
+                [attr.aria-label]="'Alterar ' + row.nome"
+                appAccessControl="movimentos.estoque.update"
+                [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                color="warn"
+                matTooltip="Excluir"
+                (click)="remove(row)"
+                [attr.aria-label]="'Excluir ' + row.nome"
+                appAccessControl="movimentos.estoque.delete"
+                [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+
+    <div class="grid gap-2.5 p-3 md:hidden">
+      <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]" *ngFor="let row of rows">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-sm font-semibold">{{ row.nome }}</div>
+          <div class="text-xs text-[var(--muted)]">{{ row.dataMovimento ? (row.dataMovimento | date:'dd/MM/yyyy') : '-' }}</div>
+        </div>
+        <div class="text-xs text-[var(--muted)]">Config: #{{ row.movimentoConfigId }}</div>
+        <div class="text-xs text-[var(--muted)]">Destinatario padrao: {{ row.tipoEntidadePadraoId ? ('#' + row.tipoEntidadePadraoId) : '-' }}</div>
+        <div class="flex justify-end gap-1.5">
+          <button mat-icon-button [matMenuTriggerFor]="rowMenu" aria-label="Acoes do movimento">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #rowMenu="matMenu">
+            <button mat-menu-item (click)="view(row)">
+              <mat-icon>visibility</mat-icon>
+              <span>Consultar</span>
+            </button>
+            <button
+              mat-menu-item
+              (click)="edit(row)"
+              appAccessControl="movimentos.estoque.update"
+              [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+              <mat-icon>edit</mat-icon>
+              <span>Alterar</span>
+            </button>
+            <button
+              mat-menu-item
+              (click)="remove(row)"
+              appAccessControl="movimentos.estoque.delete"
+              [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+              <mat-icon>delete</mat-icon>
+              <span>Excluir</span>
+            </button>
+          </mat-menu>
+        </div>
+      </article>
+    </div>
+
+    <mat-paginator
+      [length]="totalElements"
+      [pageSize]="pageSize"
+      [pageIndex]="pageIndex"
+      [pageSizeOptions]="[10,20,50]"
+      (page)="pageChange($event)">
+    </mat-paginator>
+  </section>
+
+  <section class="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-4 text-[var(--muted)]" *ngIf="rows.length === 0">
+    <div class="font-semibold text-[var(--ink)]">{{ loading ? 'Carregando movimentos...' : 'Nenhum movimento encontrado' }}</div>
+    <div class="text-xs">Ajuste os filtros ou crie um novo movimento de estoque.</div>
+  </section>
+</div>

@@ -56,7 +56,7 @@ public interface MovimentoConfigRepository extends JpaRepository<MovimentoConfig
     @Param("ignoreId") Long ignoreId);
 
   @Query("""
-    select distinct c
+    select c
     from MovimentoConfig c
     join c.empresas e
     where c.tenantId = :tenantId

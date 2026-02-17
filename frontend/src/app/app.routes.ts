@@ -25,6 +25,8 @@ import { CatalogItemsListComponent } from './features/catalog/catalog-items-list
 import { CatalogItemFormComponent } from './features/catalog/catalog-item-form.component';
 import { CatalogGroupsPageComponent } from './features/catalog/catalog-groups-page.component';
 import { MovementConfigsPageComponent } from './features/movement-configs/movement-configs-page.component';
+import { MovimentoEstoqueListComponent } from './features/movements/movimento-estoque-list.component';
+import { MovimentoEstoqueFormComponent } from './features/movements/movimento-estoque-form.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent, canActivate: [AuthGuard] },
@@ -51,6 +53,10 @@ export const routes: Routes = [
   { path: 'access-controls/:key/edit', component: AccessControlFormComponent, canActivate: [AuthGuard] },
   { path: 'configs', component: ConfigsComponent, canActivate: [AuthGuard] },
   { path: 'configs/movimentos', component: MovementConfigsPageComponent, canActivate: [AuthGuard] },
+  { path: 'movimentos/estoque', component: MovimentoEstoqueListComponent, canActivate: [AuthGuard] },
+  { path: 'movimentos/estoque/new', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard] },
+  { path: 'movimentos/estoque/:id', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard] },
+  { path: 'movimentos/estoque/:id/edit', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard] },
   { path: 'catalog/configuration', component: CatalogConfigurationPageComponent, canActivate: [AuthGuard] },
   {
     path: 'catalog/products',

@@ -5,7 +5,8 @@ public enum PermissaoCodigo {
   USUARIO_MANAGE("Gerenciar usuários"),
   PAPEL_MANAGE("Gerenciar papéis"),
   RELATORIO_VIEW("Visualizar relatórios"),
-  ENTIDADE_EDIT("Editar entidades");
+  ENTIDADE_EDIT("Editar entidades"),
+  MOVIMENTO_ESTOQUE_OPERAR("Operar movimento de estoque");
 
   private final String label;
 

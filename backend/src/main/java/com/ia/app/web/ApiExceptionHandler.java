@@ -22,6 +22,8 @@ public class ApiExceptionHandler {
       pd.setDetail("Entidade nao encontrada no contexto atual (empresa/grupo).");
     } else if (message.startsWith("movimento_config_not_found")) {
       pd.setDetail("Configuracao de movimento nao encontrada no locatario atual.");
+    } else if (message.startsWith("movimento_estoque_not_found")) {
+      pd.setDetail("Movimento de estoque nao encontrado no contexto atual.");
     } else {
       pd.setDetail(ex.getMessage());
     }
@@ -174,8 +176,22 @@ public class ApiExceptionHandler {
       pd.setDetail("Identificador do ajuste de estoque invalido.");
     } else if (message.startsWith("catalog_stock_adjustment_codigo_auto_fail")) {
       pd.setDetail("Nao foi possivel gerar codigo automatico para o ajuste de estoque.");
+    } else if (message.startsWith("movimento_empresa_id_required")) {
+      pd.setDetail("Informe a empresa do movimento.");
+    } else if (message.startsWith("movimento_empresa_context_required")) {
+      pd.setDetail("Selecione uma empresa no topo do sistema para operar movimentos.");
+    } else if (message.startsWith("movimento_empresa_context_mismatch")) {
+      pd.setDetail("A empresa do movimento deve ser igual a empresa selecionada no contexto.");
+    } else if (message.startsWith("movimento_tipo_nao_implementado")) {
+      pd.setDetail("Tipo de movimento ainda nao implementado para operacao.");
     } else if (message.startsWith("movimento_tipo_invalid")) {
       pd.setDetail("Tipo de movimento invalido.");
+    } else if (message.startsWith("movimento_payload_required")) {
+      pd.setDetail("Payload de movimento invalido ou ausente.");
+    } else if (message.startsWith("movimento_estoque_nome_required")) {
+      pd.setDetail("Informe o nome do movimento de estoque.");
+    } else if (message.startsWith("movimento_estoque_version_required")) {
+      pd.setDetail("Informe a versao atual do movimento para salvar alteracoes.");
     } else if (message.startsWith("movimento_config_nome_required")) {
       pd.setDetail("Informe o nome da configuracao de movimento.");
     } else if (message.startsWith("movimento_config_prioridade_invalid")) {
@@ -215,7 +231,12 @@ public class ApiExceptionHandler {
   public ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
     ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.CONFLICT);
     pd.setTitle("Conflito de concorrencia");
-    pd.setDetail("catalog_configuration_version_conflict");
+    String className = ex.getPersistentClassName() == null ? "" : ex.getPersistentClassName();
+    if (className.endsWith("MovimentoEstoque")) {
+      pd.setDetail("O movimento foi alterado por outro usuario. Recarregue a ficha e tente novamente.");
+    } else {
+      pd.setDetail("catalog_configuration_version_conflict");
+    }
     return pd;
   }
 

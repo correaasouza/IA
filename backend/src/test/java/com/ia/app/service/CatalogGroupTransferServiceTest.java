@@ -10,6 +10,9 @@ import com.ia.app.domain.CatalogMovementOriginType;
 import com.ia.app.domain.CatalogStockBalance;
 import com.ia.app.domain.CatalogStockType;
 import com.ia.app.domain.Empresa;
+import com.ia.app.domain.MovimentoConfig;
+import com.ia.app.domain.MovimentoTipo;
+import com.ia.app.domain.TipoEntidade;
 import com.ia.app.repository.AgrupadorEmpresaRepository;
 import com.ia.app.repository.CatalogConfigurationRepository;
 import com.ia.app.repository.CatalogMovementLineRepository;
@@ -17,6 +20,8 @@ import com.ia.app.repository.CatalogMovementRepository;
 import com.ia.app.repository.CatalogStockBalanceRepository;
 import com.ia.app.repository.CatalogStockTypeRepository;
 import com.ia.app.repository.EmpresaRepository;
+import com.ia.app.repository.MovimentoConfigRepository;
+import com.ia.app.repository.TipoEntidadeRepository;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -61,6 +66,12 @@ class CatalogGroupTransferServiceTest {
   @Autowired
   private CatalogGroupTransferService transferService;
 
+  @Autowired
+  private MovimentoConfigRepository movimentoConfigRepository;
+
+  @Autowired
+  private TipoEntidadeRepository tipoEntidadeRepository;
+
   @Test
   void shouldTransferStockToNewGroupAndRegisterMovement() {
     Long tenantId = 501L;
@@ -68,6 +79,7 @@ class CatalogGroupTransferServiceTest {
     AgrupadorEmpresa from = createCatalogGroup(tenantId, config.getId(), "Grupo Origem");
     AgrupadorEmpresa to = createCatalogGroup(tenantId, config.getId(), "Grupo Destino");
     Empresa filial = createEmpresa(tenantId, "50100000000001");
+    createMovimentoConfigEstoqueGlobal(tenantId, filial.getId());
 
     CatalogStockType fromStockType = stockTypeSyncService.ensureByCode(
       tenantId,
@@ -162,5 +174,27 @@ class CatalogGroupTransferServiceTest {
     empresa.setCnpj(cnpj);
     empresa.setAtivo(true);
     return empresaRepository.save(empresa);
+  }
+
+  private void createMovimentoConfigEstoqueGlobal(Long tenantId, Long empresaId) {
+    TipoEntidade tipoEntidade = new TipoEntidade();
+    tipoEntidade.setTenantId(tenantId);
+    tipoEntidade.setNome("Cliente Transfer " + empresaId);
+    tipoEntidade.setTipoPadrao(true);
+    tipoEntidade.setAtivo(true);
+    tipoEntidade = tipoEntidadeRepository.saveAndFlush(tipoEntidade);
+
+    MovimentoConfig config = new MovimentoConfig();
+    config.setTenantId(tenantId);
+    config.setTipoMovimento(MovimentoTipo.MOVIMENTO_ESTOQUE);
+    config.setNome("Config Estoque Transfer " + empresaId);
+    config.setDescricao("Configuracao para transferencia de grupo");
+    config.setPrioridade(100);
+    config.setContextoKey(null);
+    config.setTipoEntidadePadraoId(tipoEntidade.getId());
+    config.setAtivo(true);
+    config.replaceEmpresas(List.of(empresaId));
+    config.replaceTiposEntidadePermitidos(List.of(tipoEntidade.getId()));
+    movimentoConfigRepository.saveAndFlush(config);
   }
 }
