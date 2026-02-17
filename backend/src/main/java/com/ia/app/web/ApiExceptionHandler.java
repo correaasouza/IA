@@ -20,6 +20,8 @@ public class ApiExceptionHandler {
       pd.setDetail("Item de catalogo nao encontrado no contexto atual (empresa/grupo).");
     } else if (message.startsWith("registro_entidade_not_found")) {
       pd.setDetail("Entidade nao encontrada no contexto atual (empresa/grupo).");
+    } else if (message.startsWith("movimento_config_not_found")) {
+      pd.setDetail("Configuracao de movimento nao encontrada no locatario atual.");
     } else {
       pd.setDetail(ex.getMessage());
     }
@@ -33,10 +35,16 @@ public class ApiExceptionHandler {
       ? HttpStatus.FORBIDDEN
       : message.equals("unauthorized")
         ? HttpStatus.UNAUTHORIZED
+        : message.equals("movimento_config_feature_disabled")
+          ? HttpStatus.SERVICE_UNAVAILABLE
         : HttpStatus.BAD_REQUEST;
     ProblemDetail pd = ProblemDetail.forStatus(status);
     pd.setTitle("Requisicao invalida");
-    pd.setDetail(ex.getMessage());
+    if (message.startsWith("movimento_config_feature_disabled")) {
+      pd.setDetail("Modulo de Configuracoes de Movimentos desabilitado por feature flag.");
+    } else {
+      pd.setDetail(ex.getMessage());
+    }
     return pd;
   }
 
@@ -166,6 +174,35 @@ public class ApiExceptionHandler {
       pd.setDetail("Identificador do ajuste de estoque invalido.");
     } else if (message.startsWith("catalog_stock_adjustment_codigo_auto_fail")) {
       pd.setDetail("Nao foi possivel gerar codigo automatico para o ajuste de estoque.");
+    } else if (message.startsWith("movimento_tipo_invalid")) {
+      pd.setDetail("Tipo de movimento invalido.");
+    } else if (message.startsWith("movimento_config_nome_required")) {
+      pd.setDetail("Informe o nome da configuracao de movimento.");
+    } else if (message.startsWith("movimento_config_prioridade_invalid")) {
+      pd.setDetail("Prioridade invalida. Use valor maior ou igual a zero.");
+    } else if (message.startsWith("movimento_config_empresa_ids_required")) {
+      pd.setDetail("Informe ao menos uma empresa para a configuracao.");
+    } else if (message.startsWith("movimento_config_tipos_entidade_required")) {
+      pd.setDetail("Informe ao menos um tipo de entidade permitido.");
+    } else if (message.startsWith("movimento_config_tipo_entidade_padrao_required")) {
+      pd.setDetail("Informe o tipo de entidade padrao.");
+    } else if (message.startsWith("movimento_config_tipo_padrao_fora_permitidos")) {
+      pd.setDetail("O tipo de entidade padrao precisa estar na lista de permitidos.");
+    } else if (message.startsWith("movimento_config_empresa_invalida")) {
+      pd.setDetail("Uma ou mais empresas informadas nao pertencem ao locatario atual.");
+    } else if (message.startsWith("movimento_config_tipo_entidade_invalido")) {
+      pd.setDetail("Um ou mais tipos de entidade informados nao pertencem ao locatario atual.");
+    } else if (message.startsWith("movimento_config_empresa_id_invalid")) {
+      pd.setDetail("Empresa informada para resolver configuracao e invalida.");
+    } else if (message.startsWith("movimento_config_conflito_prioridade_contexto_empresa")) {
+      pd.setDetail("Conflito: ja existe configuracao ativa com mesmo tipo, contexto e empresa.");
+    } else if (message.startsWith("movimento_config_conflito_resolucao")) {
+      pd.setDetail("Conflito: existem configuracoes empatadas para a mesma resolucao.");
+    } else if (message.startsWith("movimento_config_nao_encontrada")) {
+      pd.setDetail(
+        "Nao existe configuracao aplicavel. Acesse Configuracoes de Movimentos, selecione o tipo e vincule a empresa.");
+    } else if (message.startsWith("movimento_config_integridade_invalida")) {
+      pd.setDetail("A configuracao viola restricoes de integridade dos dados.");
     } else {
       pd.setDetail(ex.getMessage());
     }
@@ -213,6 +250,10 @@ public class ApiExceptionHandler {
       pd.setDetail("Ja existe ajuste de estoque com este codigo na configuracao.");
     } else if (normalized.contains("ux_catalog_stock_adjustment_tenant_codigo")) {
       pd.setDetail("Ja existe ajuste de estoque com este codigo na configuracao.");
+    } else if (normalized.contains("ux_movimento_config_empresa_scope")) {
+      pd.setDetail("A empresa ja esta vinculada a esta configuracao de movimento.");
+    } else if (normalized.contains("ux_movimento_config_tipo_entidade_scope")) {
+      pd.setDetail("O tipo de entidade ja esta vinculado a esta configuracao de movimento.");
     } else {
       pd.setDetail("Operacao violou uma restricao de integridade.");
     }
@@ -245,6 +286,8 @@ public class ApiExceptionHandler {
       || message.startsWith("catalog_group_ciclo_invalido")
       || message.startsWith("catalog_stock_type_codigo_duplicado")
       || message.startsWith("catalog_stock_type_last_active")
-      || message.startsWith("catalog_stock_adjustment_codigo_duplicado");
+      || message.startsWith("catalog_stock_adjustment_codigo_duplicado")
+      || message.startsWith("movimento_config_conflito_prioridade_contexto_empresa")
+      || message.startsWith("movimento_config_conflito_resolucao");
   }
 }

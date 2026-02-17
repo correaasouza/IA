@@ -1,0 +1,380 @@
+<div class="movement-config-page grid gap-3">
+  <div class="page-list-sticky grid gap-3">
+    <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+      <div>
+        <h1 class="m-0 text-lg font-bold">Configuracoes de Movimentos</h1>
+        <p class="mt-1 text-xs text-[var(--muted)]">Tela unica para configurar regras por tipo de movimento e por empresa.</p>
+      </div>
+    </header>
+
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled">
+      <div class="mb-2 flex flex-wrap items-center gap-2">
+        <button
+          mat-stroked-button
+          type="button"
+          class="type-tab-btn"
+          *ngFor="let type of movementTypes"
+          [class.type-tab-active]="isTypeActive(type.codigo)"
+          (click)="setActiveType(type.codigo)">
+          {{ type.descricao }}
+        </button>
+      </div>
+      <div class="rounded-[10px] border border-dashed border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2 text-xs text-[var(--muted-strong)]">
+        {{ flowSummary() }}
+      </div>
+      <div class="mt-2 flex flex-wrap gap-2">
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          (click)="openCreate()"
+          [disabled]="!featureEnabled || !activeType || saving || loadingList"
+          appAccessControl="movimentos.configuracoes.create"
+          [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+          <mat-icon>add</mat-icon>
+          Nova configuracao
+        </button>
+        <button mat-stroked-button type="button" (click)="refresh()" [disabled]="!featureEnabled || loadingList">
+          <mat-icon>refresh</mat-icon>
+          Atualizar
+        </button>
+      </div>
+    </section>
+
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled">
+      <div class="mb-2 flex items-center justify-between gap-2">
+        <div class="text-sm font-semibold">Filtros</div>
+        <div class="flex items-center gap-2">
+          <button mat-button type="button" class="mobile-filter-toggle md:!hidden" (click)="toggleMobileFilters()">
+            <mat-icon>tune</mat-icon>
+            Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
+            <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+          <div class="text-xs text-[var(--muted)]">{{ filteredConfigs.length }} configuracao(oes)</div>
+        </div>
+      </div>
+
+      <form class="grid grid-cols-1 gap-2 md:grid-cols-3" role="search" *ngIf="!isMobile || mobileFiltersOpen">
+        <mat-form-field appearance="outline" class="md:col-span-2" subscriptSizing="dynamic">
+          <mat-label>Buscar configuracao</mat-label>
+          <input matInput [(ngModel)]="searchTerm" (ngModelChange)="applyFilters()" [ngModelOptions]="{ standalone: true }" placeholder="Nome, contexto, empresa ou tipo de entidade" />
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" subscriptSizing="dynamic">
+          <mat-label>Situacao</mat-label>
+          <mat-select [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()" [ngModelOptions]="{ standalone: true }">
+            <mat-option value="ALL">Todos</mat-option>
+            <mat-option value="ATIVO">Ativo</mat-option>
+            <mat-option value="INATIVO">Inativo</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </form>
+    </section>
+  </div>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-sm text-[var(--muted)] shadow-[var(--shadow-xs)]" *ngIf="loadingTypes || loadingCompanies || loadingEntityTypes">
+    Carregando parametros da tela...
+  </section>
+
+  <section class="rounded-xl border border-dashed border-[#fdb022] bg-[#fffaeb] p-3 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled && !loadingCoverageWarnings && coverageWarningsForActiveType().length > 0">
+    <div class="mb-1.5 text-sm font-semibold text-[#7a2e0e]">
+      {{ strictModeEnabled ? 'Atencao: modo estrito ativo' : 'Avisos de cobertura' }}
+    </div>
+    <div class="mb-2 text-xs text-[#7a2e0e]">
+      {{ strictModeEnabled
+        ? 'Existem combinacoes sem configuracao ativa para empresa e tipo. Revise e ajuste antes de usar os movimentos.'
+        : 'Existem combinacoes sem configuracao ativa para empresa e tipo. Nesta fase o sistema apenas alerta.' }}
+    </div>
+    <div class="warning-list">
+      <div class="warning-item" *ngFor="let warning of coverageWarningsForActiveType()">
+        <span class="warning-item-title">{{ warning.empresaNome }} | {{ warning.tipoMovimento }}</span>
+        <span class="warning-item-detail">{{ warning.mensagem }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-dashed border-[#fda29b] bg-[#fef3f2] p-3 text-sm text-[#b42318]" *ngIf="errorMessage">
+    {{ errorMessage }}
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled && filteredConfigs.length > 0">
+    <div class="table-sticky-actions hidden overflow-auto border-b border-[var(--border-light)] md:block">
+      <table mat-table [dataSource]="filteredConfigs" class="w-full">
+        <ng-container matColumnDef="nome">
+          <th mat-header-cell *matHeaderCellDef>Configuracao</th>
+          <td mat-cell *matCellDef="let row"><span class="font-semibold">{{ row.nome }}</span></td>
+        </ng-container>
+
+        <ng-container matColumnDef="contexto">
+          <th mat-header-cell *matHeaderCellDef>Contexto</th>
+          <td mat-cell *matCellDef="let row">{{ row.contextoKey || 'Fallback global' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="ativo">
+          <th mat-header-cell *matHeaderCellDef>Situacao</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px]"
+              [class.border-emerald-300]="row.ativo"
+              [class.bg-emerald-50]="row.ativo"
+              [class.text-emerald-700]="row.ativo"
+              [class.border-slate-300]="!row.ativo"
+              [class.bg-slate-100]="!row.ativo"
+              [class.text-slate-700]="!row.ativo">
+              {{ row.ativo ? 'Ativa' : 'Inativa' }}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="empresas">
+          <th mat-header-cell *matHeaderCellDef>Empresas</th>
+          <td mat-cell *matCellDef="let row">
+            <div class="chip-list">
+              <span class="chip-item" *ngFor="let nome of empresaNames(row)">{{ nome }}</span>
+            </div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="tipos">
+          <th mat-header-cell *matHeaderCellDef>Tipos de entidade</th>
+          <td mat-cell *matCellDef="let row">
+            <div class="chip-list">
+              <span class="chip-item" *ngFor="let nome of tipoEntidadeNames(row)">{{ nome }}</span>
+            </div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="acoes" stickyEnd>
+          <th mat-header-cell *matHeaderCellDef class="text-right">Acoes</th>
+          <td mat-cell *matCellDef="let row" class="text-right">
+            <div class="inline-flex items-center justify-end gap-1.5">
+              <button mat-icon-button matTooltip="Consultar" (click)="openView(row)" [attr.aria-label]="'Consultar ' + row.nome">
+                <mat-icon>visibility</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                matTooltip="Alterar"
+                (click)="openEdit(row)"
+                [attr.aria-label]="'Alterar ' + row.nome"
+                appAccessControl="movimentos.configuracoes.update"
+                [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                matTooltip="Duplicar"
+                (click)="duplicate(row)"
+                [attr.aria-label]="'Duplicar ' + row.nome"
+                appAccessControl="movimentos.configuracoes.duplicate"
+                [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+                <mat-icon>content_copy</mat-icon>
+              </button>
+              <button
+                mat-icon-button
+                color="warn"
+                matTooltip="Inativar"
+                (click)="delete(row)"
+                [attr.aria-label]="'Inativar ' + row.nome"
+                appAccessControl="movimentos.configuracoes.delete"
+                [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+        <tr
+          mat-row
+          *matRowDef="let row; columns: displayedColumns"
+          [class.row-selected]="selectedCard(row)"
+          (click)="selectedConfigId = row.id"></tr>
+      </table>
+    </div>
+
+    <div class="grid gap-2.5 p-3 md:hidden">
+      <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]" *ngFor="let row of filteredConfigs">
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-sm font-semibold">{{ row.nome }}</div>
+          <span class="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px]"
+            [class.border-emerald-300]="row.ativo"
+            [class.bg-emerald-50]="row.ativo"
+            [class.text-emerald-700]="row.ativo"
+            [class.border-slate-300]="!row.ativo"
+            [class.bg-slate-100]="!row.ativo"
+            [class.text-slate-700]="!row.ativo">
+            {{ row.ativo ? 'Ativa' : 'Inativa' }}
+          </span>
+        </div>
+        <div class="text-xs text-[var(--muted)]">{{ row.contextoKey || 'Fallback global' }}</div>
+        <div class="chip-list">
+          <span class="chip-item" *ngFor="let nome of empresaNames(row)">{{ nome }}</span>
+        </div>
+        <div class="chip-list">
+          <span class="chip-item" *ngFor="let nome of tipoEntidadeNames(row)">{{ nome }}</span>
+        </div>
+        <div class="flex justify-end gap-1.5">
+          <button mat-icon-button matTooltip="Consultar" (click)="openView(row)" [attr.aria-label]="'Consultar ' + row.nome">
+            <mat-icon>visibility</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            matTooltip="Alterar"
+            (click)="openEdit(row)"
+            [attr.aria-label]="'Alterar ' + row.nome"
+            appAccessControl="movimentos.configuracoes.update"
+            [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+            <mat-icon>edit</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            matTooltip="Duplicar"
+            (click)="duplicate(row)"
+            [attr.aria-label]="'Duplicar ' + row.nome"
+            appAccessControl="movimentos.configuracoes.duplicate"
+            [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+            <mat-icon>content_copy</mat-icon>
+          </button>
+          <button
+            mat-icon-button
+            color="warn"
+            matTooltip="Inativar"
+            (click)="delete(row)"
+            [attr.aria-label]="'Inativar ' + row.nome"
+            appAccessControl="movimentos.configuracoes.delete"
+            [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+            <mat-icon>delete</mat-icon>
+          </button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--muted)]" *ngIf="featureEnabled && !loadingList && filteredConfigs.length === 0">
+    Nenhuma configuracao encontrada para o tipo selecionado.
+  </section>
+</div>
+
+<ng-template #configFormDialog>
+  <div class="mov-config-dialog-title" role="heading" aria-level="2">
+    <div class="mov-config-dialog-header-card">
+      <div class="mov-config-dialog-title-main">
+        <div class="mov-config-dialog-title-label">{{ readOnlyMode ? 'Consultar configuracao' : (editingConfigId ? 'Editar configuracao' : 'Nova configuracao') }}</div>
+        <div class="mov-config-dialog-title-meta" *ngIf="editingConfigId">ID {{ editingConfigId }}</div>
+        <div class="mov-config-dialog-title-origin">Tipo atual: {{ activeType || '-' }}</div>
+        <div class="mov-config-dialog-title-origin">Nome: {{ (form.get('nome')?.value || '').trim() || '-' }}</div>
+      </div>
+      <div class="mov-config-dialog-header-actions">
+        <button class="mov-config-dialog-header-btn" mat-stroked-button type="button" (click)="closeDialog()" [disabled]="saving">
+          <mat-icon>arrow_back</mat-icon>
+          {{ readOnlyMode ? 'Voltar' : 'Cancelar' }}
+        </button>
+        <button
+          class="mov-config-dialog-header-btn"
+          mat-flat-button
+          color="primary"
+          type="button"
+          (click)="save()"
+          *ngIf="!readOnlyMode"
+          [disabled]="saving"
+          appAccessControl="movimentos.configuracoes.save"
+          [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+          <mat-icon>{{ editingConfigId ? 'save' : 'add' }}</mat-icon>
+          {{ editingConfigId ? 'Salvar' : 'Criar' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <form [formGroup]="form" class="mov-config-dialog-content">
+    <mat-tab-group animationDuration="150ms">
+      <mat-tab label="Configuracao">
+        <div class="mov-config-tab-body">
+          <div class="grid grid-cols-1 gap-2 md:grid-cols-4">
+            <mat-form-field appearance="outline" class="md:col-span-2">
+              <mat-label>Nome da configuracao</mat-label>
+              <input matInput formControlName="nome" [readonly]="readOnlyMode" />
+              <mat-error *ngIf="form.get('nome')?.hasError('required')">Informe o nome.</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline" class="md:col-span-2">
+              <mat-label>Contexto (opcional)</mat-label>
+              <input matInput formControlName="contextoKey" placeholder="Ex.: REVENDA" [readonly]="readOnlyMode" />
+            </mat-form-field>
+
+            <div class="flex items-center rounded-lg border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2">
+              <mat-slide-toggle formControlName="ativo" [disabled]="readOnlyMode">Ativa</mat-slide-toggle>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+            <mat-form-field appearance="outline">
+              <mat-label>Tipos de entidade permitidos</mat-label>
+              <mat-select formControlName="tiposEntidadePermitidos" multiple [disabled]="readOnlyMode">
+                <mat-option *ngFor="let tipo of entityTypes" [value]="tipo.id">{{ tipo.nome }}</mat-option>
+              </mat-select>
+              <mat-error *ngIf="form.get('tiposEntidadePermitidos')?.hasError('required')">Selecione ao menos um tipo.</mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Tipo de entidade padrao</mat-label>
+              <mat-select formControlName="tipoEntidadePadraoId" [disabled]="readOnlyMode">
+                <mat-option *ngFor="let tipoId of form.get('tiposEntidadePermitidos')?.value || []" [value]="tipoId">
+                  {{ tipoEntidadeLabel(tipoId) }}
+                </mat-option>
+              </mat-select>
+              <mat-error *ngIf="form.get('tipoEntidadePadraoId')?.hasError('required')">Selecione o padrao.</mat-error>
+            </mat-form-field>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'Empresas disponiveis (' + availableEmpresasForForm().length + ')'">
+        <div class="mov-config-tab-body">
+          <div class="dual-list-box">
+            <div
+              class="dual-list-item"
+              *ngFor="let empresa of availableEmpresasForForm()"
+              [class.selected]="isAvailableSelected(empresa.id)"
+              (click)="toggleAvailableSelection(empresa.id)">
+              <div class="dual-list-item-label">{{ empresaLabel(empresa) }}</div>
+            </div>
+            <div class="dual-list-empty" *ngIf="availableEmpresasForForm().length === 0">
+              Nenhuma empresa disponivel.
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button mat-stroked-button type="button" (click)="assignSelected()" [disabled]="readOnlyMode || !selectedAvailableEmpresaIds.length || saving">
+              <mat-icon>chevron_right</mat-icon>
+              Atribuir selecionadas
+            </button>
+            <div class="dual-list-hint">Passo: selecione as empresas nesta aba e clique em Atribuir selecionadas.</div>
+          </div>
+        </div>
+      </mat-tab>
+
+      <mat-tab [label]="'Empresas na configuracao (' + assignedEmpresasForForm().length + ')'">
+        <div class="mov-config-tab-body">
+          <div class="dual-list-box">
+            <div
+              class="dual-list-item"
+              *ngFor="let empresa of assignedEmpresasForForm()"
+              [class.selected]="isAssignedSelected(empresa.id)"
+              (click)="toggleAssignedSelection(empresa.id)">
+              <div class="dual-list-item-label">{{ empresaLabel(empresa) }}</div>
+            </div>
+            <div class="dual-list-empty" *ngIf="assignedEmpresasForForm().length === 0">
+              Nenhuma empresa atribuida.
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button mat-stroked-button type="button" (click)="unassignSelected()" [disabled]="readOnlyMode || !selectedAssignedEmpresaIds.length || saving">
+              <mat-icon>chevron_left</mat-icon>
+              Remover selecionadas
+            </button>
+            <div class="dual-list-hint">Passo: selecione as empresas desta configuracao e clique em Remover selecionadas.</div>
+          </div>
+        </div>
+      </mat-tab>
+    </mat-tab-group>
+  </form>
+</ng-template>

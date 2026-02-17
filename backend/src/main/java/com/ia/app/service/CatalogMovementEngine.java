@@ -6,11 +6,13 @@ import com.ia.app.domain.CatalogMovementLine;
 import com.ia.app.domain.CatalogMovementMetricType;
 import com.ia.app.domain.CatalogMovementOriginType;
 import com.ia.app.domain.CatalogStockBalance;
+import com.ia.app.domain.MovimentoTipo;
 import com.ia.app.repository.CatalogMovementLineRepository;
 import com.ia.app.repository.CatalogMovementRepository;
 import com.ia.app.repository.CatalogStockBalanceRepository;
 import com.ia.app.repository.CatalogStockTypeRepository;
 import com.ia.app.repository.EmpresaRepository;
+import com.ia.app.repository.MovimentoConfigRepository;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -20,7 +22,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -59,18 +63,27 @@ public class CatalogMovementEngine {
   private final CatalogStockBalanceRepository balanceRepository;
   private final CatalogStockTypeRepository stockTypeRepository;
   private final EmpresaRepository empresaRepository;
+  private final MovimentoConfigRepository movimentoConfigRepository;
+
+  @Value("${movimento.config.enabled:true}")
+  private boolean movimentoConfigEnabled;
+
+  @Value("${movimento.config.strict-enabled:false}")
+  private boolean movimentoConfigStrictEnabled;
 
   public CatalogMovementEngine(
       CatalogMovementRepository movementRepository,
       CatalogMovementLineRepository lineRepository,
       CatalogStockBalanceRepository balanceRepository,
       CatalogStockTypeRepository stockTypeRepository,
-      EmpresaRepository empresaRepository) {
+      EmpresaRepository empresaRepository,
+      MovimentoConfigRepository movimentoConfigRepository) {
     this.movementRepository = movementRepository;
     this.lineRepository = lineRepository;
     this.balanceRepository = balanceRepository;
     this.stockTypeRepository = stockTypeRepository;
     this.empresaRepository = empresaRepository;
+    this.movimentoConfigRepository = movimentoConfigRepository;
   }
 
   @Transactional
@@ -83,6 +96,8 @@ public class CatalogMovementEngine {
     if (existing.isPresent()) {
       return new Result(existing.get().getId(), true);
     }
+
+    validateStrictMovimentoConfigCoverage(normalized);
 
     CatalogMovement movement = buildMovementHeader(normalized);
     try {
@@ -141,6 +156,25 @@ public class CatalogMovementEngine {
     }
 
     return new Result(movement.getId(), false);
+  }
+
+  private void validateStrictMovimentoConfigCoverage(Command command) {
+    if (!movimentoConfigEnabled || !movimentoConfigStrictEnabled) {
+      return;
+    }
+    Set<Long> empresaIds = command.impacts().stream()
+      .map(Impact::filialId)
+      .filter(value -> value != null && value > 0)
+      .collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+    for (Long empresaId : empresaIds) {
+      boolean covered = movimentoConfigRepository.existsActiveGlobalByTenantAndTipoAndEmpresa(
+        command.tenantId(),
+        MovimentoTipo.MOVIMENTO_ESTOQUE,
+        empresaId);
+      if (!covered) {
+        throw new IllegalArgumentException("movimento_config_nao_encontrada");
+      }
+    }
   }
 
   private Command normalizeCommand(Command raw) {

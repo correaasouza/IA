@@ -117,14 +117,17 @@
             <a
               mat-list-item
               *ngFor="let child of item.children"
-              [routerLink]="child.route"
+              [class.menu-placeholder-item]="!child.route"
+              [routerLink]="child.route ? child.route : null"
               [queryParams]="menuQueryParams(child)"
+              [attr.aria-disabled]="!child.route ? true : null"
               [ngClass]="isMenuItemActive(child) ? 'bg-[#dfe8f3] text-[var(--ink)]' : ''"
               class="sidebar-menu-item my-0.5 flex min-h-9 items-center gap-2 rounded-xl px-2 text-[var(--muted)] hover:bg-[var(--hover)] hover:text-[var(--ink)]">
               <mat-icon class="menu-left-icon">{{ child.icon }}</mat-icon>
               <span class="menu-item-label truncate text-sm" [attr.title]="child.label">{{ getMenuLabel(child) }}</span>
               <div class="menu-right-actions ml-auto inline-flex items-center gap-0.5">
                 <button
+                  *ngIf="child.route"
                   type="button"
                   class="menu-mini-action"
                   (click)="toggleShortcut(child); $event.preventDefault(); $event.stopPropagation();"
@@ -135,7 +138,7 @@
                   </mat-icon>
                 </button>
                 <button
-                  *ngIf="canConfigureAccess()"
+                  *ngIf="canConfigureAccess() && child.route"
                   type="button"
                   class="menu-mini-action"
                   [attr.aria-label]="'Configurar acesso de ' + getMenuLabel(child)"

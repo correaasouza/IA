@@ -95,6 +95,15 @@ export class MenuService {
           roles: ['MASTER', 'ADMIN'],
           perms: ['CONFIG_EDITOR']
         },
+        {
+          id: 'movement-configs',
+          label: 'Movimentos',
+          route: '/configs/movimentos',
+          accessKey: 'menu.movement-configs',
+          icon: 'sync_alt',
+          roles: ['MASTER', 'ADMIN'],
+          perms: ['CONFIG_EDITOR']
+        },
         { id: 'entity-types', label: 'Tipos Ent.', route: '/entity-types', icon: 'category', roles: ['MASTER', 'ADMIN'], perms: ['ENTIDADE_EDIT'] }
       ]
     }

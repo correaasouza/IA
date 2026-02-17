@@ -24,6 +24,7 @@ import { CatalogConfigurationPageComponent } from './features/catalog/catalog-co
 import { CatalogItemsListComponent } from './features/catalog/catalog-items-list.component';
 import { CatalogItemFormComponent } from './features/catalog/catalog-item-form.component';
 import { CatalogGroupsPageComponent } from './features/catalog/catalog-groups-page.component';
+import { MovementConfigsPageComponent } from './features/movement-configs/movement-configs-page.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent, canActivate: [AuthGuard] },
@@ -49,6 +50,7 @@ export const routes: Routes = [
   { path: 'access-controls/:key', component: AccessControlFormComponent, canActivate: [AuthGuard] },
   { path: 'access-controls/:key/edit', component: AccessControlFormComponent, canActivate: [AuthGuard] },
   { path: 'configs', component: ConfigsComponent, canActivate: [AuthGuard] },
+  { path: 'configs/movimentos', component: MovementConfigsPageComponent, canActivate: [AuthGuard] },
   { path: 'catalog/configuration', component: CatalogConfigurationPageComponent, canActivate: [AuthGuard] },
   {
     path: 'catalog/products',

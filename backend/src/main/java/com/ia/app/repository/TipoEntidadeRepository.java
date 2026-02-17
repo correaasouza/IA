@@ -1,6 +1,8 @@
 package com.ia.app.repository;
 
 import com.ia.app.domain.TipoEntidade;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,6 +13,10 @@ public interface TipoEntidadeRepository extends JpaRepository<TipoEntidade, Long
   Optional<TipoEntidade> findByIdAndTenantId(Long id, Long tenantId);
 
   Optional<TipoEntidade> findByTenantIdAndCodigoSeed(Long tenantId, String codigoSeed);
+
+  List<TipoEntidade> findAllByTenantIdAndIdIn(Long tenantId, Collection<Long> ids);
+
+  Optional<TipoEntidade> findFirstByTenantIdAndAtivoTrueOrderByTipoPadraoDescIdAsc(Long tenantId);
 
   boolean existsByTenantIdAndNomeIgnoreCaseAndAtivoTrue(Long tenantId, String nome);
 

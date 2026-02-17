@@ -25,6 +25,7 @@ import { AccessControlConfigDialogComponent } from './core/access/access-control
 import { environment } from '../environments/environment';
 import { CompanyService, EmpresaResponse } from './features/companies/company.service';
 import { EntityTypeService, TipoEntidade } from './features/entity-types/entity-type.service';
+import { MovementConfigService, MovimentoTipoOption } from './features/movement-configs/movement-config.service';
 
 @Component({
   selector: 'app-root',
@@ -52,7 +53,9 @@ export class AppComponent {
   menu: MenuItem[] = [];
   allMenu: MenuItem[] = [];
   private dynamicEntityTypeItems: MenuItem[] = [];
+  private dynamicMovementTypeItems: MenuItem[] = [];
   private loadingEntityTypeItems = false;
+  private loadingMovementTypeItems = false;
   atalhos: AtalhoUsuario[] = [];
   atalhosTop: MenuItem[] = [];
   shortcutState: Record<string, boolean> = {};
@@ -64,6 +67,7 @@ export class AppComponent {
   expandedGroups: Record<string, boolean> = {};
   private readonly expandedKey = 'menu:expanded';
   private readonly menuModeKey = 'menu:mode';
+  private featureFlags: Record<string, boolean> = {};
   loggedIn = false;
   userName = '';
   userInitials = 'U';
@@ -89,6 +93,7 @@ export class AppComponent {
     private iconService: IconService,
     private entityTypeService: EntityTypeService,
     private companyService: CompanyService,
+    private movementConfigService: MovementConfigService,
     private http: HttpClient,
     private router: Router
   ) {
@@ -109,6 +114,7 @@ export class AppComponent {
     if (cachedMenuMode === 'operacao' || cachedMenuMode === 'configuracao') {
       this.menuMode = cachedMenuMode;
     }
+    this.loadFeatureFlags();
     this.refreshMenu();
     this.updateRouteFlags(this.router.url);
     this.loadShortcuts();
@@ -317,6 +323,9 @@ export class AppComponent {
       return false;
     }
     const controlKey = item.accessKey || `menu.${item.id}`;
+    if (item.id === 'movement-configs' && !this.isFeatureEnabled('movementConfigEnabled', true)) {
+      return false;
+    }
     const roleOk = !item.roles || item.roles.length === 0
       || this.accessControl.can(controlKey, item.roles);
     const permOk = !item.perms || item.perms.length === 0 || item.perms.some(p => this.permissions.includes(p));
@@ -338,6 +347,7 @@ export class AppComponent {
       next: data => {
         this.permissions = data?.permissions || [];
         this.tenantRoles = data?.tenantRoles || [];
+        this.storeFeatureFlags(data?.features);
         localStorage.setItem('tenantRoles', JSON.stringify(this.tenantRoles));
         const apiTenantId = data?.tenantId ? String(data.tenantId) : '';
         if (apiTenantId && !localStorage.getItem('tenantId')) {
@@ -360,15 +370,13 @@ export class AppComponent {
         this.loggedIn = false;
         this.userName = '';
         this.userInitials = 'U';
+        this.storeFeatureFlags({});
       }
     });
   }
 
   refreshMenu() {
-    this.allMenu = this.normalizeMenu(this.menuSource());
-    this.menu = this.filterMenuByMode(this.allMenu);
-    this.expandForRoute();
-    this.rebuildShortcutsTop();
+    this.rebuildMenuTree();
     this.loadEntityTypeMenuItems();
   }
 
@@ -581,6 +589,7 @@ export class AppComponent {
     localStorage.removeItem('empresaContextId');
     localStorage.removeItem('empresaContextTipo');
     localStorage.removeItem('empresaContextNome');
+    this.setDynamicMovementTypeItems([]);
   }
 
   private setEmpresaContext(id: number): void {
@@ -590,6 +599,7 @@ export class AppComponent {
     localStorage.setItem('empresaContextId', String(empresa.id));
     localStorage.setItem('empresaContextTipo', empresa.tipo || '');
     localStorage.setItem('empresaContextNome', empresa.razaoSocial || '');
+    this.loadMovementTypeMenuItems();
   }
 
   private notifyEmpresaContextUpdated(source: 'selector' | 'external' = 'external'): void {
@@ -601,6 +611,7 @@ export class AppComponent {
     this.empresaContextOptions = [];
     this.empresaContextId = null;
     this.currentTenantId = '';
+    this.setDynamicMovementTypeItems([]);
     localStorage.removeItem('empresaContextId');
     localStorage.removeItem('empresaContextTipo');
     localStorage.removeItem('empresaContextNome');
@@ -715,7 +726,7 @@ export class AppComponent {
       const entityChildren = this.dynamicEntityTypeItems.length > 0
         ? this.dynamicEntityTypeItems
         : staticEntityChildren;
-      cadastros.children = [...entityChildren, ...staticNonEntityChildren];
+      cadastros.children = [...entityChildren, ...staticNonEntityChildren, ...this.dynamicMovementTypeItems];
     }
     return source;
   }
@@ -732,15 +743,74 @@ export class AppComponent {
         next: data => {
           const types = (data?.content || []).filter(t => t.ativo);
           this.dynamicEntityTypeItems = this.mapEntityTypesToMenu(types);
-          this.allMenu = this.normalizeMenu(this.menuSource());
-          this.menu = this.filterMenuByMode(this.allMenu);
-          this.expandForRoute();
-          this.rebuildShortcutsTop();
+          this.rebuildMenuTree();
         },
         error: () => {
           // keep static fallback menu on failures
         }
       });
+  }
+
+  private loadMovementTypeMenuItems(): void {
+    const tenantId = this.getTenantId();
+    const empresaId = this.empresaContextId || 0;
+    if (!tenantId || this.isSelectionRoute || !empresaId || !this.isFeatureEnabled('movementConfigEnabled', true)) {
+      this.setDynamicMovementTypeItems([]);
+      return;
+    }
+    if (this.loadingMovementTypeItems) {
+      return;
+    }
+    this.loadingMovementTypeItems = true;
+    const requestTenantId = tenantId;
+    const requestEmpresaId = empresaId;
+    this.movementConfigService.listMenuByEmpresa(empresaId)
+      .pipe(finalize(() => (this.loadingMovementTypeItems = false)))
+      .subscribe({
+        next: types => {
+          if (this.isStaleTenantRequest(requestTenantId) || (this.empresaContextId || 0) !== requestEmpresaId) {
+            return;
+          }
+          this.setDynamicMovementTypeItems(this.mapMovementTypesToMenu(types || []));
+        },
+        error: () => {
+          if (this.isStaleTenantRequest(requestTenantId) || (this.empresaContextId || 0) !== requestEmpresaId) {
+            return;
+          }
+          this.setDynamicMovementTypeItems([]);
+        }
+      });
+  }
+
+  private mapMovementTypesToMenu(types: MovimentoTipoOption[]): MenuItem[] {
+    return (types || []).map(type => {
+      const codigo = (type?.codigo || '').trim().toUpperCase();
+      const label = (type?.descricao || codigo || 'Movimento').trim();
+      return {
+        id: `movement-action-${codigo.toLowerCase()}`,
+        label,
+        icon: 'play_circle',
+        accessKey: `menu.movement.action.${codigo.toLowerCase()}`
+      } as MenuItem;
+    });
+  }
+
+  private setDynamicMovementTypeItems(items: MenuItem[]): void {
+    const normalized = (items || []).map(item => ({ ...item }));
+    const current = JSON.stringify(this.dynamicMovementTypeItems);
+    const next = JSON.stringify(normalized);
+    if (current === next) {
+      return;
+    }
+    this.dynamicMovementTypeItems = normalized;
+    this.rebuildMenuTree();
+  }
+
+  private rebuildMenuTree(): void {
+    this.allMenu = this.normalizeMenu(this.menuSource());
+    this.menu = this.filterMenuByMode(this.allMenu);
+    this.expandForRoute();
+    this.rebuildShortcutsTop();
   }
 
   private mapEntityTypesToMenu(types: TipoEntidade[]): MenuItem[] {
@@ -823,6 +893,49 @@ export class AppComponent {
         .join(' ');
     }
     return raw;
+  }
+
+  private isFeatureEnabled(key: string, defaultValue: boolean): boolean {
+    const normalized = (key || '').trim();
+    if (!normalized) {
+      return defaultValue;
+    }
+    if (!(normalized in this.featureFlags)) {
+      return defaultValue;
+    }
+    return !!this.featureFlags[normalized];
+  }
+
+  private loadFeatureFlags(): void {
+    try {
+      const raw = localStorage.getItem('featureFlags');
+      const parsed = raw ? JSON.parse(raw) : {};
+      if (!parsed || typeof parsed !== 'object') {
+        this.featureFlags = {};
+        return;
+      }
+      const next: Record<string, boolean> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        next[key] = !!value;
+      }
+      this.featureFlags = next;
+    } catch {
+      this.featureFlags = {};
+    }
+  }
+
+  private storeFeatureFlags(flags: any): void {
+    if (!flags || typeof flags !== 'object') {
+      this.featureFlags = {};
+      localStorage.removeItem('featureFlags');
+      return;
+    }
+    const next: Record<string, boolean> = {};
+    for (const [key, value] of Object.entries(flags)) {
+      next[key] = !!value;
+    }
+    this.featureFlags = next;
+    localStorage.setItem('featureFlags', JSON.stringify(next));
   }
 }
 

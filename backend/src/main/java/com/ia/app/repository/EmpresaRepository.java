@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface EmpresaRepository extends JpaRepository<Empresa, Long>, JpaSpecificationExecutor<Empresa> {
   Optional<Empresa> findByIdAndTenantId(Long id, Long tenantId);
   List<Empresa> findAllByTenantIdAndIdIn(Long tenantId, Collection<Long> ids);
+  List<Empresa> findAllByTenantIdAndAtivoTrueOrderByRazaoSocialAsc(Long tenantId);
   boolean existsByIdAndTenantId(Long id, Long tenantId);
   Optional<Empresa> findByTenantIdAndCnpj(Long tenantId, String cnpj);
   List<Empresa> findAllByTenantIdAndMatrizIdOrderByRazaoSocialAsc(Long tenantId, Long matrizId);

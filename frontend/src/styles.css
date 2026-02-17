@@ -563,6 +563,15 @@ mat-icon {
   height: 16px;
 }
 
+.sidebar-menu-item.menu-placeholder-item {
+  cursor: default !important;
+  opacity: 0.86;
+}
+
+.sidebar-menu-item.menu-placeholder-item:hover {
+  background: transparent !important;
+}
+
 .sidebar-menu-item .menu-mini-action {
   width: 16px;
   height: 16px;

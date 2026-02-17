@@ -51,6 +51,12 @@ tenant:
     email-template: ${TENANT_SEED_ADMIN_EMAIL:admin{tenantId}@local}
     password: ${TENANT_SEED_ADMIN_PASSWORD:admin123}
 
+movimento:
+  config:
+    enabled: ${MOVIMENTO_CONFIG_ENABLED:true}
+    strict-enabled: ${MOVIMENTO_CONFIG_STRICT_ENABLED:false}
+  seed-defaults-enabled: ${MOVIMENTO_SEED_DEFAULTS_ENABLED:false}
+
 management:
   endpoints:
     web:

@@ -2,11 +2,13 @@ package com.ia.app.web;
 
 import com.ia.app.dto.UsuarioEmpresaPadraoRequest;
 import com.ia.app.dto.UsuarioEmpresaPadraoResponse;
+import com.ia.app.service.MovimentoConfigFeatureToggle;
 import com.ia.app.service.PermissaoUsuarioService;
 import com.ia.app.service.UsuarioEmpresaPreferenciaService;
 import com.ia.app.tenant.TenantContext;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpHeaders;
@@ -27,12 +29,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class MeController {
   private final PermissaoUsuarioService permissaoUsuarioService;
   private final UsuarioEmpresaPreferenciaService usuarioEmpresaPreferenciaService;
+  private final MovimentoConfigFeatureToggle movimentoConfigFeatureToggle;
 
   public MeController(
       PermissaoUsuarioService permissaoUsuarioService,
-      UsuarioEmpresaPreferenciaService usuarioEmpresaPreferenciaService) {
+      UsuarioEmpresaPreferenciaService usuarioEmpresaPreferenciaService,
+      MovimentoConfigFeatureToggle movimentoConfigFeatureToggle) {
     this.permissaoUsuarioService = permissaoUsuarioService;
     this.usuarioEmpresaPreferenciaService = usuarioEmpresaPreferenciaService;
+    this.movimentoConfigFeatureToggle = movimentoConfigFeatureToggle;
   }
 
   @GetMapping("/me")
@@ -78,16 +83,20 @@ public class MeController {
         papeis = java.util.List.copyOf(boosted);
       }
 
+      Map<String, Object> payload = new LinkedHashMap<>();
+      payload.put("id", jwt.getSubject());
+      payload.put("username", username);
+      payload.put("roles", roles);
+      payload.put("tenantRoles", papeis);
+      payload.put("permissions", permissoes);
+      payload.put("tenantId", tenantFromClaim != null ? tenantFromClaim : tenantId);
+      payload.put("features", Map.of(
+        "movementConfigEnabled", movimentoConfigFeatureToggle.isEnabled(),
+        "movementConfigStrictEnabled", movimentoConfigFeatureToggle.isStrictEnabled()));
+
       return ResponseEntity.ok()
         .header(HttpHeaders.CACHE_CONTROL, "no-store")
-        .body(Map.of(
-          "id", jwt.getSubject(),
-          "username", username,
-          "roles", roles,
-          "tenantRoles", papeis,
-          "permissions", permissoes,
-          "tenantId", tenantFromClaim != null ? tenantFromClaim : tenantId
-        ));
+        .body(payload);
     }
 
     return ResponseEntity.status(401).build();
