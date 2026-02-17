@@ -265,18 +265,19 @@ public class MovimentoConfigService {
     String contextoKey = normalizeContexto(request.contextoKey());
     boolean ativo = request.ativo() == null || request.ativo();
     Set<Long> empresaIds = normalizePositiveIds(request.empresaIds(), "movimento_config_empresa_ids_required");
-    Set<Long> tiposEntidadePermitidos =
-      normalizePositiveIds(request.tiposEntidadePermitidos(), "movimento_config_tipos_entidade_required");
-    Long tipoEntidadePadraoId = requirePositiveId(
+    Set<Long> tiposEntidadePermitidos = normalizeOptionalPositiveIds(request.tiposEntidadePermitidos());
+    Long tipoEntidadePadraoId = normalizeOptionalPositiveId(
       request.tipoEntidadePadraoId(),
-      "movimento_config_tipo_entidade_padrao_required");
+      "movimento_config_tipo_entidade_padrao_invalid");
 
-    if (!tiposEntidadePermitidos.contains(tipoEntidadePadraoId)) {
+    if (tipoEntidadePadraoId != null && !tiposEntidadePermitidos.contains(tipoEntidadePadraoId)) {
       throw new IllegalArgumentException("movimento_config_tipo_padrao_fora_permitidos");
     }
 
     validateEmpresaExists(tenantId, empresaIds);
-    validateTipoEntidadeExists(tenantId, tiposEntidadePermitidos);
+    if (!tiposEntidadePermitidos.isEmpty()) {
+      validateTipoEntidadeExists(tenantId, tiposEntidadePermitidos);
+    }
 
     return new NormalizedPayload(
       tipoMovimento,
@@ -340,6 +341,25 @@ public class MovimentoConfigService {
       throw new IllegalArgumentException(errorCode);
     }
     return value;
+  }
+
+  private Long normalizeOptionalPositiveId(Long value, String errorCode) {
+    if (value == null) {
+      return null;
+    }
+    if (value <= 0) {
+      throw new IllegalArgumentException(errorCode);
+    }
+    return value;
+  }
+
+  private Set<Long> normalizeOptionalPositiveIds(List<Long> ids) {
+    if (ids == null || ids.isEmpty()) {
+      return new LinkedHashSet<>();
+    }
+    return ids.stream()
+      .filter(value -> value != null && value > 0)
+      .collect(Collectors.toCollection(LinkedHashSet::new));
   }
 
   private void validateEmpresaExists(Long tenantId, Set<Long> empresaIds) {

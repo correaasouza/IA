@@ -70,6 +70,27 @@ class MovimentoConfigServiceTest {
   }
 
   @Test
+  void shouldAllowConfigurationWithoutDestinatario() {
+    TenantContext.setTenantId(508L);
+    Empresa empresaA = createEmpresa(508L, "MATRIZ", null, "Matriz 508", "00508000000001");
+
+    MovimentoConfigRequest request = new MovimentoConfigRequest(
+      MovimentoTipo.PEDIDO_EQUIPAMENTO,
+      "PE sem destinatario",
+      null,
+      true,
+      List.of(empresaA.getId()),
+      List.of(),
+      null);
+
+    MovimentoConfigResponse response = service.create(request);
+
+    assertThat(response.id()).isNotNull();
+    assertThat(response.tiposEntidadePermitidos()).isEmpty();
+    assertThat(response.tipoEntidadePadraoId()).isNull();
+  }
+
+  @Test
   void shouldBlockDefaultOutsideAllowed() {
     TenantContext.setTenantId(502L);
     Empresa empresa = createEmpresa(502L, "MATRIZ", null, "Matriz 502", "00502000000001");

@@ -39,12 +39,24 @@ import { AgrupadorEmpresa, AgrupadorEmpresaService } from './agrupador-empresa.s
   styleUrl: './agrupadores-empresa.component.css'
 })
 export class AgrupadoresEmpresaComponent implements OnChanges {
+  private static nextInstanceId = 1;
   @Input() configType = '';
   @Input() configId: number | null = null;
   @Input() configReferenceName = '';
   @Input() extraTabLabel = '';
+  @Input() pickerMode = false;
+  @Input() pickerEmpresas: EmpresaResponse[] = [];
+  @Input() pickerEmpresaIds: number[] = [];
+  @Input() pickerDisabled = false;
+  @Input() pickerDisabledEmpresaIds: number[] = [];
+  @Input() pickerDisabledEmpresaLabel = 'Ja vinculada a outra configuracao.';
+  @Input() pickerAvailableTitle = 'Empresas disponiveis';
+  @Input() pickerSelectedTitle = 'Empresas selecionadas';
+  @Input() pickerEmptyAvailableLabel = 'Nenhuma empresa disponivel.';
+  @Input() pickerEmptySelectedLabel = 'Nenhuma empresa selecionada.';
   @Output() changed = new EventEmitter<void>();
   @Output() groupEditStarted = new EventEmitter<AgrupadorEmpresa>();
+  @Output() pickerEmpresaIdsChange = new EventEmitter<number[]>();
   @ViewChild('agrupadorFormDialog') formDialogTpl?: TemplateRef<unknown>;
   @ContentChild('agrupadorConfigTab', { read: TemplateRef }) configTabTpl?: TemplateRef<unknown>;
   @ContentChild('agrupadorExtraTab', { read: TemplateRef }) extraTabTpl?: TemplateRef<unknown>;
@@ -70,6 +82,10 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   private originalNome = '';
   private originalEmpresaIds: number[] = [];
   private formEmpresaFallbackById: Record<number, string> = {};
+  private pickerDisabledEmpresaIdSet = new Set<number>();
+  private readonly instanceId = AgrupadoresEmpresaComponent.nextInstanceId++;
+  readonly availableListId = `availableCompaniesList-${this.instanceId}`;
+  readonly selectedListId = `selectedCompaniesList-${this.instanceId}`;
 
   agrupadores: AgrupadorEmpresa[] = [];
   empresas: EmpresaResponse[] = [];
@@ -90,6 +106,10 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (this.pickerMode) {
+      this.applyPickerInputs();
+      return;
+    }
     if (changes['configType'] || changes['configId']) {
       this.tryLoad();
     }
@@ -275,12 +295,20 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   }
 
   isEmpresaDisabledForForm(empresaId: number): boolean {
+    if (this.pickerMode) {
+      return this.pickerDisabledEmpresaIdSet.has(Number(empresaId));
+    }
     const target = this.empresaIdToGroup[empresaId];
     if (!target || target.groupId === this.editingGroupId) return false;
     return this.normalizedType() !== 'CATALOGO';
   }
 
   occupiedLabelForForm(empresaId: number): string {
+    if (this.pickerMode) {
+      return this.pickerDisabledEmpresaIdSet.has(Number(empresaId))
+        ? this.pickerDisabledEmpresaLabel
+        : '';
+    }
     const target = this.empresaIdToGroup[empresaId];
     if (!target || target.groupId === this.editingGroupId) return '';
     if (this.normalizedType() === 'CATALOGO') {
@@ -312,7 +340,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
 
   toggleAvailableSelection(empresaId: number): void {
     const id = Number(empresaId);
-    if (!id || this.isEmpresaDisabledForForm(id) || this.saving || this.loading) return;
+    if (!id || this.isEmpresaDisabledForForm(id) || this.isSelectionLocked()) return;
     if (this.isAvailableSelected(id)) {
       this.selectedAvailableEmpresaIds = this.selectedAvailableEmpresaIds.filter(item => item !== id);
       return;
@@ -322,7 +350,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
 
   toggleAddedSelection(empresaId: number): void {
     const id = Number(empresaId);
-    if (!id || this.saving || this.loading) return;
+    if (!id || this.isSelectionLocked()) return;
     if (this.isAddedSelected(id)) {
       this.selectedAddedEmpresaIds = this.selectedAddedEmpresaIds.filter(item => item !== id);
       return;
@@ -331,7 +359,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   }
 
   assignSelected(): void {
-    if (this.saving || this.loading) return;
+    if (this.isSelectionLocked()) return;
     const toAdd = this.selectedAvailableEmpresaIds
       .map(id => Number(id))
       .filter(id => id > 0)
@@ -342,20 +370,22 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     this.selectedAvailableEmpresaIds = [];
     this.rebuildFormEmpresaLists();
     this.normalizeSelections();
+    this.emitPickerEmpresaIdsIfNeeded();
   }
 
   unassignSelected(): void {
-    if (this.saving || this.loading) return;
+    if (this.isSelectionLocked()) return;
     const toRemove = new Set(this.selectedAddedEmpresaIds.map(id => Number(id)));
     if (!toRemove.size) return;
     this.formEmpresaIds = (this.formEmpresaIds || []).filter(id => !toRemove.has(Number(id)));
     this.selectedAddedEmpresaIds = [];
     this.rebuildFormEmpresaLists();
     this.normalizeSelections();
+    this.emitPickerEmpresaIdsIfNeeded();
   }
 
   onDropToSelected(event: CdkDragDrop<Array<{ id: number; label: string }>>): void {
-    if (this.saving || this.loading) return;
+    if (this.isSelectionLocked()) return;
     if (event.previousContainer === event.container) return;
     const id = this.resolveDroppedEmpresaId(event);
     if (!id || this.isEmpresaDisabledForForm(id)) return;
@@ -363,20 +393,26 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
       this.formEmpresaIds = [...(this.formEmpresaIds || []), id];
       this.rebuildFormEmpresaLists();
       this.normalizeSelections();
+      this.emitPickerEmpresaIdsIfNeeded();
     }
   }
 
   onDropToAvailable(event: CdkDragDrop<EmpresaResponse[]>): void {
-    if (this.saving || this.loading) return;
+    if (this.isSelectionLocked()) return;
     if (event.previousContainer === event.container) return;
     const id = this.resolveDroppedEmpresaId(event);
     if (!id) return;
     this.formEmpresaIds = (this.formEmpresaIds || []).filter(item => Number(item) !== id);
     this.rebuildFormEmpresaLists();
     this.normalizeSelections();
+    this.emitPickerEmpresaIdsIfNeeded();
   }
 
   refresh(): void {
+    if (this.pickerMode) {
+      this.applyPickerInputs();
+      return;
+    }
     this.tryLoad();
   }
 
@@ -420,6 +456,10 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   }
 
   private tryLoad(): void {
+    if (this.pickerMode) {
+      this.applyPickerInputs();
+      return;
+    }
     if (!this.canRender()) {
       this.agrupadores = [];
       this.empresas = [];
@@ -619,5 +659,42 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     if (!this.isMobile) {
       this.mobileFiltersOpen = false;
     }
+  }
+
+  private isSelectionLocked(): boolean {
+    if (this.pickerMode) {
+      return this.pickerDisabled;
+    }
+    return this.saving || this.loading;
+  }
+
+  private applyPickerInputs(): void {
+    this.loading = false;
+    this.loadingEmpresas = false;
+    this.error = '';
+    this.agrupadores = [];
+    this.empresaIdToGroup = {};
+    this.pickerDisabledEmpresaIdSet = new Set((this.pickerDisabledEmpresaIds || [])
+      .map(id => Number(id))
+      .filter(id => id > 0));
+    const normalizedIds = [...new Set((this.pickerEmpresaIds || [])
+      .map(id => Number(id))
+      .filter(id => id > 0))];
+    this.formEmpresaIds = normalizedIds;
+    this.empresas = [...(this.pickerEmpresas || [])].sort((a, b) =>
+      this.empresaLabel(a).toLowerCase().localeCompare(this.empresaLabel(b).toLowerCase()));
+    this.rebuildFormEmpresaLists();
+    this.normalizeSelections();
+  }
+
+  private emitPickerEmpresaIdsIfNeeded(): void {
+    if (!this.pickerMode) {
+      return;
+    }
+    const normalizedIds = [...new Set((this.formEmpresaIds || [])
+      .map(id => Number(id))
+      .filter(id => id > 0))];
+    this.formEmpresaIds = normalizedIds;
+    this.pickerEmpresaIdsChange.emit(normalizedIds);
   }
 }

@@ -68,9 +68,6 @@ public class CatalogMovementEngine {
   @Value("${movimento.config.enabled:true}")
   private boolean movimentoConfigEnabled;
 
-  @Value("${movimento.config.strict-enabled:false}")
-  private boolean movimentoConfigStrictEnabled;
-
   public CatalogMovementEngine(
       CatalogMovementRepository movementRepository,
       CatalogMovementLineRepository lineRepository,
@@ -97,7 +94,7 @@ public class CatalogMovementEngine {
       return new Result(existing.get().getId(), true);
     }
 
-    validateStrictMovimentoConfigCoverage(normalized);
+    validateMovimentoConfigCoverage(normalized);
 
     CatalogMovement movement = buildMovementHeader(normalized);
     try {
@@ -158,8 +155,8 @@ public class CatalogMovementEngine {
     return new Result(movement.getId(), false);
   }
 
-  private void validateStrictMovimentoConfigCoverage(Command command) {
-    if (!movimentoConfigEnabled || !movimentoConfigStrictEnabled) {
+  private void validateMovimentoConfigCoverage(Command command) {
+    if (!movimentoConfigEnabled) {
       return;
     }
     Set<Long> empresaIds = command.impacts().stream()

@@ -127,6 +127,10 @@
   align-items: start;
 }
 
+.dual-list-shell-picker {
+  margin-top: 0;
+}
+
 .dual-list-col {
   display: grid;
   gap: 6px;

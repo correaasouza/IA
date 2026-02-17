@@ -50,7 +50,7 @@ public class MovimentoConfig extends AuditableEntity {
   @Column(name = "contexto_key", length = 120)
   private String contextoKey;
 
-  @Column(name = "tipo_entidade_padrao_id", nullable = false)
+  @Column(name = "tipo_entidade_padrao_id")
   private Long tipoEntidadePadraoId;
 
   @Column(name = "ativo", nullable = false)
@@ -153,13 +153,18 @@ public class MovimentoConfig extends AuditableEntity {
   }
 
   public void replaceEmpresas(Collection<Long> empresaIds) {
-    empresas.clear();
-    if (empresaIds == null) {
-      return;
+    Set<Long> desired = normalizeIds(empresaIds);
+    empresas.removeIf(item -> item == null || !desired.contains(item.getEmpresaId()));
+
+    Set<Long> current = new LinkedHashSet<>();
+    for (MovimentoConfigEmpresa item : empresas) {
+      if (item != null && item.getEmpresaId() != null) {
+        current.add(item.getEmpresaId());
+      }
     }
-    Set<Long> unique = new LinkedHashSet<>(empresaIds);
-    for (Long empresaId : unique) {
-      if (empresaId == null) {
+
+    for (Long empresaId : desired) {
+      if (current.contains(empresaId)) {
         continue;
       }
       MovimentoConfigEmpresa item = new MovimentoConfigEmpresa();
@@ -171,13 +176,18 @@ public class MovimentoConfig extends AuditableEntity {
   }
 
   public void replaceTiposEntidadePermitidos(Collection<Long> tipoEntidadeIds) {
-    tiposEntidadePermitidos.clear();
-    if (tipoEntidadeIds == null) {
-      return;
+    Set<Long> desired = normalizeIds(tipoEntidadeIds);
+    tiposEntidadePermitidos.removeIf(item -> item == null || !desired.contains(item.getTipoEntidadeId()));
+
+    Set<Long> current = new LinkedHashSet<>();
+    for (MovimentoConfigTipoEntidade item : tiposEntidadePermitidos) {
+      if (item != null && item.getTipoEntidadeId() != null) {
+        current.add(item.getTipoEntidadeId());
+      }
     }
-    Set<Long> unique = new LinkedHashSet<>(tipoEntidadeIds);
-    for (Long tipoEntidadeId : unique) {
-      if (tipoEntidadeId == null) {
+
+    for (Long tipoEntidadeId : desired) {
+      if (current.contains(tipoEntidadeId)) {
         continue;
       }
       MovimentoConfigTipoEntidade item = new MovimentoConfigTipoEntidade();
@@ -186,5 +196,18 @@ public class MovimentoConfig extends AuditableEntity {
       item.setMovimentoConfig(this);
       tiposEntidadePermitidos.add(item);
     }
+  }
+
+  private Set<Long> normalizeIds(Collection<Long> values) {
+    Set<Long> normalized = new LinkedHashSet<>();
+    if (values == null) {
+      return normalized;
+    }
+    for (Long value : values) {
+      if (value != null) {
+        normalized.add(value);
+      }
+    }
+    return normalized;
   }
 }

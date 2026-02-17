@@ -48,7 +48,7 @@
 ## Observacoes
 - O CRUD resolve contexto por empresa selecionada no header global.
 - O modo de numeracao (`AUTOMATICA` ou `MANUAL`) vem da configuracao por agrupador da empresa.
-- Na ficha do agrupador em `Catalogo > Configuracao`, as abas seguem a mesma linha: `Filiais`, `Configuracoes` e `Tipos de Estoque`.
+- Na ficha do agrupador em `Catalogo > Configuracao`, as abas seguem a mesma linha: `Empresas`, `Configuracoes` e `Tipos de Estoque`.
 - Padrao de UX: as telas de Produtos e Servicos seguem o mesmo padrao base de Entidades (`EntityRecords`):
   - header compacto com contexto;
   - filtro principal com `field-search`;

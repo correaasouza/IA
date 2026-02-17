@@ -9,15 +9,12 @@ public class MovimentoConfigFeatureToggle {
   @Value("${movimento.config.enabled:true}")
   private boolean enabled;
 
-  @Value("${movimento.config.strict-enabled:false}")
-  private boolean strictEnabled;
-
   public boolean isEnabled() {
     return enabled;
   }
 
   public boolean isStrictEnabled() {
-    return strictEnabled;
+    return true;
   }
 
   public void assertEnabled() {

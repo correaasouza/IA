@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, HostListener, OnInit, TemplateRef, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -10,14 +10,15 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableModule } from '@angular/material/table';
-import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { finalize } from 'rxjs/operators';
 import { FeatureFlagService } from '../../core/features/feature-flag.service';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { AccessControlDirective } from '../../shared/access-control.directive';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
+import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 import { CompanyService, EmpresaResponse } from '../companies/company.service';
+import { AgrupadoresEmpresaComponent } from '../configs/agrupadores-empresa.component';
 import { EntityTypeService, TipoEntidade } from '../entity-types/entity-type.service';
 import {
   MovimentoConfig,
@@ -42,8 +43,9 @@ import {
     MatSelectModule,
     MatSlideToggleModule,
     MatTableModule,
-    MatTabsModule,
     MatTooltipModule,
+    FieldSearchComponent,
+    AgrupadoresEmpresaComponent,
     AccessControlDirective
   ],
   templateUrl: './movement-configs-page.component.html',
@@ -62,15 +64,20 @@ export class MovementConfigsPageComponent implements OnInit {
   loadingCoverageWarnings = false;
   errorMessage = '';
   featureEnabled = true;
-  strictModeEnabled = false;
   coverageWarnings: MovimentoConfigCoverageWarning[] = [];
 
   configs: MovimentoConfig[] = [];
   filteredConfigs: MovimentoConfig[] = [];
   selectedConfigId: number | null = null;
-  displayedColumns = ['nome', 'contexto', 'ativo', 'empresas', 'tipos', 'acoes'];
+  displayedColumns = ['nome', 'ativo', 'empresas', 'tipos', 'acoes'];
 
   searchTerm = '';
+  searchOptions: FieldSearchOption[] = [
+    { key: 'nome', label: 'Nome' },
+    { key: 'empresas', label: 'Empresas' },
+    { key: 'destinatario', label: 'Destinatario do Movimento' }
+  ];
+  searchFields = ['nome', 'empresas', 'destinatario'];
   statusFilter: 'ALL' | 'ATIVO' | 'INATIVO' = 'ALL';
   isMobile = false;
   mobileFiltersOpen = false;
@@ -83,17 +90,15 @@ export class MovementConfigsPageComponent implements OnInit {
 
   readOnlyMode = false;
   editingConfigId: number | null = null;
+  activeFormTab: 'CONFIGURACAO' | 'FILIAIS' = 'FILIAIS';
   private dialogRef: MatDialogRef<unknown> | null = null;
-  selectedAvailableEmpresaIds: number[] = [];
-  selectedAssignedEmpresaIds: number[] = [];
 
   readonly form = this.fb.group({
     nome: ['', [Validators.required, Validators.maxLength(120)]],
-    contextoKey: ['', [Validators.maxLength(120)]],
     ativo: [true],
     empresaIds: [<number[]>[], [arrayRequiredValidator]],
-    tiposEntidadePermitidos: [<number[]>[], [arrayRequiredValidator]],
-    tipoEntidadePadraoId: [null as number | null, [Validators.required]]
+    tiposEntidadePermitidos: [<number[]>[]],
+    tipoEntidadePadraoId: [null as number | null]
   });
 
   constructor(
@@ -110,7 +115,6 @@ export class MovementConfigsPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.featureEnabled = this.featureFlagService.isEnabled('movementConfigEnabled', true);
-    this.strictModeEnabled = this.featureFlagService.isEnabled('movementConfigStrictEnabled', false);
     if (!this.featureEnabled) {
       this.errorMessage = 'Modulo de Configuracoes de Movimentos desabilitado para este ambiente.';
       return;
@@ -138,10 +142,6 @@ export class MovementConfigsPageComponent implements OnInit {
 
   isTypeActive(tipo: string): boolean {
     return this.activeType === tipo;
-  }
-
-  refresh(): void {
-    this.loadConfigs();
   }
 
   toggleMobileFilters(): void {
@@ -172,14 +172,20 @@ export class MovementConfigsPageComponent implements OnInit {
       if (!term) {
         return true;
       }
-      const haystack = [
-        config.nome,
-        config.contextoKey || '',
-        ...this.empresaNames(config),
-        ...this.tipoEntidadeNames(config)
-      ].join(' ').toLowerCase();
-      return haystack.includes(term);
+      const byField: Record<string, string> = {
+        nome: config.nome || '',
+        empresas: this.empresaNames(config).join(' '),
+        destinatario: this.tipoEntidadeNames(config).join(' ')
+      };
+      const fields = this.searchFields.length ? this.searchFields : this.searchOptions.map(item => item.key);
+      return fields.some(field => (byField[field] || '').toLowerCase().includes(term));
     });
+  }
+
+  onSearchChange(value: FieldSearchValue): void {
+    this.searchTerm = value.term;
+    this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(option => option.key);
+    this.applyFilters();
   }
 
   openCreate(): void {
@@ -188,11 +194,9 @@ export class MovementConfigsPageComponent implements OnInit {
     }
     this.readOnlyMode = false;
     this.editingConfigId = null;
-    this.selectedAvailableEmpresaIds = [];
-    this.selectedAssignedEmpresaIds = [];
+    this.activeFormTab = 'FILIAIS';
     this.form.reset({
       nome: '',
-      contextoKey: '',
       ativo: true,
       empresaIds: [],
       tiposEntidadePermitidos: [],
@@ -210,11 +214,9 @@ export class MovementConfigsPageComponent implements OnInit {
     this.readOnlyMode = readOnly;
     this.editingConfigId = config.id;
     this.selectedConfigId = config.id;
-    this.selectedAvailableEmpresaIds = [];
-    this.selectedAssignedEmpresaIds = [];
+    this.activeFormTab = 'FILIAIS';
     this.form.reset({
       nome: config.nome,
-      contextoKey: config.contextoKey || '',
       ativo: config.ativo,
       empresaIds: [...(config.empresaIds || [])],
       tiposEntidadePermitidos: [...(config.tiposEntidadePermitidos || [])],
@@ -274,7 +276,6 @@ export class MovementConfigsPageComponent implements OnInit {
       this.saving = true;
       this.movementConfigService.duplicate(config.id, {
         nome: `${config.nome} - Copia`,
-        contextoKey: config.contextoKey || null,
         ativo: false
       }).pipe(finalize(() => this.saving = false)).subscribe({
         next: () => {
@@ -321,20 +322,18 @@ export class MovementConfigsPageComponent implements OnInit {
     this.dialogRef = null;
     this.readOnlyMode = false;
     this.editingConfigId = null;
+    this.activeFormTab = 'FILIAIS';
     this.form.enable({ emitEvent: false });
   }
 
-  availableEmpresasForForm(): EmpresaResponse[] {
-    const assigned = new Set(this.assignedEmpresaIds());
-    return this.companies.filter(item => !assigned.has(item.id));
+  setFormTab(tab: 'CONFIGURACAO' | 'FILIAIS'): void {
+    this.activeFormTab = tab;
   }
 
-  assignedEmpresasForForm(): EmpresaResponse[] {
-    const ids = this.assignedEmpresaIds();
-    const byId = new Map<number, EmpresaResponse>(this.companies.map(item => [item.id, item]));
-    return ids
-      .map(id => byId.get(id))
-      .filter((item): item is EmpresaResponse => !!item);
+  onPickerEmpresaIdsChange(ids: number[]): void {
+    const blocked = new Set(this.blockedEmpresaIdsForForm());
+    const next = uniquePositiveIds(ids || []).filter(id => !blocked.has(id));
+    this.form.patchValue({ empresaIds: next });
   }
 
   assignedEmpresaIds(): number[] {
@@ -343,50 +342,6 @@ export class MovementConfigsPageComponent implements OnInit {
       return [];
     }
     return [...new Set(value.map(item => Number(item)).filter(item => item > 0))];
-  }
-
-  isAvailableSelected(id: number): boolean {
-    return this.selectedAvailableEmpresaIds.includes(id);
-  }
-
-  isAssignedSelected(id: number): boolean {
-    return this.selectedAssignedEmpresaIds.includes(id);
-  }
-
-  toggleAvailableSelection(id: number): void {
-    if (this.readOnlyMode || this.saving) {
-      return;
-    }
-    this.selectedAvailableEmpresaIds = toggleId(this.selectedAvailableEmpresaIds, id);
-  }
-
-  toggleAssignedSelection(id: number): void {
-    if (this.readOnlyMode || this.saving) {
-      return;
-    }
-    this.selectedAssignedEmpresaIds = toggleId(this.selectedAssignedEmpresaIds, id);
-  }
-
-  assignSelected(): void {
-    if (this.readOnlyMode || this.saving) {
-      return;
-    }
-    const current = new Set(this.assignedEmpresaIds());
-    for (const id of this.selectedAvailableEmpresaIds) {
-      current.add(id);
-    }
-    this.form.patchValue({ empresaIds: [...current] });
-    this.selectedAvailableEmpresaIds = [];
-  }
-
-  unassignSelected(): void {
-    if (this.readOnlyMode || this.saving) {
-      return;
-    }
-    const remove = new Set(this.selectedAssignedEmpresaIds);
-    const next = this.assignedEmpresaIds().filter(id => !remove.has(id));
-    this.form.patchValue({ empresaIds: next });
-    this.selectedAssignedEmpresaIds = [];
   }
 
   empresaLabel(empresa: EmpresaResponse): string {
@@ -412,10 +367,7 @@ export class MovementConfigsPageComponent implements OnInit {
   }
 
   flowSummary(): string {
-    if (this.strictModeEnabled) {
-      return 'Fluxo: 1) selecione o tipo de movimento; 2) clique em Atualizar para revisar o cenario atual; 3) crie/edite a configuracao; 4) use as abas de empresas para atribuir quem usa essa regra. Modo estrito ativo: sem configuracao aplicavel o movimento sera bloqueado.';
-    }
-    return 'Fluxo: 1) selecione o tipo de movimento; 2) clique em Atualizar para revisar o cenario atual; 3) crie/edite a configuracao; 4) use as abas de empresas para atribuir quem usa essa regra. Modo aviso: as lacunas sao exibidas sem bloqueio.';
+    return 'Fluxo: 1) selecione o tipo de movimento; 2) crie/edite a configuracao; 3) use a aba de empresas para atribuir quem usa essa regra. Sempre que faltar configuracao aplicavel, o sistema avisa e bloqueia o uso do movimento.';
   }
 
   coverageWarningsForActiveType(): MovimentoConfigCoverageWarning[] {
@@ -423,6 +375,29 @@ export class MovementConfigsPageComponent implements OnInit {
       return this.coverageWarnings;
     }
     return this.coverageWarnings.filter(item => item.tipoMovimento === this.activeType);
+  }
+
+  blockedEmpresaIdsForForm(): number[] {
+    const blocked = new Set<number>();
+    for (const config of this.configs || []) {
+      if (!config?.ativo) {
+        continue;
+      }
+      if (this.editingConfigId && config.id === this.editingConfigId) {
+        continue;
+      }
+      for (const empresaId of (config.empresaIds || [])) {
+        const normalizedId = Number(empresaId);
+        if (normalizedId > 0) {
+          blocked.add(normalizedId);
+        }
+      }
+    }
+    return [...blocked];
+  }
+
+  blockedEmpresasCountForForm(): number {
+    return this.blockedEmpresaIdsForForm().length;
   }
 
   private bindFormRules(): void {
@@ -571,17 +546,25 @@ export class MovementConfigsPageComponent implements OnInit {
     const raw = this.form.getRawValue();
     const empresaIds = uniquePositiveIds(raw.empresaIds || []);
     const tiposEntidadePermitidos = uniquePositiveIds(raw.tiposEntidadePermitidos || []);
-    const tipoEntidadePadraoId = Number(raw.tipoEntidadePadraoId || 0);
+    const tipoEntidadePadraoId = raw.tipoEntidadePadraoId == null
+      ? null
+      : Number(raw.tipoEntidadePadraoId);
+    const blocked = new Set(this.blockedEmpresaIdsForForm());
+    const conflicting = empresaIds.filter(id => blocked.has(id));
 
-    if (!tiposEntidadePermitidos.includes(tipoEntidadePadraoId)) {
-      this.notify.error('Tipo de entidade padrao deve estar na lista de permitidos.');
+    if (conflicting.length > 0) {
+      this.notify.error('Uma ou mais empresas ja estao vinculadas em outra configuracao ativa para o mesmo tipo de movimento.');
+      return null;
+    }
+
+    if (tipoEntidadePadraoId != null && !tiposEntidadePermitidos.includes(tipoEntidadePadraoId)) {
+      this.notify.error('Destinatario do movimento padrao deve estar na lista de permitidos.');
       return null;
     }
 
     return {
       tipoMovimento: this.activeType,
       nome: (raw.nome || '').trim(),
-      contextoKey: normalizeNullable(raw.contextoKey),
       ativo: !!raw.ativo,
       empresaIds,
       tiposEntidadePermitidos,
@@ -611,6 +594,7 @@ export class MovementConfigsPageComponent implements OnInit {
       this.form.enable({ emitEvent: false });
       this.readOnlyMode = false;
       this.editingConfigId = null;
+      this.activeFormTab = 'FILIAIS';
     });
   }
 
@@ -635,19 +619,7 @@ function uniquePositiveIds(value: number[]): number[] {
   return [...new Set((value || []).map(item => Number(item)).filter(item => item > 0))];
 }
 
-function toggleId(values: number[], id: number): number[] {
-  if (values.includes(id)) {
-    return values.filter(item => item !== id);
-  }
-  return [...values, id];
-}
-
-function normalizeNullable(value: string | null | undefined): string | null {
-  const normalized = (value || '').trim();
-  return normalized ? normalized : null;
-}
-
-function arrayRequiredValidator(control: AbstractControl): ValidationErrors | null {
+function arrayRequiredValidator(control: AbstractControl): { required: true } | null {
   const value = control.value;
   if (!Array.isArray(value)) {
     return { required: true };

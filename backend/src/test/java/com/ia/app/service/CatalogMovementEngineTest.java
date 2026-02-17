@@ -10,12 +10,17 @@ import com.ia.app.domain.CatalogMovementMetricType;
 import com.ia.app.domain.CatalogMovementOriginType;
 import com.ia.app.domain.CatalogStockType;
 import com.ia.app.domain.Empresa;
+import com.ia.app.domain.MovimentoConfig;
+import com.ia.app.domain.MovimentoTipo;
+import com.ia.app.domain.TipoEntidade;
 import com.ia.app.repository.AgrupadorEmpresaRepository;
 import com.ia.app.repository.CatalogConfigurationRepository;
 import com.ia.app.repository.CatalogMovementLineRepository;
 import com.ia.app.repository.CatalogMovementRepository;
 import com.ia.app.repository.CatalogStockBalanceRepository;
 import com.ia.app.repository.EmpresaRepository;
+import com.ia.app.repository.MovimentoConfigRepository;
+import com.ia.app.repository.TipoEntidadeRepository;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -55,6 +60,12 @@ class CatalogMovementEngineTest {
   @Autowired
   private CatalogMovementLineRepository lineRepository;
 
+  @Autowired
+  private MovimentoConfigRepository movimentoConfigRepository;
+
+  @Autowired
+  private TipoEntidadeRepository tipoEntidadeRepository;
+
   @Test
   void shouldBeIdempotentForSameMovementCommand() {
     Long tenantId = 401L;
@@ -62,6 +73,7 @@ class CatalogMovementEngineTest {
     AgrupadorEmpresa agrupador = createCatalogGroup(tenantId, config.getId(), "Grupo Teste");
     Empresa filial = createEmpresa(tenantId, "40100000000001");
     CatalogStockType stockType = stockTypeSyncService.ensureDefaultForGroup(tenantId, config.getId(), agrupador.getId());
+    createMovimentoConfigEstoqueGlobal(tenantId, filial.getId());
 
     CatalogMovementEngine.Command command = new CatalogMovementEngine.Command(
       tenantId,
@@ -130,5 +142,27 @@ class CatalogMovementEngineTest {
     empresa.setCnpj(cnpj);
     empresa.setAtivo(true);
     return empresaRepository.save(empresa);
+  }
+
+  private void createMovimentoConfigEstoqueGlobal(Long tenantId, Long empresaId) {
+    TipoEntidade tipoEntidade = new TipoEntidade();
+    tipoEntidade.setTenantId(tenantId);
+    tipoEntidade.setNome("Cliente Engine " + empresaId);
+    tipoEntidade.setTipoPadrao(true);
+    tipoEntidade.setAtivo(true);
+    tipoEntidade = tipoEntidadeRepository.saveAndFlush(tipoEntidade);
+
+    MovimentoConfig config = new MovimentoConfig();
+    config.setTenantId(tenantId);
+    config.setTipoMovimento(MovimentoTipo.MOVIMENTO_ESTOQUE);
+    config.setNome("Config Estoque Engine " + empresaId);
+    config.setDescricao("Configuracao para teste de engine");
+    config.setPrioridade(100);
+    config.setContextoKey(null);
+    config.setTipoEntidadePadraoId(tipoEntidade.getId());
+    config.setAtivo(true);
+    config.replaceEmpresas(List.of(empresaId));
+    config.replaceTiposEntidadePermitidos(List.of(tipoEntidade.getId()));
+    movimentoConfigRepository.saveAndFlush(config);
   }
 }

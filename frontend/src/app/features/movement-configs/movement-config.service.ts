@@ -17,7 +17,7 @@ export interface MovimentoConfig {
   version: number;
   empresaIds: number[];
   tiposEntidadePermitidos: number[];
-  tipoEntidadePadraoId: number;
+  tipoEntidadePadraoId: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -33,16 +33,14 @@ export interface MovimentoConfigPage {
 export interface MovimentoConfigRequest {
   tipoMovimento: string;
   nome: string;
-  contextoKey?: string | null;
   ativo?: boolean | null;
   empresaIds: number[];
-  tiposEntidadePermitidos: number[];
-  tipoEntidadePadraoId: number;
+  tiposEntidadePermitidos?: number[] | null;
+  tipoEntidadePadraoId?: number | null;
 }
 
 export interface MovimentoConfigDuplicarRequest {
   nome?: string | null;
-  contextoKey?: string | null;
   ativo?: boolean | null;
 }
 
@@ -51,7 +49,7 @@ export interface MovimentoConfigResolverResponse {
   tipoMovimento: string;
   empresaId: number;
   contextoKey?: string | null;
-  tipoEntidadePadraoId: number;
+  tipoEntidadePadraoId: number | null;
   tiposEntidadePermitidos: number[];
 }
 

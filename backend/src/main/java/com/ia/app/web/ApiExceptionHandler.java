@@ -186,6 +186,8 @@ public class ApiExceptionHandler {
       pd.setDetail("Informe ao menos um tipo de entidade permitido.");
     } else if (message.startsWith("movimento_config_tipo_entidade_padrao_required")) {
       pd.setDetail("Informe o tipo de entidade padrao.");
+    } else if (message.startsWith("movimento_config_tipo_entidade_padrao_invalid")) {
+      pd.setDetail("Tipo de entidade padrao invalido.");
     } else if (message.startsWith("movimento_config_tipo_padrao_fora_permitidos")) {
       pd.setDetail("O tipo de entidade padrao precisa estar na lista de permitidos.");
     } else if (message.startsWith("movimento_config_empresa_invalida")) {
@@ -195,7 +197,7 @@ public class ApiExceptionHandler {
     } else if (message.startsWith("movimento_config_empresa_id_invalid")) {
       pd.setDetail("Empresa informada para resolver configuracao e invalida.");
     } else if (message.startsWith("movimento_config_conflito_prioridade_contexto_empresa")) {
-      pd.setDetail("Conflito: ja existe configuracao ativa com mesmo tipo, contexto e empresa.");
+      pd.setDetail("Conflito: ja existe configuracao ativa com mesmo tipo e empresa.");
     } else if (message.startsWith("movimento_config_conflito_resolucao")) {
       pd.setDetail("Conflito: existem configuracoes empatadas para a mesma resolucao.");
     } else if (message.startsWith("movimento_config_nao_encontrada")) {

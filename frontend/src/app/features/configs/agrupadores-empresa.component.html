@@ -1,4 +1,5 @@
 <app-config-section-shell class="group-shell">
+  <ng-container *ngIf="!pickerMode; else pickerModeContent">
   <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5" *ngIf="!canRender()">
     <div class="text-xs text-[var(--muted)]">Informe um tipo e ID de configuracao validos para gerenciar agrupadores.</div>
   </div>
@@ -126,6 +127,77 @@
       </ng-template>
     </section>
   </div>
+  </ng-container>
+
+  <ng-template #pickerModeContent>
+    <div class="dual-list-shell dual-list-shell-picker">
+      <div class="dual-list-col">
+        <div class="dual-list-title">{{ pickerAvailableTitle }}</div>
+        <div
+          class="dual-list-box"
+          cdkDropList
+          [id]="availableListId"
+          [cdkDropListData]="availableEmpresasForForm()"
+          [cdkDropListConnectedTo]="[selectedListId]"
+          [cdkDropListSortingDisabled]="true"
+          (cdkDropListDropped)="onDropToAvailable($event)">
+          <div
+            class="dual-list-item"
+            *ngFor="let empresa of availableEmpresasForForm()"
+            [class.selected]="isAvailableSelected(empresa.id)"
+            [class.disabled]="isEmpresaDisabledForForm(empresa.id)"
+            (click)="toggleAvailableSelection(empresa.id)"
+            cdkDrag
+            [cdkDragData]="empresa.id"
+            [cdkDragDisabled]="isEmpresaDisabledForForm(empresa.id) || pickerDisabled">
+            <div class="dual-list-item-label">{{ empresaLabel(empresa) }}</div>
+            <div class="dual-list-item-note" *ngIf="occupiedLabelForForm(empresa.id)">{{ occupiedLabelForForm(empresa.id) }}</div>
+          </div>
+          <div class="dual-list-empty" *ngIf="!availableEmpresasForForm().length">
+            {{ pickerEmptyAvailableLabel }}
+          </div>
+        </div>
+      </div>
+
+      <div class="dual-list-actions">
+        <button mat-stroked-button type="button" (click)="assignSelected()" [disabled]="pickerDisabled || !selectedAvailableEmpresaIds.length">
+          <mat-icon>chevron_right</mat-icon>
+          Atribuir
+        </button>
+        <button mat-stroked-button type="button" (click)="unassignSelected()" [disabled]="pickerDisabled || !selectedAddedEmpresaIds.length">
+          <mat-icon>chevron_left</mat-icon>
+          Desatribuir
+        </button>
+        <div class="dual-list-hint">Arraste entre listas</div>
+      </div>
+
+      <div class="dual-list-col">
+        <div class="dual-list-title">{{ pickerSelectedTitle }}</div>
+        <div
+          class="dual-list-box"
+          cdkDropList
+          [id]="selectedListId"
+          [cdkDropListData]="addedEmpresasForForm()"
+          [cdkDropListConnectedTo]="[availableListId]"
+          [cdkDropListSortingDisabled]="true"
+          (cdkDropListDropped)="onDropToSelected($event)">
+          <div
+            class="dual-list-item"
+            *ngFor="let item of addedEmpresasForForm()"
+            [class.selected]="isAddedSelected(item.id)"
+            (click)="toggleAddedSelection(item.id)"
+            cdkDrag
+            [cdkDragData]="item.id"
+            [cdkDragDisabled]="pickerDisabled">
+            <div class="dual-list-item-label">{{ item.label }}</div>
+          </div>
+          <div class="dual-list-empty" *ngIf="!addedEmpresasForForm().length">
+            {{ pickerEmptySelectedLabel }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </ng-template>
 </app-config-section-shell>
 
 <ng-template #agrupadorFormDialog>
@@ -160,7 +232,7 @@
 
     <div class="agrupador-form-tabs" *ngIf="hasConfigTab() || hasExtraTab()">
       <button type="button" class="agrupador-form-tab" [class.active]="activeFormTab === 'FILIAIS'" (click)="setFormTab('FILIAIS')">
-        Filiais
+        Empresas
       </button>
       <button type="button" class="agrupador-form-tab" *ngIf="hasConfigTab()" [class.active]="activeFormTab === 'CONFIGURACOES'" (click)="setFormTab('CONFIGURACOES')">
         Configuracoes
@@ -176,9 +248,9 @@
         <div
           class="dual-list-box"
           cdkDropList
-          id="availableCompaniesList"
+          [id]="availableListId"
           [cdkDropListData]="availableEmpresasForForm()"
-          [cdkDropListConnectedTo]="['selectedCompaniesList']"
+          [cdkDropListConnectedTo]="[selectedListId]"
           [cdkDropListSortingDisabled]="true"
           (cdkDropListDropped)="onDropToAvailable($event)">
           <div
@@ -216,9 +288,9 @@
         <div
           class="dual-list-box"
           cdkDropList
-          id="selectedCompaniesList"
+          [id]="selectedListId"
           [cdkDropListData]="addedEmpresasForForm()"
-          [cdkDropListConnectedTo]="['availableCompaniesList']"
+          [cdkDropListConnectedTo]="[availableListId]"
           [cdkDropListSortingDisabled]="true"
           (cdkDropListDropped)="onDropToSelected($event)">
           <div
