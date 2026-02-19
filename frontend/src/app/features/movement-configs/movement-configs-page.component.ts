@@ -11,6 +11,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { of } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { FeatureFlagService } from '../../core/features/feature-flag.service';
 import { NotificationService } from '../../core/notifications/notification.service';
@@ -22,8 +23,12 @@ import { AgrupadoresEmpresaComponent } from '../configs/agrupadores-empresa.comp
 import { EntityTypeService, TipoEntidade } from '../entity-types/entity-type.service';
 import {
   MovimentoConfig,
+  MovimentoConfigItemTipo,
+  MovimentoConfigItemTipoRequest,
   MovimentoConfigCoverageWarning,
   MovimentoConfigRequest,
+  MovimentoItemTipo,
+  MovimentoItemTipoRequest,
   MovimentoTipoOption,
   MovementConfigService
 } from './movement-config.service';
@@ -53,6 +58,9 @@ import {
 })
 export class MovementConfigsPageComponent implements OnInit {
   @ViewChild('configFormDialog') configFormDialog?: TemplateRef<unknown>;
+  @ViewChild('itemTypeFormDialog') itemTypeFormDialog?: TemplateRef<unknown>;
+
+  activeSection: 'CONFIGURACOES' | 'TIPOS_ITENS' = 'CONFIGURACOES';
 
   movementTypes: MovimentoTipoOption[] = [];
   activeType = '';
@@ -65,6 +73,18 @@ export class MovementConfigsPageComponent implements OnInit {
   errorMessage = '';
   featureEnabled = true;
   coverageWarnings: MovimentoConfigCoverageWarning[] = [];
+  loadingItemTypes = false;
+  itemTypes: MovimentoItemTipo[] = [];
+  filteredItemTypes: MovimentoItemTipo[] = [];
+  itemTypesDisplayedColumns = ['nome', 'catalogo', 'ativo', 'acoes'];
+  itemTypesSearchTerm = '';
+  itemTypesSearchOptions: FieldSearchOption[] = [
+    { key: 'nome', label: 'Nome' }
+  ];
+  itemTypesSearchFields = ['nome'];
+  itemTypesStatusFilter: 'ALL' | 'ATIVO' | 'INATIVO' = 'ALL';
+  itemTypesCatalogFilter: '' | 'PRODUCTS' | 'SERVICES' = '';
+  selectedItemTypeId: number | null = null;
 
   configs: MovimentoConfig[] = [];
   filteredConfigs: MovimentoConfig[] = [];
@@ -90,8 +110,14 @@ export class MovementConfigsPageComponent implements OnInit {
 
   readOnlyMode = false;
   editingConfigId: number | null = null;
-  activeFormTab: 'CONFIGURACAO' | 'FILIAIS' = 'FILIAIS';
+  activeFormTab: 'CONFIGURACAO' | 'FILIAIS' | 'ITENS' = 'FILIAIS';
+  configItemTipos: MovimentoConfigItemTipo[] = [];
+  loadingConfigItemTipos = false;
+  savingConfigItemTipos = false;
+  editingItemTypeId: number | null = null;
+  readOnlyItemTypeMode = false;
   private dialogRef: MatDialogRef<unknown> | null = null;
+  private itemTypeDialogRef: MatDialogRef<unknown> | null = null;
 
   readonly form = this.fb.group({
     nome: ['', [Validators.required, Validators.maxLength(120)]],
@@ -99,6 +125,12 @@ export class MovementConfigsPageComponent implements OnInit {
     empresaIds: [<number[]>[], [arrayRequiredValidator]],
     tiposEntidadePermitidos: [<number[]>[]],
     tipoEntidadePadraoId: [null as number | null]
+  });
+
+  readonly itemTypeForm = this.fb.group({
+    nome: ['', [Validators.required, Validators.maxLength(120)]],
+    catalogType: ['PRODUCTS' as 'PRODUCTS' | 'SERVICES', [Validators.required]],
+    ativo: [true]
   });
 
   constructor(
@@ -144,6 +176,16 @@ export class MovementConfigsPageComponent implements OnInit {
     return this.activeType === tipo;
   }
 
+  setActiveSection(section: 'CONFIGURACOES' | 'TIPOS_ITENS'): void {
+    if (this.activeSection === section) {
+      return;
+    }
+    this.activeSection = section;
+    if (section === 'TIPOS_ITENS' && this.itemTypes.length === 0) {
+      this.loadItemTypes();
+    }
+  }
+
   toggleMobileFilters(): void {
     this.mobileFiltersOpen = !this.mobileFiltersOpen;
   }
@@ -182,10 +224,50 @@ export class MovementConfigsPageComponent implements OnInit {
     });
   }
 
+  applyItemTypesFilters(): void {
+    const term = (this.itemTypesSearchTerm || '').trim().toLowerCase();
+    this.filteredItemTypes = (this.itemTypes || []).filter(item => {
+      if (this.itemTypesStatusFilter === 'ATIVO' && !item.ativo) {
+        return false;
+      }
+      if (this.itemTypesStatusFilter === 'INATIVO' && item.ativo) {
+        return false;
+      }
+      if (this.itemTypesCatalogFilter && item.catalogType !== this.itemTypesCatalogFilter) {
+        return false;
+      }
+      if (!term) {
+        return true;
+      }
+      return (item.nome || '').toLowerCase().includes(term);
+    });
+  }
+
   onSearchChange(value: FieldSearchValue): void {
     this.searchTerm = value.term;
     this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(option => option.key);
     this.applyFilters();
+  }
+
+  onItemTypeSearchChange(value: FieldSearchValue): void {
+    this.itemTypesSearchTerm = value.term;
+    this.itemTypesSearchFields = value.fields.length ? value.fields : this.itemTypesSearchOptions.map(option => option.key);
+    this.applyItemTypesFilters();
+  }
+
+  clearConfigFilters(): void {
+    this.searchTerm = '';
+    this.searchFields = ['nome', 'empresas', 'destinatario'];
+    this.statusFilter = 'ALL';
+    this.applyFilters();
+  }
+
+  clearItemTypeFilters(): void {
+    this.itemTypesSearchTerm = '';
+    this.itemTypesSearchFields = ['nome'];
+    this.itemTypesStatusFilter = 'ALL';
+    this.itemTypesCatalogFilter = '';
+    this.applyItemTypesFilters();
   }
 
   openCreate(): void {
@@ -202,6 +284,7 @@ export class MovementConfigsPageComponent implements OnInit {
       tiposEntidadePermitidos: [],
       tipoEntidadePadraoId: null
     });
+    this.configItemTipos = [];
     this.form.enable({ emitEvent: false });
     this.openDialog();
   }
@@ -222,6 +305,7 @@ export class MovementConfigsPageComponent implements OnInit {
       tiposEntidadePermitidos: [...(config.tiposEntidadePermitidos || [])],
       tipoEntidadePadraoId: config.tipoEntidadePadraoId
     });
+    this.loadConfigItemTipos(config.id);
     if (this.readOnlyMode) {
       this.form.disable({ emitEvent: false });
     } else {
@@ -246,18 +330,33 @@ export class MovementConfigsPageComponent implements OnInit {
     }
 
     this.saving = true;
+    this.savingConfigItemTipos = true;
     const request$ = this.editingConfigId
       ? this.movementConfigService.update(this.editingConfigId, payload)
       : this.movementConfigService.create(payload);
 
-      request$.pipe(finalize(() => this.saving = false)).subscribe({
-      next: () => {
-        this.notify.success(this.editingConfigId ? 'Configuracao atualizada.' : 'Configuracao criada.');
-        this.closeDialog();
-        this.loadConfigs();
-        this.loadCoverageWarnings();
+    request$.subscribe({
+      next: savedConfig => {
+        this.replaceTiposItensByConfig(savedConfig.id)
+          .pipe(finalize(() => {
+            this.saving = false;
+            this.savingConfigItemTipos = false;
+          }))
+          .subscribe({
+            next: () => {
+              this.notify.success(this.editingConfigId ? 'Configuracao atualizada.' : 'Configuracao criada.');
+              this.closeDialog();
+              this.loadConfigs();
+              this.loadCoverageWarnings();
+            },
+            error: err => this.notify.error(this.errorFrom(err, 'Nao foi possivel salvar os tipos de itens da configuracao.'))
+          });
       },
-      error: (err) => this.notify.error(this.errorFrom(err, 'Nao foi possivel salvar a configuracao.'))
+      error: err => {
+        this.saving = false;
+        this.savingConfigItemTipos = false;
+        this.notify.error(this.errorFrom(err, 'Nao foi possivel salvar a configuracao.'));
+      }
     });
   }
 
@@ -315,6 +414,134 @@ export class MovementConfigsPageComponent implements OnInit {
     });
   }
 
+  openCreateItemType(): void {
+    this.readOnlyItemTypeMode = false;
+    this.editingItemTypeId = null;
+    this.itemTypeForm.reset({
+      nome: '',
+      catalogType: 'PRODUCTS',
+      ativo: true
+    });
+    this.itemTypeForm.enable({ emitEvent: false });
+    this.openItemTypeDialog();
+  }
+
+  openViewItemType(item: MovimentoItemTipo): void {
+    this.openEditItemType(item, true);
+  }
+
+  openEditItemType(item: MovimentoItemTipo, readOnly = false): void {
+    this.readOnlyItemTypeMode = readOnly;
+    this.editingItemTypeId = item.id;
+    this.selectedItemTypeId = item.id;
+    this.itemTypeForm.reset({
+      nome: item.nome,
+      catalogType: item.catalogType,
+      ativo: item.ativo
+    });
+    if (readOnly) {
+      this.itemTypeForm.disable({ emitEvent: false });
+    } else {
+      this.itemTypeForm.enable({ emitEvent: false });
+    }
+    this.openItemTypeDialog();
+  }
+
+  saveItemType(): void {
+    if (this.readOnlyItemTypeMode) {
+      return;
+    }
+    if (this.itemTypeForm.invalid) {
+      this.itemTypeForm.markAllAsTouched();
+      return;
+    }
+    const raw = this.itemTypeForm.getRawValue();
+    const payload: MovimentoItemTipoRequest = {
+      nome: (raw.nome || '').trim(),
+      catalogType: raw.catalogType || 'PRODUCTS',
+      ativo: !!raw.ativo
+    };
+    this.saving = true;
+    const request$ = this.editingItemTypeId
+      ? this.movementConfigService.updateTipoItem(this.editingItemTypeId, payload)
+      : this.movementConfigService.createTipoItem(payload);
+
+    request$.pipe(finalize(() => this.saving = false)).subscribe({
+      next: () => {
+        this.notify.success(this.editingItemTypeId ? 'Tipo de item atualizado.' : 'Tipo de item criado.');
+        this.closeItemTypeDialog();
+        this.loadItemTypes();
+      },
+      error: err => this.notify.error(this.errorFrom(err, 'Nao foi possivel salvar o tipo de item.'))
+    });
+  }
+
+  deleteItemType(item: MovimentoItemTipo): void {
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Inativar tipo de item',
+        message: `Deseja inativar o tipo de item "${item.nome}"?`,
+        confirmText: 'Inativar',
+        confirmColor: 'warn'
+      }
+    });
+    ref.afterClosed().subscribe(result => {
+      if (!result) {
+        return;
+      }
+      this.saving = true;
+      this.movementConfigService.deleteTipoItem(item.id).pipe(finalize(() => this.saving = false)).subscribe({
+        next: () => {
+          this.notify.success('Tipo de item inativado.');
+          this.loadItemTypes();
+        },
+        error: err => this.notify.error(this.errorFrom(err, 'Nao foi possivel inativar o tipo de item.'))
+      });
+    });
+  }
+
+  toggleTipoItemConfig(itemTypeId: number, checked: boolean): void {
+    const idx = this.configItemTipos.findIndex(item => item.movimentoItemTipoId === itemTypeId);
+    if (!checked && idx >= 0) {
+      this.configItemTipos.splice(idx, 1);
+      this.configItemTipos = [...this.configItemTipos];
+      return;
+    }
+    if (checked && idx < 0) {
+      const itemType = this.itemTypes.find(item => item.id === itemTypeId);
+      this.configItemTipos = [...this.configItemTipos, {
+        movimentoItemTipoId: itemTypeId,
+        nome: itemType?.nome || `Tipo #${itemTypeId}`,
+        catalogType: itemType?.catalogType || 'PRODUCTS',
+        cobrar: true,
+        ativo: itemType?.ativo ?? true
+      }];
+    }
+  }
+
+  setCobrarForTipoItem(itemTypeId: number, cobrar: boolean): void {
+    this.configItemTipos = this.configItemTipos.map(item =>
+      item.movimentoItemTipoId === itemTypeId ? { ...item, cobrar } : item);
+  }
+
+  isTipoItemSelecionado(itemTypeId: number): boolean {
+    return this.configItemTipos.some(item => item.movimentoItemTipoId === itemTypeId);
+  }
+
+  cobrarForTipoItem(itemTypeId: number): boolean {
+    return this.configItemTipos.find(item => item.movimentoItemTipoId === itemTypeId)?.cobrar ?? true;
+  }
+
+  closeItemTypeDialog(): void {
+    if (this.itemTypeDialogRef) {
+      this.itemTypeDialogRef.close();
+    }
+    this.itemTypeDialogRef = null;
+    this.editingItemTypeId = null;
+    this.readOnlyItemTypeMode = false;
+    this.itemTypeForm.enable({ emitEvent: false });
+  }
+
   closeDialog(): void {
     if (this.dialogRef) {
       this.dialogRef.close();
@@ -326,7 +553,7 @@ export class MovementConfigsPageComponent implements OnInit {
     this.form.enable({ emitEvent: false });
   }
 
-  setFormTab(tab: 'CONFIGURACAO' | 'FILIAIS'): void {
+  setFormTab(tab: 'CONFIGURACAO' | 'FILIAIS' | 'ITENS'): void {
     this.activeFormTab = tab;
   }
 
@@ -368,6 +595,24 @@ export class MovementConfigsPageComponent implements OnInit {
 
   flowSummary(): string {
     return 'Fluxo: 1) selecione o tipo de movimento; 2) crie/edite a configuracao; 3) use a aba de empresas para atribuir quem usa essa regra. Sempre que faltar configuracao aplicavel, o sistema avisa e bloqueia o uso do movimento.';
+  }
+
+  catalogTypeLabel(value: 'PRODUCTS' | 'SERVICES'): string {
+    return value === 'SERVICES' ? 'Servicos' : 'Produtos';
+  }
+
+  itemTypesFiltersCount(): number {
+    let count = 0;
+    if ((this.itemTypesSearchTerm || '').trim()) {
+      count += 1;
+    }
+    if (this.itemTypesStatusFilter !== 'ALL') {
+      count += 1;
+    }
+    if (this.itemTypesCatalogFilter) {
+      count += 1;
+    }
+    return count;
   }
 
   coverageWarningsForActiveType(): MovimentoConfigCoverageWarning[] {
@@ -422,6 +667,7 @@ export class MovementConfigsPageComponent implements OnInit {
           this.activeType = this.movementTypes[0]?.codigo || '';
         }
         this.loadConfigs();
+        this.loadItemTypes();
       },
       error: (err) => {
         this.movementTypes = [];
@@ -572,6 +818,53 @@ export class MovementConfigsPageComponent implements OnInit {
     };
   }
 
+  private replaceTiposItensByConfig(configId: number) {
+    if (!configId) {
+      return of([]);
+    }
+    const payload: MovimentoConfigItemTipoRequest[] = (this.configItemTipos || []).map(item => ({
+      movimentoItemTipoId: item.movimentoItemTipoId,
+      cobrar: item.cobrar
+    }));
+    return this.movementConfigService.replaceTiposItensByConfig(configId, payload);
+  }
+
+  private loadItemTypes(): void {
+    this.loadingItemTypes = true;
+    this.movementConfigService.listTiposItens({
+      page: 0,
+      size: 500
+    }).pipe(finalize(() => this.loadingItemTypes = false)).subscribe({
+      next: page => {
+        this.itemTypes = (page?.content || []).slice();
+        this.applyItemTypesFilters();
+      },
+      error: err => {
+        this.itemTypes = [];
+        this.filteredItemTypes = [];
+        this.notify.error(this.errorFrom(err, 'Nao foi possivel carregar tipos de itens.'));
+      }
+    });
+  }
+
+  private loadConfigItemTipos(configId: number): void {
+    if (!configId) {
+      this.configItemTipos = [];
+      return;
+    }
+    this.loadingConfigItemTipos = true;
+    this.movementConfigService.listTiposItensByConfig(configId)
+      .pipe(finalize(() => this.loadingConfigItemTipos = false))
+      .subscribe({
+        next: rows => {
+          this.configItemTipos = (rows || []).slice();
+        },
+        error: () => {
+          this.configItemTipos = [];
+        }
+      });
+  }
+
   private openDialog(): void {
     if (!this.configFormDialog) {
       return;
@@ -595,6 +888,27 @@ export class MovementConfigsPageComponent implements OnInit {
       this.readOnlyMode = false;
       this.editingConfigId = null;
       this.activeFormTab = 'FILIAIS';
+    });
+  }
+
+  private openItemTypeDialog(): void {
+    if (!this.itemTypeFormDialog) {
+      return;
+    }
+    this.itemTypeDialogRef = this.dialog.open(this.itemTypeFormDialog, {
+      width: '640px',
+      maxWidth: '96vw',
+      maxHeight: 'calc(100dvh - 120px)',
+      panelClass: 'movimento-config-dialog-panel',
+      autoFocus: false,
+      restoreFocus: true,
+      position: { top: '88px' }
+    });
+    this.itemTypeDialogRef.afterClosed().subscribe(() => {
+      this.itemTypeDialogRef = null;
+      this.readOnlyItemTypeMode = false;
+      this.editingItemTypeId = null;
+      this.itemTypeForm.enable({ emitEvent: false });
     });
   }
 

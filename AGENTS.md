@@ -58,6 +58,7 @@
 - O bloco superior deve usar `.page-list-sticky` e fundo opaco `var(--surface)`.
 - Em layout com padding superior no container, aplicar compensacao para evitar salto visual (`margin-top` negativo e `padding-top` equivalente).
 - O bloco sticky deve envolver cabecalho da lista e card de filtros.
+- Todo bloco de filtros de lista deve ter botao `Limpar`, visivel no desktop e no estado expandido do mobile, resetando filtros para o estado padrao da tela.
 
 ### Coluna de acoes fixa em tabela
 
@@ -75,6 +76,13 @@
 - O botao deve exibir icone `tune` e indicador de expansao.
 - Em desktop/tablet (`md+`), filtros ficam sempre visiveis.
 - O comportamento mobile deve depender de regra explicita de viewport no componente.
+
+### Padrao especifico: lista de movimentos de estoque
+
+- Seguir o mesmo card de filtros das listas globais (`page-list-sticky` + card `Filtros`) sem criar menu de filtros paralelo.
+- Manter filtro oficial da lista em `movimento-estoque-list`: apenas `Buscar`.
+- Nao exibir campos/colunas de data na lista ou na ficha de `movimentos/estoque` ate a feature de datas configuraveis.
+- Nao adicionar novos filtros ou bloco auxiliar de filtro nessa tela sem documentacao formal no repositorio.
 
 ### Padrao global de fichas
 
@@ -139,6 +147,7 @@
   - `frontend/src/app/features/companies/companies-list.component.html`
   - `frontend/src/app/features/roles/roles.component.html`
   - `frontend/src/app/features/access-controls/access-controls.component.html`
+  - `frontend/src/app/features/movements/movimento-estoque-list.component.html`
 - Fichas de referencia:
   - `frontend/src/app/features/tenants/tenant-form.component.html`
   - `frontend/src/app/features/users/user-form.component.html`

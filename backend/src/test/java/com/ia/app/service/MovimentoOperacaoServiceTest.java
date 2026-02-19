@@ -16,6 +16,7 @@ import com.ia.app.repository.EmpresaRepository;
 import com.ia.app.repository.MovimentoConfigRepository;
 import com.ia.app.tenant.EmpresaContext;
 import com.ia.app.tenant.TenantContext;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -77,7 +78,8 @@ class MovimentoOperacaoServiceTest {
     MovimentoEstoqueCreateRequest request = new MovimentoEstoqueCreateRequest(
       empresa.getId(),
       "Movimento de ajuste 31/12/2025",
-      null);
+      null,
+      List.of());
     MovimentoEstoqueResponse created = estoqueHandler.create(objectMapper.valueToTree(request));
 
     assertThat(created.id()).isNotNull();
@@ -85,7 +87,7 @@ class MovimentoOperacaoServiceTest {
     assertThat(created.nome()).isEqualTo("Movimento de ajuste 31/12/2025");
     assertThat(created.movimentoConfigId()).isEqualTo(config.getId());
 
-    Page<MovimentoEstoqueResponse> page = estoqueHandler.list(PageRequest.of(0, 20), null, null, null);
+    Page<MovimentoEstoqueResponse> page = estoqueHandler.list(PageRequest.of(0, 20), null);
     assertThat(page.getTotalElements()).isEqualTo(1);
     assertThat(page.getContent().get(0).id()).isEqualTo(created.id());
   }
@@ -102,7 +104,8 @@ class MovimentoOperacaoServiceTest {
     MovimentoEstoqueCreateRequest request = new MovimentoEstoqueCreateRequest(
       outraEmpresa.getId(),
       "Movimento fora do contexto",
-      null);
+      null,
+      List.of());
 
     assertThatThrownBy(() -> estoqueHandler.create(objectMapper.valueToTree(request)))
       .isInstanceOf(IllegalArgumentException.class)

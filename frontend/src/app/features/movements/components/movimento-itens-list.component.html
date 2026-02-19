@@ -1,0 +1,107 @@
+<div class="overflow-auto">
+  <table mat-table [dataSource]="items" class="w-full movimento-itens-table">
+    <ng-container matColumnDef="tipo">
+      <th mat-header-cell *matHeaderCellDef>Tipo</th>
+      <td mat-cell *matCellDef="let item">{{ item.movimentoItemTipoNome }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="catalogo">
+      <th mat-header-cell *matHeaderCellDef>Item Catalogo</th>
+      <td mat-cell *matCellDef="let item">{{ item.catalogCodigoSnapshot }} - {{ item.catalogNomeSnapshot }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="quantidade">
+      <th mat-header-cell *matHeaderCellDef class="text-right">Qtd</th>
+      <td mat-cell *matCellDef="let item" class="text-right">
+        <ng-container *ngIf="inlineEditEnabled && isEditingItem(item); else qtdViewTpl">
+          <input
+            matInput
+            type="number"
+            min="0.000001"
+            step="0.000001"
+            [(ngModel)]="editingQuantidade"
+            class="w-24 text-right" />
+        </ng-container>
+        <ng-template #qtdViewTpl>{{ item.quantidade | number : '1.2-6' }}</ng-template>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="valorUnitario">
+      <th mat-header-cell *matHeaderCellDef class="text-right">Vlr Unit.</th>
+      <td mat-cell *matCellDef="let item" class="text-right">
+        <ng-container *ngIf="inlineEditEnabled && isEditingItem(item); else unitViewTpl">
+          <input
+            matInput
+            type="number"
+            min="0"
+            step="0.000001"
+            [(ngModel)]="editingValorUnitario"
+            class="w-24 text-right" />
+        </ng-container>
+        <ng-template #unitViewTpl>{{ item.valorUnitario | number : '1.2-6' }}</ng-template>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="valorTotal">
+      <th mat-header-cell *matHeaderCellDef class="text-right">Vlr Total</th>
+      <td mat-cell *matCellDef="let item" class="text-right">{{ item.valorTotal | number : '1.2-6' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="cobrar">
+      <th mat-header-cell *matHeaderCellDef>Cobrar</th>
+      <td mat-cell *matCellDef="let item">{{ item.cobrar ? 'Sim' : 'Nao' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="acoes">
+      <th mat-header-cell *matHeaderCellDef class="text-right">Acoes</th>
+      <td mat-cell *matCellDef="let item" class="flex flex-nowrap justify-end gap-1.5">
+        <button mat-icon-button type="button" matTooltip="Consultar item" (click)="onConsultClick($event, item)" [disabled]="!actionButtonsEnabled">
+          <mat-icon>visibility</mat-icon>
+        </button>
+
+        <ng-container *ngIf="inlineEditEnabled && isEditingItem(item); else editActionTpl">
+          <button
+            mat-icon-button
+            type="button"
+            color="primary"
+            matTooltip="Salvar item"
+            [disabled]="itemSaving || !actionButtonsEnabled"
+            (click)="onSaveClick($event, item)">
+            <mat-icon>save</mat-icon>
+          </button>
+          <button mat-icon-button type="button" matTooltip="Cancelar edicao" (click)="onCancelClick($event)" [disabled]="!actionButtonsEnabled">
+            <mat-icon>close</mat-icon>
+          </button>
+        </ng-container>
+
+        <ng-template #editActionTpl>
+          <button
+            mat-icon-button
+            type="button"
+            matTooltip="Alterar item"
+            (click)="onEditClick($event, item)"
+            [disabled]="itemSaving || !actionButtonsEnabled">
+            <mat-icon>edit</mat-icon>
+          </button>
+        </ng-template>
+
+        <button
+          mat-icon-button
+          type="button"
+          color="warn"
+          matTooltip="Excluir item"
+          [disabled]="itemSaving || !actionButtonsEnabled"
+          (click)="onDeleteClick($event, item)">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+    <tr mat-row *matRowDef="let item; columns: displayedColumns"></tr>
+  </table>
+</div>
+
+<div class="p-3 text-xs text-[var(--muted)]" *ngIf="!items.length">
+  {{ emptyMessage }}
+</div>

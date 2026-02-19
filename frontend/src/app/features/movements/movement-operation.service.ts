@@ -13,21 +13,71 @@ export interface MovimentoEstoqueTemplateResponse {
   movimentoConfigId: number;
   tipoEntidadePadraoId: number | null;
   tiposEntidadePermitidos: number[];
+  tiposItensPermitidos: MovimentoTipoItemTemplate[];
   nome: string;
-  dataMovimento: string;
+}
+
+export interface MovimentoTipoItemTemplate {
+  tipoItemId: number;
+  nome: string;
+  catalogType: 'PRODUCTS' | 'SERVICES';
+  cobrar: boolean;
+}
+
+export interface MovimentoEstoqueItemRequest {
+  movimentoItemTipoId: number;
+  catalogItemId: number;
+  quantidade: number;
+  valorUnitario: number;
+  ordem?: number | null;
+  observacao?: string | null;
+}
+
+export interface MovimentoEstoqueItemResponse {
+  id: number;
+  movimentoItemTipoId: number;
+  movimentoItemTipoNome: string;
+  catalogType: 'PRODUCTS' | 'SERVICES';
+  catalogItemId: number;
+  catalogCodigoSnapshot: number;
+  catalogNomeSnapshot: string;
+  quantidade: number;
+  valorUnitario: number;
+  valorTotal: number;
+  cobrar: boolean;
+  ordem: number;
+  observacao?: string | null;
+}
+
+export interface MovimentoItemCatalogOption {
+  id: number;
+  catalogType: 'PRODUCTS' | 'SERVICES';
+  codigo: number;
+  nome: string;
+  descricao?: string | null;
+}
+
+export interface MovimentoItemCatalogPage {
+  content: MovimentoItemCatalogOption[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
 }
 
 export interface MovimentoEstoqueCreateRequest {
   empresaId: number;
   nome: string;
-  dataMovimento: string | null;
+  tipoEntidadeId?: number | null;
+  itens: MovimentoEstoqueItemRequest[];
 }
 
 export interface MovimentoEstoqueUpdateRequest {
   empresaId: number;
   nome: string;
-  dataMovimento: string | null;
+  tipoEntidadeId?: number | null;
   version: number;
+  itens: MovimentoEstoqueItemRequest[];
 }
 
 export interface MovimentoEstoqueResponse {
@@ -35,9 +85,11 @@ export interface MovimentoEstoqueResponse {
   tipoMovimento: string;
   empresaId: number;
   nome: string;
-  dataMovimento: string | null;
   movimentoConfigId: number;
   tipoEntidadePadraoId: number | null;
+  itens: MovimentoEstoqueItemResponse[];
+  totalItens: number;
+  totalCobrado: number;
   version: number;
   createdAt?: string;
   updatedAt?: string;
@@ -55,8 +107,6 @@ export interface MovimentoEstoqueListFilters {
   page?: number;
   size?: number;
   nome?: string;
-  dataInicio?: string | null;
-  dataFim?: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -79,12 +129,6 @@ export class MovementOperationService {
     if (nome) {
       params = params.set('nome', nome);
     }
-    if (filters.dataInicio) {
-      params = params.set('dataInicio', filters.dataInicio);
-    }
-    if (filters.dataFim) {
-      params = params.set('dataFim', filters.dataFim);
-    }
     return this.http.get<MovimentoEstoquePage>(`${this.baseUrl}/${this.tipoEstoque}`, { params });
   }
 
@@ -102,5 +146,17 @@ export class MovementOperationService {
 
   deleteEstoque(id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${this.tipoEstoque}/${id}`);
+  }
+
+  searchCatalogItemsByTipoItem(tipoItemId: number, text = '', page = 0, size = 20): Observable<MovimentoItemCatalogPage> {
+    let params = new HttpParams()
+      .set('tipoItemId', String(tipoItemId))
+      .set('page', String(page))
+      .set('size', String(size));
+    const normalizedText = (text || '').trim();
+    if (normalizedText) {
+      params = params.set('text', normalizedText);
+    }
+    return this.http.get<MovimentoItemCatalogPage>(`${this.baseUrl}/${this.tipoEstoque}/catalogo-itens`, { params });
   }
 }

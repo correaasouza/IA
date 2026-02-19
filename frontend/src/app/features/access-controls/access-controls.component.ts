@@ -125,6 +125,12 @@ export class AccessControlsComponent implements OnInit {
     this.applyFilters();
   }
 
+  clearFilters(): void {
+    this.searchTerm = '';
+    this.searchFields = ['controlKey', 'roles'];
+    this.applyFilters();
+  }
+
   encodeKey(key: string): string {
     return encodeURIComponent(key);
   }

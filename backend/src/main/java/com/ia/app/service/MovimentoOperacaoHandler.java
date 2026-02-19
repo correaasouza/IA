@@ -3,7 +3,6 @@ package com.ia.app.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ia.app.domain.MovimentoTipo;
 import com.ia.app.dto.MovimentoTemplateRequest;
-import java.time.LocalDate;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -15,7 +14,7 @@ public interface MovimentoOperacaoHandler {
 
   Object create(JsonNode payload);
 
-  Page<?> list(Pageable pageable, String nome, LocalDate dataInicio, LocalDate dataFim);
+  Page<?> list(Pageable pageable, String nome);
 
   Object get(Long id);
 

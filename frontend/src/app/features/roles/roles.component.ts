@@ -87,6 +87,12 @@ export class RolesComponent implements OnInit {
     this.applyRoleSearch();
   }
 
+  clearFilters() {
+    this.roleSearchTerm = '';
+    this.roleSearchFields = ['nome', 'descricao'];
+    this.applyRoleSearch();
+  }
+
   toggleMobileRoleFilters() {
     this.mobileRoleFiltersOpen = !this.mobileRoleFiltersOpen;
   }

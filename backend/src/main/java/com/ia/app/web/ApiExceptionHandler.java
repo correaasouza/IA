@@ -192,6 +192,38 @@ public class ApiExceptionHandler {
       pd.setDetail("Informe o nome do movimento de estoque.");
     } else if (message.startsWith("movimento_estoque_version_required")) {
       pd.setDetail("Informe a versao atual do movimento para salvar alteracoes.");
+    } else if (message.startsWith("movimento_estoque_item_required")) {
+      pd.setDetail("Informe os dados do item do movimento.");
+    } else if (message.startsWith("movimento_estoque_item_tipo_required")) {
+      pd.setDetail("Informe o tipo de item do movimento.");
+    } else if (message.startsWith("movimento_estoque_item_catalog_item_required")) {
+      pd.setDetail("Informe o item de catalogo do movimento.");
+    } else if (message.startsWith("movimento_estoque_tipo_entidade_required")) {
+      pd.setDetail("Informe o tipo de entidade do movimento.");
+    } else if (message.startsWith("movimento_estoque_tipo_entidade_invalid")) {
+      pd.setDetail("Tipo de entidade invalido para a configuracao de movimento.");
+    } else if (message.startsWith("movimento_estoque_item_quantidade_invalid")) {
+      pd.setDetail("Quantidade do item invalida.");
+    } else if (message.startsWith("movimento_estoque_item_valor_unitario_invalid")) {
+      pd.setDetail("Valor unitario do item invalido.");
+    } else if (message.startsWith("movimento_estoque_item_tipo_nao_habilitado")) {
+      pd.setDetail("Tipo de item nao habilitado para a configuracao do movimento.");
+    } else if (message.startsWith("movimento_estoque_item_catalogo_invalido")) {
+      pd.setDetail("Item de catalogo invalido para o contexto da empresa e tipo de item.");
+    } else if (message.startsWith("movimento_item_tipo_id_invalid")) {
+      pd.setDetail("Identificador do tipo de item invalido.");
+    } else if (message.startsWith("movimento_item_tipo_not_found")) {
+      pd.setDetail("Tipo de item nao encontrado.");
+    } else if (message.startsWith("movimento_item_tipo_inativo")) {
+      pd.setDetail("Tipo de item inativo.");
+    } else if (message.startsWith("movimento_item_tipo_nome_required")) {
+      pd.setDetail("Informe o nome do tipo de item.");
+    } else if (message.startsWith("movimento_item_tipo_catalog_type_required")) {
+      pd.setDetail("Informe o tipo de catalogo do tipo de item.");
+    } else if (message.startsWith("movimento_item_tipo_nome_duplicado")) {
+      pd.setDetail("Ja existe tipo de item com este nome no locatario.");
+    } else if (message.startsWith("movimento_config_item_tipo_id_invalid")) {
+      pd.setDetail("Tipo de item invalido na configuracao de movimento.");
     } else if (message.startsWith("movimento_config_nome_required")) {
       pd.setDetail("Informe o nome da configuracao de movimento.");
     } else if (message.startsWith("movimento_config_prioridade_invalid")) {
@@ -277,9 +309,38 @@ public class ApiExceptionHandler {
       pd.setDetail("A empresa ja esta vinculada a esta configuracao de movimento.");
     } else if (normalized.contains("ux_movimento_config_tipo_entidade_scope")) {
       pd.setDetail("O tipo de entidade ja esta vinculado a esta configuracao de movimento.");
+    } else if (normalized.contains("ux_movimento_item_tipo_tenant_nome")) {
+      pd.setDetail("Ja existe tipo de item com este nome no locatario.");
+    } else if (normalized.contains("ux_mov_config_item_tipo_scope")) {
+      pd.setDetail("Tipo de item ja vinculado a configuracao de movimento.");
     } else {
       pd.setDetail("Operacao violou uma restricao de integridade.");
     }
+    return pd;
+  }
+
+  @ExceptionHandler(Exception.class)
+  public ProblemDetail handleGeneric(Exception ex) {
+    Throwable root = rootCause(ex);
+    if (root instanceof IllegalArgumentException iae) {
+      return handleIllegalArgument(iae);
+    }
+    if (root instanceof EntityNotFoundException enfe) {
+      return handleNotFound(enfe);
+    }
+    if (root instanceof IllegalStateException ise) {
+      return handleIllegalState(ise);
+    }
+    if (root instanceof ObjectOptimisticLockingFailureException oole) {
+      return handleOptimisticLock(oole);
+    }
+    if (root instanceof DataIntegrityViolationException dive) {
+      return handleDataIntegrityViolation(dive);
+    }
+
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.INTERNAL_SERVER_ERROR);
+    pd.setTitle("Erro interno");
+    pd.setDetail("Erro inesperado ao processar a requisicao.");
     return pd;
   }
 
@@ -310,7 +371,16 @@ public class ApiExceptionHandler {
       || message.startsWith("catalog_stock_type_codigo_duplicado")
       || message.startsWith("catalog_stock_type_last_active")
       || message.startsWith("catalog_stock_adjustment_codigo_duplicado")
+      || message.startsWith("movimento_item_tipo_nome_duplicado")
       || message.startsWith("movimento_config_conflito_prioridade_contexto_empresa")
       || message.startsWith("movimento_config_conflito_resolucao");
+  }
+
+  private Throwable rootCause(Throwable ex) {
+    Throwable current = ex;
+    while (current != null && current.getCause() != null && current.getCause() != current) {
+      current = current.getCause();
+    }
+    return current == null ? ex : current;
   }
 }

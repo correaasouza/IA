@@ -118,6 +118,13 @@ export class TenantsListComponent implements OnInit {
     this.applyFilters();
   }
 
+  clearFilters() {
+    this.searchTerm = '';
+    this.searchFields = ['nome'];
+    this.filters.patchValue({ status: '' }, { emitEvent: false });
+    this.applyFilters();
+  }
+
   
   @HostListener('window:resize')
   onWindowResize() {

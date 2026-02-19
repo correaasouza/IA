@@ -6,7 +6,9 @@ public enum PermissaoCodigo {
   PAPEL_MANAGE("Gerenciar papéis"),
   RELATORIO_VIEW("Visualizar relatórios"),
   ENTIDADE_EDIT("Editar entidades"),
-  MOVIMENTO_ESTOQUE_OPERAR("Operar movimento de estoque");
+  MOVIMENTO_ESTOQUE_OPERAR("Operar movimento de estoque"),
+  MOVIMENTO_ITEM_CONFIGURAR("Configurar tipos de itens de movimento"),
+  MOVIMENTO_ESTOQUE_ITEM_OPERAR("Operar itens no movimento de estoque");
 
   private final String label;
 

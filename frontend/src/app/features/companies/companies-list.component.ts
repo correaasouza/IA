@@ -187,6 +187,13 @@ export class CompaniesListComponent implements OnInit {
     this.load();
   }
 
+  clearFilters() {
+    this.searchTerm = '';
+    this.searchFields = ['nome'];
+    this.filters.patchValue({ tipo: '', status: '' }, { emitEvent: false });
+    this.applyFilters();
+  }
+
   pageChange(event: PageEvent) {
     this.pageIndex = event.pageIndex;
     this.pageSize = event.pageSize;

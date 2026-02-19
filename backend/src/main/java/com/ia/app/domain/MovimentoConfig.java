@@ -68,6 +68,10 @@ public class MovimentoConfig extends AuditableEntity {
   @OneToMany(mappedBy = "movimentoConfig", cascade = CascadeType.ALL, orphanRemoval = true)
   private List<MovimentoConfigTipoEntidade> tiposEntidadePermitidos = new ArrayList<>();
 
+  @OrderBy("id ASC")
+  @OneToMany(mappedBy = "movimentoConfig", cascade = CascadeType.ALL, orphanRemoval = true)
+  private List<MovimentoConfigItemTipo> tiposItensPermitidos = new ArrayList<>();
+
   public Long getId() {
     return id;
   }
@@ -152,6 +156,10 @@ public class MovimentoConfig extends AuditableEntity {
     return tiposEntidadePermitidos;
   }
 
+  public List<MovimentoConfigItemTipo> getTiposItensPermitidos() {
+    return tiposItensPermitidos;
+  }
+
   public void replaceEmpresas(Collection<Long> empresaIds) {
     Set<Long> desired = normalizeIds(empresaIds);
     empresas.removeIf(item -> item == null || !desired.contains(item.getEmpresaId()));
@@ -198,6 +206,36 @@ public class MovimentoConfig extends AuditableEntity {
     }
   }
 
+  public void replaceTiposItensPermitidos(Collection<MovimentoConfigItemTipoInput> inputs) {
+    List<MovimentoConfigItemTipoInput> normalized = normalizeItemTipoInputs(inputs);
+    Set<Long> desiredIds = normalized.stream()
+      .map(MovimentoConfigItemTipoInput::movimentoItemTipoId)
+      .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+
+    tiposItensPermitidos.removeIf(item -> item == null || !desiredIds.contains(item.getMovimentoItemTipoId()));
+
+    java.util.Map<Long, MovimentoConfigItemTipo> currentByTipo = new java.util.LinkedHashMap<>();
+    for (MovimentoConfigItemTipo item : tiposItensPermitidos) {
+      if (item != null && item.getMovimentoItemTipoId() != null) {
+        currentByTipo.put(item.getMovimentoItemTipoId(), item);
+      }
+    }
+
+    for (MovimentoConfigItemTipoInput input : normalized) {
+      MovimentoConfigItemTipo existing = currentByTipo.get(input.movimentoItemTipoId());
+      if (existing != null) {
+        existing.setCobrar(input.cobrar());
+        continue;
+      }
+      MovimentoConfigItemTipo item = new MovimentoConfigItemTipo();
+      item.setTenantId(tenantId);
+      item.setMovimentoConfig(this);
+      item.setMovimentoItemTipoId(input.movimentoItemTipoId());
+      item.setCobrar(input.cobrar());
+      tiposItensPermitidos.add(item);
+    }
+  }
+
   private Set<Long> normalizeIds(Collection<Long> values) {
     Set<Long> normalized = new LinkedHashSet<>();
     if (values == null) {
@@ -210,4 +248,23 @@ public class MovimentoConfig extends AuditableEntity {
     }
     return normalized;
   }
+
+  private List<MovimentoConfigItemTipoInput> normalizeItemTipoInputs(Collection<MovimentoConfigItemTipoInput> values) {
+    List<MovimentoConfigItemTipoInput> normalized = new ArrayList<>();
+    if (values == null) {
+      return normalized;
+    }
+    Set<Long> seen = new LinkedHashSet<>();
+    for (MovimentoConfigItemTipoInput value : values) {
+      if (value == null || value.movimentoItemTipoId() == null) {
+        continue;
+      }
+      if (seen.add(value.movimentoItemTipoId())) {
+        normalized.add(new MovimentoConfigItemTipoInput(value.movimentoItemTipoId(), value.cobrar()));
+      }
+    }
+    return normalized;
+  }
+
+  public record MovimentoConfigItemTipoInput(Long movimentoItemTipoId, boolean cobrar) {}
 }

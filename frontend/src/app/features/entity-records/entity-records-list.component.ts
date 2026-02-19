@@ -219,6 +219,13 @@ export class EntityRecordsListComponent implements OnInit {
     this.loadRegistros();
   }
 
+  clearFilters(): void {
+    this.searchTerm = '';
+    this.searchFields = ['codigo', 'pessoaNome', 'registroFederal'];
+    this.filters.patchValue({ status: '' }, { emitEvent: false });
+    this.applyFilters();
+  }
+
   onSearchChange(value: FieldSearchValue): void {
     this.searchTerm = value.term;
     this.searchFields = value.fields.length ? value.fields : this.searchOptions.map(o => o.key);

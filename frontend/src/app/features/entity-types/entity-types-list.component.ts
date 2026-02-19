@@ -107,6 +107,13 @@ export class EntityTypesListComponent implements OnInit {
     this.load();
   }
 
+  clearFilters(): void {
+    this.searchTerm = '';
+    this.searchFields = ['nome'];
+    this.filters.patchValue({ status: '' }, { emitEvent: false });
+    this.applyFilters();
+  }
+
   toggleMobileFilters(): void {
     this.mobileFiltersOpen = !this.mobileFiltersOpen;
   }

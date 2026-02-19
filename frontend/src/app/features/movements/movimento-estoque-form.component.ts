@@ -1,6 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { finalize } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
@@ -8,19 +9,47 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { NotificationService } from '../../core/notifications/notification.service';
-import { DateMaskDirective } from '../../shared/date-mask.directive';
-import { isValidDateInput, toDisplayDate, toIsoDate } from '../../shared/date-utils';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { AccessControlDirective } from '../../shared/access-control.directive';
-import { MovementOperationService, MovimentoEstoqueResponse, MovimentoEstoqueTemplateResponse } from './movement-operation.service';
+import { EntityTypeService } from '../entity-types/entity-type.service';
+import { MovimentoItensListComponent } from './components/movimento-itens-list.component';
+import {
+  MovimentoEstoqueCreateRequest,
+  MovimentoEstoqueItemResponse,
+  MovimentoEstoqueItemRequest,
+  MovimentoEstoqueResponse,
+  MovimentoEstoqueTemplateResponse,
+  MovimentoItemCatalogOption,
+  MovimentoTipoItemTemplate,
+  MovementOperationService
+} from './movement-operation.service';
+
+interface MovimentoEstoqueItemDraft {
+  uid: number;
+  movimentoItemTipoId: number | null;
+  catalogType: 'PRODUCTS' | 'SERVICES' | null;
+  catalogItemId: number | null;
+  quantidade: number;
+  valorUnitario: number;
+  cobrar: boolean;
+  ordem: number;
+  observacao: string;
+  catalogSearchText: string;
+  catalogOptions: MovimentoItemCatalogOption[];
+  editing: boolean;
+  saved: boolean;
+}
 
 @Component({
   selector: 'app-movimento-estoque-form',
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     ReactiveFormsModule,
     RouterLink,
     MatButtonModule,
@@ -28,9 +57,11 @@ import { MovementOperationService, MovimentoEstoqueResponse, MovimentoEstoqueTem
     MatIconModule,
     MatInputModule,
     MatDialogModule,
-    DateMaskDirective,
+    MatSelectModule,
+    MatSlideToggleModule,
     InlineLoaderComponent,
-    AccessControlDirective
+    AccessControlDirective,
+    MovimentoItensListComponent
   ],
   templateUrl: './movimento-estoque-form.component.html',
   styleUrls: ['./movimento-estoque-form.component.css']
@@ -45,11 +76,22 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   errorMessage = '';
   movimento: MovimentoEstoqueResponse | null = null;
   templateData: MovimentoEstoqueTemplateResponse | null = null;
+  empresaNomeHeader = '-';
+  itemRows: MovimentoEstoqueItemDraft[] = [];
+  loadingCatalogByRow = new Map<number, boolean>();
+  tipoEntidadeNomeById = new Map<number, string>();
+  @ViewChild('itemEditorAnchor') itemEditorAnchor?: ElementRef<HTMLElement>;
+  readonly handleSavedItemConsult = (item: MovimentoEstoqueItemResponse) => this.onSavedItemConsult(item);
+  readonly handleSavedItemEdit = (item: MovimentoEstoqueItemResponse) => this.onSavedItemEdit(item);
+  readonly handleSavedItemDelete = (item: MovimentoEstoqueItemResponse) => this.onSavedItemDelete(item);
+
+  private nextRowUid = 1;
+  private pendingEditItemUid: number | null = null;
 
   form = this.fb.group({
     empresaId: [null as number | null, Validators.required],
     nome: ['', [Validators.required, Validators.maxLength(120)]],
-    dataMovimento: [''],
+    tipoEntidadeId: [null as number | null],
     version: [null as number | null]
   });
 
@@ -59,16 +101,19 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     private router: Router,
     private dialog: MatDialog,
     private notify: NotificationService,
-    private service: MovementOperationService
+    private service: MovementOperationService,
+    private entityTypeService: EntityTypeService
   ) {}
 
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id') || 0);
     const isEdit = this.route.snapshot.url.some(item => item.path === 'edit');
     const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
+    const editItemUid = Number(this.route.snapshot.queryParamMap.get('editItemUid') || 0);
     if (returnTo) {
       this.returnTo = returnTo;
     }
+    this.pendingEditItemUid = editItemUid > 0 ? editItemUid : null;
     this.mode = id > 0 ? (isEdit ? 'edit' : 'view') : 'new';
     this.title = this.mode === 'new'
       ? 'Novo movimento de estoque'
@@ -91,20 +136,20 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       this.form.markAllAsTouched();
       return;
     }
-    const dataMovimentoInput = (this.form.value.dataMovimento || '').trim();
-    if (dataMovimentoInput && !isValidDateInput(dataMovimentoInput)) {
-      this.form.get('dataMovimento')?.setErrors({ invalidDate: true });
-      this.form.get('dataMovimento')?.markAsTouched();
+
+    const itens = this.buildItemRequests();
+    if (itens == null) {
       return;
     }
 
     const empresaId = Number(this.form.value.empresaId || 0);
     const nome = (this.form.value.nome || '').trim();
-    const dataMovimento = dataMovimentoInput ? toIsoDate(dataMovimentoInput) : null;
+    const tipoEntidadeId = this.normalizeTipoEntidadeId(this.form.value.tipoEntidadeId);
     this.saving = true;
 
     if (this.mode === 'new') {
-      this.service.createEstoque({ empresaId, nome, dataMovimento })
+      const payload: MovimentoEstoqueCreateRequest = { empresaId, nome, tipoEntidadeId, itens };
+      this.service.createEstoque(payload)
         .pipe(finalize(() => (this.saving = false)))
         .subscribe({
           next: created => {
@@ -121,7 +166,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       return;
     }
     const version = Number(this.form.value.version ?? this.movimento.version);
-    this.service.updateEstoque(this.movimento.id, { empresaId, nome, dataMovimento, version })
+    this.service.updateEstoque(this.movimento.id, { empresaId, nome, tipoEntidadeId, version, itens })
       .pipe(finalize(() => (this.saving = false)))
       .subscribe({
         next: updated => {
@@ -170,6 +215,304 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     return (this.form.get('nome')?.value || this.movimento?.nome || '-').trim() || '-';
   }
 
+  empresaAtual(): string {
+    return (this.empresaNomeHeader || '').trim() || '-';
+  }
+
+  tipoEntidadeAtual(): string {
+    const tipoEntidadeId = this.normalizeTipoEntidadeId(this.form.get('tipoEntidadeId')?.value);
+    if (tipoEntidadeId == null) {
+      return '-';
+    }
+    return this.tipoEntidadeNomeById.get(tipoEntidadeId) || `Tipo #${tipoEntidadeId}`;
+  }
+
+  tiposEntidadePermitidos(): number[] {
+    const source = this.templateData?.tiposEntidadePermitidos || [];
+    return source.filter((id): id is number => Number(id) > 0);
+  }
+
+  hasTiposEntidadeConfigurados(): boolean {
+    return this.tiposEntidadePermitidos().length > 0;
+  }
+
+  tipoEntidadeOptionLabel(tipoEntidadeId: number): string {
+    return this.tipoEntidadeNomeById.get(tipoEntidadeId) || `Tipo #${tipoEntidadeId}`;
+  }
+
+  itemTypesPermitidos(): MovimentoTipoItemTemplate[] {
+    if (this.templateData?.tiposItensPermitidos?.length) {
+      return this.templateData.tiposItensPermitidos;
+    }
+    const byId = new Map<number, MovimentoTipoItemTemplate>();
+    for (const item of this.movimento?.itens || []) {
+      byId.set(item.movimentoItemTipoId, {
+        tipoItemId: item.movimentoItemTipoId,
+        nome: item.movimentoItemTipoNome,
+        catalogType: item.catalogType,
+        cobrar: item.cobrar
+      });
+    }
+    return [...byId.values()];
+  }
+
+  itemTypesPermitidosLabel(): string {
+    const tipos = this.itemTypesPermitidos();
+    if (!tipos.length) {
+      return '-';
+    }
+    return tipos.map(item => item.nome).join(', ');
+  }
+
+  addItemRow(): void {
+    const row: MovimentoEstoqueItemDraft = {
+      uid: this.nextRowUid++,
+      movimentoItemTipoId: null,
+      catalogType: null,
+      catalogItemId: null,
+      quantidade: 1,
+      valorUnitario: 0,
+      cobrar: true,
+      ordem: this.itemRows.length,
+      observacao: '',
+      catalogSearchText: '',
+      catalogOptions: [],
+      editing: true,
+      saved: false
+    };
+    this.itemRows = [row, ...this.itemRows];
+    this.reindexRows();
+  }
+
+  removeItemRow(index: number): void {
+    this.itemRows.splice(index, 1);
+    this.reindexRows();
+  }
+
+  saveItemRow(index: number): void {
+    const row = this.itemRows[index];
+    if (!row) return;
+    const error = this.validateItemRow(row, index);
+    if (error) {
+      this.notify.error(error);
+      return;
+    }
+    row.editing = false;
+    row.saved = true;
+    this.reindexRows();
+  }
+
+  editItemRow(index: number): void {
+    const row = this.itemRows[index];
+    if (!row) return;
+    row.editing = true;
+    this.itemRows = [...this.itemRows];
+  }
+
+  cancelItemRow(index: number): void {
+    const row = this.itemRows[index];
+    if (!row) return;
+    if (!row.saved) {
+      this.removeItemRow(index);
+      return;
+    }
+    row.editing = false;
+    this.reindexRows();
+  }
+
+  onTipoItemChange(row: MovimentoEstoqueItemDraft): void {
+    const tipo = this.itemTypesPermitidos().find(item => item.tipoItemId === row.movimentoItemTipoId);
+    row.catalogType = tipo?.catalogType || null;
+    row.cobrar = tipo?.cobrar ?? true;
+    row.catalogItemId = null;
+    row.catalogOptions = [];
+    if (!row.cobrar) {
+      row.valorUnitario = 0;
+    }
+    if (row.movimentoItemTipoId) {
+      this.searchCatalog(row);
+    }
+  }
+
+  isRowEditable(row: MovimentoEstoqueItemDraft): boolean {
+    return this.mode !== 'view' && row.editing;
+  }
+
+  searchCatalog(row: MovimentoEstoqueItemDraft): void {
+    if (!row.movimentoItemTipoId) {
+      row.catalogOptions = [];
+      return;
+    }
+    this.loadingCatalogByRow.set(row.uid, true);
+    this.service.searchCatalogItemsByTipoItem(row.movimentoItemTipoId, row.catalogSearchText || '', 0, 20)
+      .pipe(finalize(() => this.loadingCatalogByRow.set(row.uid, false)))
+      .subscribe({
+        next: page => {
+          row.catalogOptions = (page?.content || []).slice();
+        },
+        error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel buscar itens de catalogo.')
+      });
+  }
+
+  onCatalogItemChange(row: MovimentoEstoqueItemDraft): void {
+    if (!row.catalogItemId) {
+      return;
+    }
+    const option = row.catalogOptions.find(item => item.id === row.catalogItemId);
+    if (option) {
+      row.catalogSearchText = `${option.codigo} - ${option.nome}`;
+    }
+  }
+
+  onValorUnitarioChange(row: MovimentoEstoqueItemDraft): void {
+    if (!row.cobrar) {
+      row.valorUnitario = 0;
+    }
+  }
+
+  lineTotal(row: MovimentoEstoqueItemDraft): number {
+    if (!row.cobrar) {
+      return 0;
+    }
+    const quantidade = Number(row.quantidade || 0);
+    const valorUnitario = Number(row.valorUnitario || 0);
+    return quantidade * valorUnitario;
+  }
+
+  itensTotalCobrado(): number {
+    return this.itemRows.reduce((acc, row) => acc + this.lineTotal(row), 0);
+  }
+
+  isRowCatalogLoading(row: MovimentoEstoqueItemDraft): boolean {
+    return !!this.loadingCatalogByRow.get(row.uid);
+  }
+
+  tipoItemLabel(tipoItemId: number | null): string {
+    if (!tipoItemId) {
+      return '-';
+    }
+    return this.itemTypesPermitidos().find(item => item.tipoItemId === tipoItemId)?.nome || `Tipo #${tipoItemId}`;
+  }
+
+  itemCatalogoResumo(row: MovimentoEstoqueItemDraft): string {
+    return (row.catalogSearchText || '').trim() || '-';
+  }
+
+  editingItemRows(): MovimentoEstoqueItemDraft[] {
+    return this.itemRows.filter(row => row.editing);
+  }
+
+  savedItemRows(): MovimentoEstoqueItemDraft[] {
+    return this.itemRows.filter(row => row.saved && !row.editing);
+  }
+
+  savedItemsAsResponse(): MovimentoEstoqueItemResponse[] {
+    return this.savedItemRows().map(row => {
+      const catalogSummary = this.parseCatalogSummary(row.catalogSearchText);
+      return {
+        id: row.uid,
+        movimentoItemTipoId: row.movimentoItemTipoId || 0,
+        movimentoItemTipoNome: this.tipoItemLabel(row.movimentoItemTipoId),
+        catalogType: row.catalogType || 'PRODUCTS',
+        catalogItemId: row.catalogItemId || 0,
+        catalogCodigoSnapshot: catalogSummary.codigo,
+        catalogNomeSnapshot: catalogSummary.nome,
+        quantidade: Number(row.quantidade || 0),
+        valorUnitario: Number(row.cobrar ? row.valorUnitario : 0),
+        valorTotal: this.lineTotal(row),
+        cobrar: row.cobrar,
+        ordem: row.ordem,
+        observacao: row.observacao || null
+      };
+    });
+  }
+
+  onSavedItemConsult(item: MovimentoEstoqueItemResponse): void {
+    const row = this.findRowByUid(item.id);
+    if (!row) {
+      return;
+    }
+    this.notify.info(`Item ${this.itemCatalogoResumo(row)}`);
+  }
+
+  onSavedItemEdit(item: MovimentoEstoqueItemResponse): void {
+    if (this.mode === 'view' && this.movimento?.id) {
+      this.router.navigate(['/movimentos/estoque', this.movimento.id, 'edit'], {
+        queryParams: { returnTo: this.returnTo, editItemUid: item.id }
+      });
+      return;
+    }
+    const index = this.findRowIndexByUid(item.id);
+    if (index >= 0) {
+      this.editItemRow(index);
+      this.scrollToItemEditor();
+      return;
+    }
+    const fallbackIndex = this.itemRows.findIndex(row => row.saved && !row.editing);
+    if (fallbackIndex >= 0) {
+      this.editItemRow(fallbackIndex);
+      this.scrollToItemEditor();
+      this.notify.info('Item selecionado nao encontrado; abrindo primeiro item salvo para edicao.');
+      return;
+    }
+    this.notify.error('Nao foi possivel localizar item salvo para edicao.');
+  }
+
+  onSavedItemDelete(item: MovimentoEstoqueItemResponse): void {
+    if (this.mode === 'view') {
+      this.notify.info('Abra a ficha em modo de edicao para excluir itens.');
+      return;
+    }
+    const index = this.findRowIndexByUid(item.id);
+    if (index >= 0) {
+      this.removeItemRow(index);
+    }
+  }
+
+  catalogTypeLabel(value: 'PRODUCTS' | 'SERVICES' | null): string {
+    if (!value) {
+      return '-';
+    }
+    return value === 'SERVICES' ? 'Servicos' : 'Produtos';
+  }
+
+  private buildItemRequests(): MovimentoEstoqueItemRequest[] | null {
+    const items = (this.itemRows || []).map((row, idx) => ({ row, idx }));
+    const requests: MovimentoEstoqueItemRequest[] = [];
+    for (const current of items) {
+      const row = current.row;
+      if (row.editing) {
+        if (this.rowHasContent(row)) {
+          this.notify.error(`Salve o item da linha ${current.idx + 1} antes de salvar o movimento.`);
+          return null;
+        }
+        continue;
+      }
+      if (!row.saved) {
+        continue;
+      }
+      if (!row.movimentoItemTipoId && !row.catalogItemId && !row.observacao.trim()) {
+        continue;
+      }
+      const error = this.validateItemRow(row, current.idx);
+      if (error) {
+        this.notify.error(error);
+        return null;
+      }
+      const quantidade = Number(row.quantidade || 0);
+      const valorUnitario = row.cobrar ? Number(row.valorUnitario || 0) : 0;
+      requests.push({
+        movimentoItemTipoId: row.movimentoItemTipoId!,
+        catalogItemId: row.catalogItemId!,
+        quantidade,
+        valorUnitario,
+        ordem: current.idx,
+        observacao: row.observacao?.trim() || null
+      });
+    }
+    return requests;
+  }
+
   private loadTemplate(): void {
     const empresaId = Number(localStorage.getItem('empresaContextId') || 0);
     if (!empresaId) {
@@ -177,6 +520,10 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       this.form.disable();
       return;
     }
+    this.loadTemplateByEmpresa(empresaId, true);
+  }
+
+  private loadTemplateByEmpresa(empresaId: number, initializeRows = false): void {
     this.loading = true;
     this.errorMessage = '';
     this.service.buildTemplate('MOVIMENTO_ESTOQUE', empresaId)
@@ -184,13 +531,30 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       .subscribe({
         next: template => {
           this.templateData = template;
-          this.form.patchValue({
-            empresaId: template.empresaId,
-            nome: template.nome || '',
-            dataMovimento: template.dataMovimento ? toDisplayDate(template.dataMovimento) : '',
-            version: null
-          });
+          this.ensureTipoEntidadeLabels(template.tiposEntidadePermitidos || []);
+          const tipoEntidadeId = this.resolveTipoEntidadeInicial(template, this.movimento?.tipoEntidadePadraoId || null);
+          this.empresaNomeHeader = this.resolveEmpresaNome(empresaId);
+          if (this.mode === 'new') {
+            this.form.patchValue({
+              empresaId: template.empresaId,
+              nome: template.nome || '',
+              tipoEntidadeId,
+              version: null
+            });
+          } else if (this.mode === 'edit') {
+            this.form.patchValue({ tipoEntidadeId });
+          } else {
+            this.form.patchValue({
+              tipoEntidadeId: this.movimento?.tipoEntidadePadraoId || tipoEntidadeId || null
+            }, { emitEvent: false });
+          }
+          if (initializeRows && this.mode !== 'view' && this.itemRows.length === 0) {
+            this.addItemRow();
+          }
           this.form.enable();
+          if (this.mode === 'view') {
+            this.form.disable();
+          }
         },
         error: err => {
           this.errorMessage = err?.error?.detail || 'Nao foi possivel resolver a configuracao para criar o movimento.';
@@ -211,12 +575,41 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       .subscribe({
         next: movimento => {
           this.movimento = movimento;
+          this.ensureTipoEntidadeLabels([movimento.tipoEntidadePadraoId || 0]);
           this.form.patchValue({
             empresaId: movimento.empresaId,
             nome: movimento.nome || '',
-            dataMovimento: movimento.dataMovimento ? toDisplayDate(movimento.dataMovimento) : '',
+            tipoEntidadeId: movimento.tipoEntidadePadraoId,
             version: movimento.version
           });
+          this.empresaNomeHeader = this.resolveEmpresaNome(movimento.empresaId);
+
+          this.itemRows = (movimento.itens || []).map((item, idx) => ({
+            uid: this.nextRowUid++,
+            movimentoItemTipoId: item.movimentoItemTipoId,
+            catalogType: item.catalogType,
+            catalogItemId: item.catalogItemId,
+            quantidade: Number(item.quantidade || 0),
+            valorUnitario: Number(item.valorUnitario || 0),
+            cobrar: item.cobrar,
+            ordem: idx,
+            observacao: item.observacao || '',
+            catalogSearchText: `${item.catalogCodigoSnapshot} - ${item.catalogNomeSnapshot}`,
+            catalogOptions: [{
+              id: item.catalogItemId,
+              catalogType: item.catalogType,
+              codigo: item.catalogCodigoSnapshot,
+              nome: item.catalogNomeSnapshot,
+              descricao: null
+            }],
+            editing: false,
+            saved: true
+          }));
+          this.reindexRows();
+          this.activatePendingItemEdit();
+
+          this.loadTemplateByEmpresa(movimento.empresaId, false);
+
           if (this.mode === 'view') {
             this.form.disable();
           } else {
@@ -228,5 +621,129 @@ export class MovimentoEstoqueFormComponent implements OnInit {
           this.form.disable();
         }
       });
+  }
+
+  private resolveEmpresaNome(empresaId: number): string {
+    const contextId = Number(localStorage.getItem('empresaContextId') || 0);
+    const contextName = (localStorage.getItem('empresaContextNome') || '').trim();
+    if (contextId > 0 && contextId === empresaId && contextName) {
+      return contextName;
+    }
+    return empresaId > 0 ? `Empresa #${empresaId}` : '-';
+  }
+
+  private normalizeTipoEntidadeId(value: unknown): number | null {
+    const parsed = Number(value || 0);
+    return parsed > 0 ? parsed : null;
+  }
+
+  private resolveTipoEntidadeInicial(
+    template: MovimentoEstoqueTemplateResponse,
+    fallback: number | null
+  ): number | null {
+    const allowed = (template.tiposEntidadePermitidos || []).filter(id => Number(id) > 0);
+    const defaultId = this.normalizeTipoEntidadeId(template.tipoEntidadePadraoId);
+    if (defaultId && allowed.includes(defaultId)) {
+      return defaultId;
+    }
+    const fallbackId = this.normalizeTipoEntidadeId(fallback);
+    if (fallbackId && allowed.includes(fallbackId)) {
+      return fallbackId;
+    }
+    if (allowed.length === 1) {
+      return allowed[0] ?? null;
+    }
+    return null;
+  }
+
+  private ensureTipoEntidadeLabels(ids: number[]): void {
+    const requestedIds = (ids || []).filter(id => Number(id) > 0);
+    if (!requestedIds.length) {
+      return;
+    }
+    const missing = requestedIds.filter(id => !this.tipoEntidadeNomeById.has(id));
+    if (!missing.length) {
+      return;
+    }
+    this.entityTypeService.list({ page: 0, size: 200, ativo: true }).subscribe({
+      next: response => {
+        for (const item of response.content || []) {
+          if (item?.id > 0) {
+            this.tipoEntidadeNomeById.set(item.id, item.nome || `Tipo #${item.id}`);
+          }
+        }
+      }
+    });
+  }
+
+  private rowHasContent(row: MovimentoEstoqueItemDraft): boolean {
+    return !!row.movimentoItemTipoId
+      || !!row.catalogItemId
+      || Number(row.quantidade || 0) > 0
+      || Number(row.valorUnitario || 0) > 0
+      || !!(row.observacao || '').trim();
+  }
+
+  private validateItemRow(row: MovimentoEstoqueItemDraft, idx: number): string | null {
+    if (!row.movimentoItemTipoId) {
+      return `Informe o tipo de item na linha ${idx + 1}.`;
+    }
+    if (!row.catalogItemId) {
+      return `Informe o item de catalogo na linha ${idx + 1}.`;
+    }
+    const quantidade = Number(row.quantidade || 0);
+    if (quantidade <= 0) {
+      return `Quantidade deve ser maior que zero na linha ${idx + 1}.`;
+    }
+    return null;
+  }
+
+  private reindexRows(): void {
+    this.itemRows = this.itemRows.map((item, idx) => ({ ...item, ordem: idx }));
+  }
+
+  private findRowByUid(uid: number): MovimentoEstoqueItemDraft | undefined {
+    return this.itemRows.find(row => row.uid === uid);
+  }
+
+  private findRowIndexByUid(uid: number): number {
+    const target = Number(uid || 0);
+    return this.itemRows.findIndex(row => Number(row.uid || 0) === target);
+  }
+
+  private parseCatalogSummary(value: string): { codigo: number; nome: string } {
+    const raw = (value || '').trim();
+    if (!raw) {
+      return { codigo: 0, nome: '-' };
+    }
+    const separatorIndex = raw.indexOf(' - ');
+    if (separatorIndex <= 0) {
+      return { codigo: 0, nome: raw };
+    }
+    const codigoPart = raw.slice(0, separatorIndex).trim();
+    const nomePart = raw.slice(separatorIndex + 3).trim();
+    const parsedCodigo = Number(codigoPart);
+    return {
+      codigo: Number.isFinite(parsedCodigo) ? parsedCodigo : 0,
+      nome: nomePart || raw
+    };
+  }
+
+  private scrollToItemEditor(): void {
+    setTimeout(() => {
+      this.itemEditorAnchor?.nativeElement?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+  }
+
+  private activatePendingItemEdit(): void {
+    if (this.mode !== 'edit' || !this.pendingEditItemUid) {
+      return;
+    }
+    const index = this.findRowIndexByUid(this.pendingEditItemUid);
+    if (index >= 0) {
+      this.editItemRow(index);
+      this.scrollToItemEditor();
+    }
+    this.pendingEditItemUid = null;
   }
 }

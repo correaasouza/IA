@@ -3,7 +3,9 @@
     <div>
       <h1 class="m-0 text-lg font-bold">{{ title }}</h1>
       <p class="mt-1 text-xs text-[var(--muted)]">Ficha de movimento de estoque</p>
+      <p class="mt-1 text-xs text-[var(--muted-strong)]">Empresa: {{ empresaAtual() }}</p>
       <p class="mt-1 text-xs text-[var(--muted-strong)]">Nome: {{ nomeAtual() }}</p>
+      <p class="mt-1 text-xs text-[var(--muted-strong)]" *ngIf="hasTiposEntidadeConfigurados()">Destinatario: {{ tipoEntidadeAtual() }}</p>
     </div>
     <div class="flex flex-wrap gap-2">
       <button mat-stroked-button type="button" (click)="back()">
@@ -26,23 +28,10 @@
         mat-flat-button
         color="primary"
         type="button"
-        *ngIf="mode === 'new'"
+        *ngIf="mode !== 'view'"
         (click)="save()"
         [disabled]="saving || form.invalid || !!errorMessage"
-        appAccessControl="movimentos.estoque.create"
-        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-        <mat-icon>save</mat-icon>
-        Salvar
-      </button>
-
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        *ngIf="mode === 'edit'"
-        (click)="save()"
-        [disabled]="saving || form.invalid || !!errorMessage"
-        appAccessControl="movimentos.estoque.update"
+        [appAccessControl]="mode === 'edit' ? 'movimentos.estoque.update' : 'movimentos.estoque.create'"
         [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
         <mat-icon>save</mat-icon>
         Salvar
@@ -63,46 +52,154 @@
     </div>
   </header>
 
-  <section class="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2 text-xs text-[var(--muted-strong)]" *ngIf="mode === 'new'">
-    Fluxo: a ficha foi pre-carregada com base na configuracao aplicavel da empresa selecionada no contexto.
-  </section>
-
   <section class="rounded-xl border border-dashed border-[#fda29b] bg-[#fef3f2] p-3 text-sm text-[#b42318]" *ngIf="errorMessage">
     {{ errorMessage }}
   </section>
 
-  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="templateData">
-    <div class="mb-2.5 text-sm font-semibold">Padroes carregados da configuracao</div>
-    <div class="grid grid-cols-1 gap-2 text-xs text-[var(--muted)] md:grid-cols-2">
-      <div><span class="font-semibold text-[var(--ink)]">Configuracao:</span> #{{ templateData.movimentoConfigId }}</div>
-      <div><span class="font-semibold text-[var(--ink)]">Destinatario padrao:</span> {{ templateData.tipoEntidadePadraoId ? ('#' + templateData.tipoEntidadePadraoId) : '-' }}</div>
-      <div class="md:col-span-2">
-        <span class="font-semibold text-[var(--ink)]">Destinatarios permitidos:</span>
-        {{ (templateData.tiposEntidadePermitidos || []).length ? ('#' + templateData.tiposEntidadePermitidos.join(', #')) : '-' }}
-      </div>
-    </div>
-  </section>
-
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-    <form [formGroup]="form" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
-      <mat-form-field appearance="outline">
-        <mat-label>Empresa</mat-label>
-        <input matInput formControlName="empresaId" readonly />
-      </mat-form-field>
-
-      <mat-form-field appearance="outline">
-        <mat-label>Data do movimento</mat-label>
-        <input matInput formControlName="dataMovimento" placeholder="DD/MM/AAAA" appDateMask />
-        <mat-error *ngIf="form.get('dataMovimento')?.hasError('invalidDate')">Informe uma data valida (DD/MM/AAAA).</mat-error>
-      </mat-form-field>
-
+    <form [formGroup]="form" class="grid grid-cols-1 gap-2.5">
       <mat-form-field appearance="outline" class="md:col-span-2">
         <mat-label>Nome</mat-label>
-        <input matInput formControlName="nome" maxlength="120" />
+        <input matInput formControlName="nome" maxlength="120" [readonly]="mode === 'view'" />
         <mat-hint align="end">{{ (form.get('nome')?.value || '').length }}/120</mat-hint>
         <mat-error *ngIf="form.get('nome')?.hasError('required')">Informe o nome do movimento.</mat-error>
       </mat-form-field>
+
+      <mat-form-field appearance="outline" *ngIf="hasTiposEntidadeConfigurados()">
+        <mat-label>Destinatario do movimento</mat-label>
+        <mat-select formControlName="tipoEntidadeId" [disabled]="mode === 'view'">
+          <mat-option [value]="null">Selecione</mat-option>
+          <mat-option *ngFor="let tipoEntidadeId of tiposEntidadePermitidos()" [value]="tipoEntidadeId">
+            {{ tipoEntidadeOptionLabel(tipoEntidadeId) }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
     </form>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Itens do movimento</div>
+      <button mat-stroked-button type="button" (click)="addItemRow()" *ngIf="mode !== 'view'">
+        <mat-icon>add</mat-icon>
+        Adicionar item
+      </button>
+    </div>
+
+    <div class="grid gap-2" *ngIf="itemRows.length > 0; else semItensTpl">
+      <div #itemEditorAnchor class="text-xs font-semibold text-[var(--muted)]" *ngIf="editingItemRows().length > 0">
+        Item(ns) em edicao
+      </div>
+
+      <article class="item-row" *ngFor="let row of editingItemRows(); let idx = index">
+        <div class="item-row-header">
+          <div class="text-xs font-semibold">{{ row.saved ? 'Editar item' : 'Novo item' }}</div>
+          <div class="flex items-center gap-1" *ngIf="mode !== 'view'">
+            <button mat-stroked-button type="button" (click)="saveItemRow(itemRows.indexOf(row))">
+              <mat-icon>check</mat-icon>
+              Salvar item
+            </button>
+            <button mat-icon-button type="button" (click)="cancelItemRow(itemRows.indexOf(row))">
+              <mat-icon>close</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" type="button" (click)="removeItemRow(itemRows.indexOf(row))">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <mat-form-field appearance="outline">
+            <mat-label>Tipo de item</mat-label>
+            <mat-select [(value)]="row.movimentoItemTipoId" (selectionChange)="onTipoItemChange(row)" [disabled]="!isRowEditable(row)">
+              <mat-option [value]="null">Selecione</mat-option>
+              <mat-option *ngFor="let tipo of itemTypesPermitidos()" [value]="tipo.tipoItemId">{{ tipo.nome }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="item-toggle-box">
+            <span class="text-sm font-medium">Cobrar</span>
+            <mat-slide-toggle
+              [(ngModel)]="row.cobrar"
+              [ngModelOptions]="{ standalone: true }"
+              [disabled]="!isRowEditable(row)"
+              (change)="onValorUnitarioChange(row)">
+              {{ row.cobrar ? 'Sim' : 'Nao' }}
+            </mat-slide-toggle>
+          </div>
+        </div>
+
+        <div class="text-xs text-[var(--muted)]">
+          Catalogo: {{ catalogTypeLabel(row.catalogType) }}
+        </div>
+
+        <div class="grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
+          <mat-form-field appearance="outline">
+            <mat-label>Buscar item no catalogo</mat-label>
+            <input matInput [(ngModel)]="row.catalogSearchText" [ngModelOptions]="{ standalone: true }" [readonly]="!isRowEditable(row)" />
+          </mat-form-field>
+          <button mat-stroked-button type="button" (click)="searchCatalog(row)" [disabled]="!isRowEditable(row) || !row.movimentoItemTipoId">
+            <mat-icon>search</mat-icon>
+            Buscar
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+          <mat-form-field appearance="outline">
+            <mat-label>Item de catalogo</mat-label>
+            <mat-select [(value)]="row.catalogItemId" (selectionChange)="onCatalogItemChange(row)" [disabled]="!isRowEditable(row) || !row.movimentoItemTipoId">
+              <mat-option [value]="null">Selecione</mat-option>
+              <mat-option *ngFor="let item of row.catalogOptions" [value]="item.id">{{ item.codigo }} - {{ item.nome }}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <div class="text-xs text-[var(--muted)] pt-3" *ngIf="isRowCatalogLoading(row)">Buscando catalogo...</div>
+        </div>
+
+        <div class="grid grid-cols-1 gap-2 md:grid-cols-4">
+          <mat-form-field appearance="outline">
+            <mat-label>Quantidade</mat-label>
+            <input matInput type="number" min="0.000001" step="0.000001" [(ngModel)]="row.quantidade" [ngModelOptions]="{ standalone: true }" [readonly]="!isRowEditable(row)" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Valor unitario</mat-label>
+            <input matInput type="number" min="0" step="0.000001" [(ngModel)]="row.valorUnitario" (ngModelChange)="onValorUnitarioChange(row)" [ngModelOptions]="{ standalone: true }" [readonly]="!isRowEditable(row) || !row.cobrar" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Total</mat-label>
+            <input matInput [value]="lineTotal(row) | number : '1.2-6'" readonly />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Observacao</mat-label>
+            <input matInput [(ngModel)]="row.observacao" [ngModelOptions]="{ standalone: true }" [readonly]="!isRowEditable(row)" />
+          </mat-form-field>
+        </div>
+      </article>
+
+      <app-movimento-itens-list
+        [items]="savedItemsAsResponse()"
+        [inlineEditEnabled]="false"
+        [itemSaving]="saving"
+        [emptyMessage]="'Nenhum item salvo.'"
+        [actionButtonsEnabled]="true"
+        [onConsult]="handleSavedItemConsult"
+        [onEdit]="handleSavedItemEdit"
+        [onDelete]="handleSavedItemDelete">
+      </app-movimento-itens-list>
+    </div>
+
+    <ng-template #semItensTpl>
+      <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-3 text-xs text-[var(--muted)]">
+        Nenhum item adicionado.
+      </div>
+    </ng-template>
+
+    <div class="mt-2 text-right text-sm font-semibold">
+      Total cobrado: {{ itensTotalCobrado() | number : '1.2-6' }}
+    </div>
 
     <div class="mt-2 flex justify-end" *ngIf="loading" role="status" aria-live="polite">
       <app-inline-loader label="Carregando ficha"></app-inline-loader>

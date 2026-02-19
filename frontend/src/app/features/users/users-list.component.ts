@@ -100,6 +100,12 @@ export class UsersListComponent implements OnInit {
     this.applySearch();
   }
 
+  clearFilters() {
+    this.searchTerm = '';
+    this.searchFields = ['username', 'email'];
+    this.applySearch();
+  }
+
   
   @HostListener('window:resize')
   onWindowResize() {

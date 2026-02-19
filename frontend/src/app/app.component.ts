@@ -48,7 +48,7 @@ import { MovementConfigService, MovimentoTipoOption } from './features/movement-
   
 })
 export class AppComponent {
-  sidebarOpen = true;
+  sidebarOpen = false;
   isMobile = false;
   menu: MenuItem[] = [];
   allMenu: MenuItem[] = [];
@@ -123,7 +123,9 @@ export class AppComponent {
 
     this.breakpoint.observe(['(max-width: 900px)']).subscribe(result => {
       this.isMobile = result.matches;
-      this.sidebarOpen = !result.matches;
+      if (result.matches) {
+        this.sidebarOpen = false;
+      }
     });
 
     this.router.events.pipe(filter(e => e instanceof NavigationEnd)).subscribe(e => {

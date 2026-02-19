@@ -38,7 +38,7 @@
       <ng-container *ngIf="!isMobile || mobileFiltersOpen">
         <form
           [formGroup]="filters"
-          class="grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1fr)_220px]"
+          class="grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1fr)_220px_auto]"
           role="search">
           <div class="min-w-0">
             <app-field-search
@@ -56,6 +56,11 @@
               <option value="ativo">Status: Ativo</option>
               <option value="inativo">Status: Inativo</option>
             </select>
+          </div>
+          <div class="flex items-center justify-end gap-2">
+            <button mat-stroked-button type="button" (click)="clearFilters()">
+              Limpar
+            </button>
           </div>
         </form>
       </ng-container>

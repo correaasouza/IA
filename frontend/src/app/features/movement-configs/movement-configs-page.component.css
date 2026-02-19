@@ -1,12 +1,179 @@
 .movement-config-page {
   container-type: inline-size;
+  gap: 8px;
+}
+
+.movement-config-page .page-list-sticky {
+  gap: 8px !important;
+}
+
+.top-ux-section {
+  margin-bottom: 4px;
+}
+
+.section-switcher-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.top-ux-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.top-ux-compact-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.top-ux-grid-single {
+  grid-template-columns: 1fr;
+}
+
+.top-ux-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-muted);
+  padding: 8px;
+}
+
+.top-ux-card-compact {
+  padding: 6px 8px;
+}
+
+.top-ux-actions {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.top-ux-actions > * {
+  justify-self: start;
+}
+
+.action-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-inline > button {
+  width: auto !important;
+  min-width: 180px;
+  min-height: 30px;
+}
+
+.action-inline-right {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.action-inline-left {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.action-help-compact {
+  font-size: 11px;
+  color: var(--muted-strong);
+  line-height: 1.25;
+}
+
+.top-ux-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted-strong);
+}
+
+.top-ux-select {
+  width: 100%;
+}
+
+:host ::ng-deep .top-ux-select .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+:host ::ng-deep .top-ux-select .mat-mdc-text-field-wrapper {
+  min-height: 40px;
+}
+
+:host ::ng-deep .top-ux-select .mat-mdc-form-field-infix {
+  min-height: 40px;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+.section-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-muted);
+  padding: 6px;
 }
 
 .type-tab-btn {
-  min-height: 30px;
+  min-height: 36px;
   border-color: var(--border) !important;
-  background: var(--surface-muted);
+  background: var(--surface);
   color: var(--muted-strong);
+  border-radius: 8px;
+  padding-inline: 12px;
+}
+
+.movement-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.movement-type-grid-compact {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 4px;
+}
+
+.movement-type-btn {
+  width: 100%;
+  min-height: 34px;
+  padding-inline: 10px;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.movement-type-btn-compact {
+  min-height: 28px;
+  padding-inline: 6px;
+  font-size: 11px;
+  line-height: 1.1;
+}
+
+.type-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.config-action-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+
+.action-mini-btn {
+  min-height: 28px !important;
+  padding: 0 8px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
 }
 
 .type-tab-active {
@@ -208,7 +375,56 @@
   border-color: #9ca3af;
 }
 
+.config-item-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 8px 10px;
+}
+
 @media (max-width: 640px) {
+  .top-ux-compact-row {
+    grid-template-columns: 1fr;
+  }
+
+  .top-ux-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .top-ux-grid-single {
+    grid-template-columns: 1fr;
+  }
+
+  .action-inline {
+    width: 100%;
+  }
+
+  .action-inline > button {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .section-switcher {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .section-switcher-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .section-switcher .type-tab-btn {
+    width: 100%;
+  }
+
   .mov-config-dialog-header-card {
     align-items: flex-start;
     flex-direction: column;

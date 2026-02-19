@@ -1,3 +1,42 @@
 .table-sticky-actions {
   --actions-col-width: 170px;
 }
+
+.list-pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  background: var(--surface);
+}
+
+.movements-grid-pane {
+  max-height: 34vh;
+}
+
+.items-grid-pane {
+  max-height: 42vh;
+  border-top: 1px solid var(--border-light);
+}
+
+.movements-grid-table .mat-mdc-header-cell,
+.movements-grid-table .mat-mdc-cell {
+  font-size: 12px;
+  line-height: 1.15;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.movements-grid-table .mat-mdc-row,
+.movements-grid-table .mat-mdc-header-row {
+  height: 26px;
+}
+
+.selected-row {
+  background: rgba(37, 99, 235, 0.1);
+}
+
+.selected-row:hover {
+  background: rgba(37, 99, 235, 0.15);
+}

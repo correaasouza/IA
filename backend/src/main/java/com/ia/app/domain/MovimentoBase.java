@@ -7,7 +7,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
-import java.time.LocalDate;
 
 @MappedSuperclass
 public abstract class MovimentoBase extends AuditableEntity {
@@ -25,9 +24,6 @@ public abstract class MovimentoBase extends AuditableEntity {
   @Enumerated(EnumType.STRING)
   @Column(name = "tipo_movimento", nullable = false, length = 80)
   private MovimentoTipo tipoMovimento;
-
-  @Column(name = "data_movimento")
-  private LocalDate dataMovimento;
 
   @Column(name = "status", length = 80)
   private String status;
@@ -58,14 +54,6 @@ public abstract class MovimentoBase extends AuditableEntity {
 
   public void setTipoMovimento(MovimentoTipo tipoMovimento) {
     this.tipoMovimento = tipoMovimento;
-  }
-
-  public LocalDate getDataMovimento() {
-    return dataMovimento;
-  }
-
-  public void setDataMovimento(LocalDate dataMovimento) {
-    this.dataMovimento = dataMovimento;
   }
 
   public String getStatus() {

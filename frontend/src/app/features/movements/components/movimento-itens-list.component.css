@@ -1,0 +1,16 @@
+:host {
+  display: block;
+}
+
+.movimento-itens-table .mat-mdc-header-cell,
+.movimento-itens-table .mat-mdc-cell {
+  font-size: 12px;
+  line-height: 1.15;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+.movimento-itens-table .mat-mdc-row,
+.movimento-itens-table .mat-mdc-header-row {
+  height: 26px;
+}

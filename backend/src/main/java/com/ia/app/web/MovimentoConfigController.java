@@ -2,12 +2,15 @@ package com.ia.app.web;
 
 import com.ia.app.domain.MovimentoTipo;
 import com.ia.app.dto.MovimentoConfigDuplicarRequest;
+import com.ia.app.dto.MovimentoConfigItemTipoRequest;
+import com.ia.app.dto.MovimentoConfigItemTipoResponse;
 import com.ia.app.dto.MovimentoConfigCoverageWarningResponse;
 import com.ia.app.dto.MovimentoConfigRequest;
 import com.ia.app.dto.MovimentoConfigResolverResponse;
 import com.ia.app.dto.MovimentoConfigResponse;
 import com.ia.app.dto.MovimentoTipoResponse;
 import com.ia.app.service.MovimentoConfigFeatureToggle;
+import com.ia.app.service.MovimentoConfigItemTipoService;
 import com.ia.app.service.MovimentoConfigService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -30,12 +33,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class MovimentoConfigController {
 
   private final MovimentoConfigService service;
+  private final MovimentoConfigItemTipoService itemTipoService;
   private final MovimentoConfigFeatureToggle featureToggle;
 
   public MovimentoConfigController(
       MovimentoConfigService service,
+      MovimentoConfigItemTipoService itemTipoService,
       MovimentoConfigFeatureToggle featureToggle) {
     this.service = service;
+    this.itemTipoService = itemTipoService;
     this.featureToggle = featureToggle;
   }
 
@@ -121,5 +127,21 @@ public class MovimentoConfigController {
     featureToggle.assertEnabled();
     service.delete(id);
     return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping("/{id}/tipos-itens")
+  @PreAuthorize("@permissaoGuard.hasPermissao('MOVIMENTO_ITEM_CONFIGURAR')")
+  public ResponseEntity<List<MovimentoConfigItemTipoResponse>> listTiposItensByConfig(@PathVariable Long id) {
+    featureToggle.assertEnabled();
+    return ResponseEntity.ok(itemTipoService.listByConfig(id));
+  }
+
+  @PutMapping("/{id}/tipos-itens")
+  @PreAuthorize("@permissaoGuard.hasPermissao('MOVIMENTO_ITEM_CONFIGURAR')")
+  public ResponseEntity<List<MovimentoConfigItemTipoResponse>> replaceTiposItensByConfig(
+      @PathVariable Long id,
+      @RequestBody List<MovimentoConfigItemTipoRequest> request) {
+    featureToggle.assertEnabled();
+    return ResponseEntity.ok(itemTipoService.replaceByConfig(id, request));
   }
 }

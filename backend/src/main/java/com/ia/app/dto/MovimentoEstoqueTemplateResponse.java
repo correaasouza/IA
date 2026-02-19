@@ -1,7 +1,6 @@
 package com.ia.app.dto;
 
 import com.ia.app.domain.MovimentoTipo;
-import java.time.LocalDate;
 import java.util.List;
 
 public record MovimentoEstoqueTemplateResponse(
@@ -10,6 +9,6 @@ public record MovimentoEstoqueTemplateResponse(
   Long movimentoConfigId,
   Long tipoEntidadePadraoId,
   List<Long> tiposEntidadePermitidos,
-  String nome,
-  LocalDate dataMovimento
+  List<MovimentoTipoItemTemplateResponse> tiposItensPermitidos,
+  String nome
 ) {}

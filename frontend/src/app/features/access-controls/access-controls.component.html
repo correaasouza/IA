@@ -40,6 +40,11 @@
             (searchChange)="onSearchChange($event)">
           </app-field-search>
         </div>
+        <div class="flex items-center justify-end gap-2">
+          <button mat-stroked-button type="button" (click)="clearFilters()">
+            Limpar
+          </button>
+        </div>
       </div>
     </section>
   </div>

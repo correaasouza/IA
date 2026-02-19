@@ -3,7 +3,6 @@ package com.ia.app.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ia.app.domain.MovimentoTipo;
 import com.ia.app.dto.MovimentoTemplateRequest;
-import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -33,10 +32,8 @@ public class MovimentoOperacaoService {
   public Page<?> list(
       MovimentoTipo tipo,
       Pageable pageable,
-      String nome,
-      LocalDate dataInicio,
-      LocalDate dataFim) {
-    return requireHandler(tipo).list(pageable, nome, dataInicio, dataFim);
+      String nome) {
+    return requireHandler(tipo).list(pageable, nome);
   }
 
   public Object get(MovimentoTipo tipo, Long id) {

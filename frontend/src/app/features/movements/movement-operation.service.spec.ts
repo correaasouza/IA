@@ -36,21 +36,19 @@ describe('MovementOperationService', () => {
       movimentoConfigId: 12,
       tipoEntidadePadraoId: null,
       tiposEntidadePermitidos: [],
-      nome: '',
-      dataMovimento: '2026-02-17'
+      tiposItensPermitidos: [],
+      nome: ''
     });
   });
 
   it('should list movimento estoque with filters', () => {
-    service.listEstoque({ page: 1, size: 10, nome: 'ajuste', dataInicio: '2025-12-01', dataFim: '2025-12-31' }).subscribe();
+    service.listEstoque({ page: 1, size: 10, nome: 'ajuste' }).subscribe();
 
     const req = httpMock.expectOne((request) =>
       request.url === `${environment.apiBaseUrl}/api/movimentos/MOVIMENTO_ESTOQUE`
       && request.params.get('page') === '1'
       && request.params.get('size') === '10'
-      && request.params.get('nome') === 'ajuste'
-      && request.params.get('dataInicio') === '2025-12-01'
-      && request.params.get('dataFim') === '2025-12-31');
+      && request.params.get('nome') === 'ajuste');
     expect(req.request.method).toBe('GET');
     req.flush({ content: [], totalElements: 0, totalPages: 0, number: 1, size: 10 });
   });
@@ -58,22 +56,37 @@ describe('MovementOperationService', () => {
   it('should create movimento estoque', () => {
     service.createEstoque({
       empresaId: 3,
-      nome: 'Movimento de ajuste 31/12/2025',
-      dataMovimento: '2025-12-31'
+      nome: 'Movimento de ajuste',
+      itens: []
     }).subscribe();
 
     const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/movimentos/MOVIMENTO_ESTOQUE`);
     expect(req.request.method).toBe('POST');
-    expect(req.request.body.nome).toBe('Movimento de ajuste 31/12/2025');
+    expect(req.request.body.nome).toBe('Movimento de ajuste');
     req.flush({
       id: 1,
       tipoMovimento: 'MOVIMENTO_ESTOQUE',
       empresaId: 3,
-      nome: 'Movimento de ajuste 31/12/2025',
-      dataMovimento: '2025-12-31',
+      nome: 'Movimento de ajuste',
       movimentoConfigId: 12,
       tipoEntidadePadraoId: null,
+      itens: [],
+      totalItens: 0,
+      totalCobrado: 0,
       version: 0
     });
+  });
+
+  it('should search catalog items by tipo item', () => {
+    service.searchCatalogItemsByTipoItem(9, 'oleo', 0, 15).subscribe();
+
+    const req = httpMock.expectOne((request) =>
+      request.url === `${environment.apiBaseUrl}/api/movimentos/MOVIMENTO_ESTOQUE/catalogo-itens`
+      && request.params.get('tipoItemId') === '9'
+      && request.params.get('text') === 'oleo'
+      && request.params.get('page') === '0'
+      && request.params.get('size') === '15');
+    expect(req.request.method).toBe('GET');
+    req.flush({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 15 });
   });
 });

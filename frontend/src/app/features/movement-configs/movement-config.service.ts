@@ -60,6 +60,43 @@ export interface MovimentoConfigCoverageWarning {
   mensagem: string;
 }
 
+export interface MovimentoItemTipo {
+  id: number;
+  nome: string;
+  catalogType: 'PRODUCTS' | 'SERVICES';
+  ativo: boolean;
+  version: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MovimentoItemTipoPage {
+  content: MovimentoItemTipo[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface MovimentoItemTipoRequest {
+  nome: string;
+  catalogType: 'PRODUCTS' | 'SERVICES';
+  ativo?: boolean | null;
+}
+
+export interface MovimentoConfigItemTipo {
+  movimentoItemTipoId: number;
+  nome: string;
+  catalogType: 'PRODUCTS' | 'SERVICES';
+  cobrar: boolean;
+  ativo: boolean;
+}
+
+export interface MovimentoConfigItemTipoRequest {
+  movimentoItemTipoId: number;
+  cobrar?: boolean | null;
+}
+
 @Injectable({ providedIn: 'root' })
 export class MovementConfigService {
   private readonly baseUrl = `${environment.apiBaseUrl}/api/movimentos/configuracoes`;
@@ -115,5 +152,52 @@ export class MovementConfigService {
   listMenuByEmpresa(empresaId: number): Observable<MovimentoTipoOption[]> {
     const params = new HttpParams().set('empresaId', String(empresaId));
     return this.http.get<MovimentoTipoOption[]>(`${this.baseUrl}/menu`, { params });
+  }
+
+  listTiposItens(filters: {
+    page?: number;
+    size?: number;
+    nome?: string;
+    catalogType?: 'PRODUCTS' | 'SERVICES' | '';
+    ativo?: 'ALL' | 'ATIVO' | 'INATIVO';
+  } = {}): Observable<MovimentoItemTipoPage> {
+    let params = new HttpParams()
+      .set('page', String(filters.page ?? 0))
+      .set('size', String(filters.size ?? 20));
+    const nome = (filters.nome || '').trim();
+    if (nome) {
+      params = params.set('nome', nome);
+    }
+    if (filters.catalogType) {
+      params = params.set('catalogType', filters.catalogType);
+    }
+    if (filters.ativo && filters.ativo !== 'ALL') {
+      params = params.set('ativo', String(filters.ativo === 'ATIVO'));
+    }
+    return this.http.get<MovimentoItemTipoPage>(`${this.baseUrl}/tipos-itens`, { params });
+  }
+
+  getTipoItem(id: number): Observable<MovimentoItemTipo> {
+    return this.http.get<MovimentoItemTipo>(`${this.baseUrl}/tipos-itens/${id}`);
+  }
+
+  createTipoItem(payload: MovimentoItemTipoRequest): Observable<MovimentoItemTipo> {
+    return this.http.post<MovimentoItemTipo>(`${this.baseUrl}/tipos-itens`, payload);
+  }
+
+  updateTipoItem(id: number, payload: MovimentoItemTipoRequest): Observable<MovimentoItemTipo> {
+    return this.http.put<MovimentoItemTipo>(`${this.baseUrl}/tipos-itens/${id}`, payload);
+  }
+
+  deleteTipoItem(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.baseUrl}/tipos-itens/${id}`);
+  }
+
+  listTiposItensByConfig(configId: number): Observable<MovimentoConfigItemTipo[]> {
+    return this.http.get<MovimentoConfigItemTipo[]>(`${this.baseUrl}/${configId}/tipos-itens`);
+  }
+
+  replaceTiposItensByConfig(configId: number, payload: MovimentoConfigItemTipoRequest[]): Observable<MovimentoConfigItemTipo[]> {
+    return this.http.put<MovimentoConfigItemTipo[]>(`${this.baseUrl}/${configId}/tipos-itens`, payload || []);
   }
 }

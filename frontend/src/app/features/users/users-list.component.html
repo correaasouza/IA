@@ -29,7 +29,7 @@
       </div>
     </div>
     <div *ngIf="!isMobile || mobileFiltersOpen">
-    <div class="grid gap-2">
+    <div class="grid gap-2 lg:grid-cols-[minmax(0,1fr)_auto]">
       <div class="min-w-0">
         <app-field-search
           [options]="searchOptions"
@@ -39,6 +39,11 @@
           [showActions]="false"
           (searchChange)="onSearchChange($event)">
         </app-field-search>
+      </div>
+      <div class="flex items-center justify-end gap-2">
+        <button mat-stroked-button type="button" (click)="clearFilters()">
+          Limpar
+        </button>
       </div>
     </div>
     </div>
