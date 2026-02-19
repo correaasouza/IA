@@ -1,0 +1,88 @@
+<section class="workflow-props" *ngIf="transition; else emptyTransitionTpl">
+  <div class="workflow-props-title">Propriedades da transicao</div>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Nome</mat-label>
+    <input matInput [(ngModel)]="transition.name" (ngModelChange)="emitTransition()" [readonly]="readOnly" />
+  </mat-form-field>
+
+  <div class="workflow-grid-2">
+    <mat-form-field appearance="outline">
+      <mat-label>De</mat-label>
+      <mat-select [(ngModel)]="transition.fromStateKey" (selectionChange)="emitTransition()" [disabled]="readOnly">
+        <mat-option *ngFor="let state of stateOptions" [value]="state.key">{{ state.name }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Para</mat-label>
+      <mat-select [(ngModel)]="transition.toStateKey" (selectionChange)="emitTransition()" [disabled]="readOnly">
+        <mat-option *ngFor="let state of stateOptions" [value]="state.key">{{ state.name }}</mat-option>
+      </mat-select>
+    </mat-form-field>
+  </div>
+
+  <div class="workflow-grid-2">
+    <mat-form-field appearance="outline">
+      <mat-label>Prioridade</mat-label>
+      <input matInput type="number" [(ngModel)]="transition.priority" (ngModelChange)="emitTransition()" [readonly]="readOnly" />
+    </mat-form-field>
+    <mat-slide-toggle [(ngModel)]="transition.enabled" (change)="emitTransition()" [disabled]="readOnly">
+      Habilitada
+    </mat-slide-toggle>
+  </div>
+
+  <section class="workflow-actions-block">
+    <div class="workflow-actions-header">
+      <span>Acoes</span>
+      <button mat-stroked-button type="button" (click)="addAction()" [disabled]="readOnly">
+        Adicionar acao
+      </button>
+    </div>
+
+    <article class="workflow-action-item" *ngFor="let action of transition.actions; let index = index">
+      <div class="workflow-grid-3">
+        <mat-form-field appearance="outline">
+          <mat-label>Tipo</mat-label>
+          <mat-select [(ngModel)]="action.type" (selectionChange)="emitTransition()" [disabled]="readOnly">
+            <mat-option value="MOVE_STOCK">MOVIMENTAR_ESTOQUE</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Trigger</mat-label>
+          <mat-select [(ngModel)]="action.trigger" (selectionChange)="emitTransition()" [disabled]="readOnly">
+            <mat-option value="ON_TRANSITION">ON_TRANSITION</mat-option>
+            <mat-option value="ON_ENTER_STATE">ON_ENTER_STATE</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-slide-toggle [(ngModel)]="action.requiresSuccess" (change)="emitTransition()" [disabled]="readOnly">
+          Exige sucesso
+        </mat-slide-toggle>
+      </div>
+
+      <div class="workflow-actions-footer">
+        <button mat-button color="warn" type="button" (click)="removeAction(index)" [disabled]="readOnly">
+          Remover acao
+        </button>
+      </div>
+    </article>
+  </section>
+
+  <div class="workflow-props-actions">
+    <button
+      mat-button
+      color="warn"
+      type="button"
+      [disabled]="readOnly"
+      (click)="deleteTransition.emit(transition.key)">
+      Remover transicao
+    </button>
+  </div>
+</section>
+
+<ng-template #emptyTransitionTpl>
+  <section class="workflow-props workflow-props--empty">
+    Selecione uma transicao na lista.
+  </section>
+</ng-template>

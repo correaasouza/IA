@@ -1,12 +1,20 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, HostListener, Input, OnInit, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MovimentoEstoqueItemResponse } from '../movement-operation.service';
+
+interface ItemWorkflowTransition {
+  key: string;
+  name: string;
+  toStateKey: string;
+  toStateName?: string | null;
+}
 
 export interface MovimentoItemInlineSaveEvent {
   item: MovimentoEstoqueItemResponse;
@@ -23,16 +31,21 @@ export interface MovimentoItemInlineSaveEvent {
     MatButtonModule,
     MatIconModule,
     MatInputModule,
+    MatMenuModule,
     MatTableModule,
     MatTooltipModule
   ],
   templateUrl: './movimento-itens-list.component.html',
   styleUrls: ['./movimento-itens-list.component.css']
 })
-export class MovimentoItensListComponent {
+export class MovimentoItensListComponent implements OnInit {
   @Input() items: MovimentoEstoqueItemResponse[] = [];
   @Input() inlineEditEnabled = false;
   @Input() actionButtonsEnabled = true;
+  @Input() showWorkflowTransitions = false;
+  @Input() transitionsByItem: Record<number, ItemWorkflowTransition[]> = {};
+  @Input() stateNamesByItemId: Record<number, string> = {};
+  @Input() stateKeysByItemId: Record<number, string> = {};
   @Input() itemSaving = false;
   @Input() emptyMessage = 'Movimento sem itens.';
   @Input() updateControlKey = 'movimentos.estoque.update';
@@ -46,12 +59,28 @@ export class MovimentoItensListComponent {
   @Output() editItem = new EventEmitter<MovimentoEstoqueItemResponse>();
   @Output() saveInlineItem = new EventEmitter<MovimentoItemInlineSaveEvent>();
   @Output() deleteItem = new EventEmitter<MovimentoEstoqueItemResponse>();
+  @Output() transitionItem = new EventEmitter<{
+    item: MovimentoEstoqueItemResponse;
+    transitionKey: string;
+    expectedCurrentStateKey?: string | null;
+  }>();
 
-  displayedColumns = ['tipo', 'catalogo', 'quantidade', 'valorUnitario', 'valorTotal', 'cobrar', 'acoes'];
+  displayedColumns = ['tipo', 'catalogo', 'status', 'quantidade', 'valorUnitario', 'valorTotal', 'cobrar', 'acoes'];
+  private readonly desktopColumns = ['tipo', 'catalogo', 'status', 'quantidade', 'valorUnitario', 'valorTotal', 'cobrar', 'acoes'];
+  isMobile = false;
 
   editingItemId: number | null = null;
   editingQuantidade = 0;
   editingValorUnitario = 0;
+
+  ngOnInit(): void {
+    this.updateViewportColumns();
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateViewportColumns();
+  }
 
   isEditingItem(item: MovimentoEstoqueItemResponse): boolean {
     return this.editingItemId === item.id;
@@ -108,6 +137,40 @@ export class MovimentoItensListComponent {
     this.dispatch(this.onDelete, this.deleteItem, item);
   }
 
+  itemTransitions(item: MovimentoEstoqueItemResponse): ItemWorkflowTransition[] {
+    const itemId = Number(item?.id || 0);
+    if (!itemId || !this.transitionsByItem) {
+      return [];
+    }
+    return this.transitionsByItem[itemId] || [];
+  }
+
+  displayStatus(item: MovimentoEstoqueItemResponse): string {
+    const itemId = Number(item?.id || 0);
+    const mapped = itemId > 0 ? (this.stateNamesByItemId[itemId] || '').trim() : '';
+    if (mapped) {
+      return mapped;
+    }
+    const raw = (item?.status || '').trim();
+    if (!raw) {
+      return '-';
+    }
+    return this.looksLikeUuid(raw) ? '-' : raw;
+  }
+
+  onTransitionSelect(event: Event, item: MovimentoEstoqueItemResponse, transitionKey: string): void {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!transitionKey) {
+      return;
+    }
+    this.transitionItem.emit({
+      item,
+      transitionKey,
+      expectedCurrentStateKey: this.resolveExpectedCurrentStateKey(item)
+    });
+  }
+
   private dispatch<T>(
     callback: ((payload: T) => void) | null | undefined,
     emitter: EventEmitter<T>,
@@ -118,5 +181,29 @@ export class MovimentoItensListComponent {
       return;
     }
     emitter.emit(payload);
+  }
+
+  private looksLikeUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  }
+
+  private resolveExpectedCurrentStateKey(item: MovimentoEstoqueItemResponse): string | null {
+    const itemId = Number(item?.id || 0);
+    if (itemId > 0) {
+      const runtimeStateKey = (this.stateKeysByItemId[itemId] || '').trim();
+      if (runtimeStateKey) {
+        return runtimeStateKey;
+      }
+    }
+    const raw = (item?.status || '').trim();
+    if (!raw) {
+      return null;
+    }
+    return this.looksLikeUuid(raw) ? raw : null;
+  }
+
+  private updateViewportColumns(): void {
+    this.isMobile = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
+    this.displayedColumns = this.desktopColumns;
   }
 }

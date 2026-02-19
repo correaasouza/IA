@@ -1,0 +1,147 @@
+<div class="grid gap-3">
+  <header class="page-header-sticky flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+    <div>
+      <h1 class="m-0 text-lg font-bold">{{ title }}</h1>
+      <p class="mt-1 text-xs text-[var(--muted)]">
+        Definicao de workflow
+        <ng-container *ngIf="definition">| origem: {{ originLabel(definition.origin) }} | versao: v{{ definition.versionNum }}</ng-container>
+      </p>
+      <p class="mt-1 text-xs text-[var(--muted-strong)]">Origem: {{ originLabel(definition?.origin || selectedOrigin) }}</p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button mat-stroked-button type="button" (click)="back()">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+
+      <button
+        mat-stroked-button
+        type="button"
+        *ngIf="mode === 'view' && definition"
+        (click)="toEdit()"
+        appAccessControl="workflow.configurar"
+        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+        <mat-icon>edit</mat-icon>
+        Alterar
+      </button>
+
+      <button
+        mat-flat-button
+        color="primary"
+        type="button"
+        *ngIf="mode !== 'view'"
+        [disabled]="saving"
+        (click)="save()"
+        appAccessControl="workflow.configurar"
+        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+        <mat-icon>save</mat-icon>
+        Salvar workflow
+      </button>
+
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="!definition"
+        (click)="validateDefinition()"
+        appAccessControl="workflow.configurar"
+        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+        <mat-icon>task_alt</mat-icon>
+        Validar
+      </button>
+
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="!definition"
+        (click)="exportDefinition()"
+        appAccessControl="workflow.configurar"
+        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+        <mat-icon>download</mat-icon>
+        Exportar JSON
+      </button>
+
+      <button
+        mat-stroked-button
+        type="button"
+        (click)="importDefinition()"
+        appAccessControl="workflow.configurar"
+        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+        <mat-icon>upload_file</mat-icon>
+        Importar JSON
+      </button>
+    </div>
+  </header>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="!loading">
+    <div class="workflow-builder-toolbar">
+      <div class="text-sm font-semibold">Builder visual</div>
+      <div class="flex flex-wrap items-center gap-2">
+        <button mat-stroked-button type="button" (click)="addState()" [disabled]="!canEditDefinition()">
+          <mat-icon>add_circle</mat-icon>
+          Adicionar estado
+        </button>
+        <button mat-stroked-button type="button" (click)="addTransition()" [disabled]="!canEditDefinition() || states.length < 2">
+          <mat-icon>sync_alt</mat-icon>
+          Adicionar transicao
+        </button>
+      </div>
+    </div>
+
+    <div class="workflow-builder-grid">
+      <app-workflow-builder-canvas
+        [states]="states"
+        [transitions]="transitions"
+        [selectedStateKey]="selectedStateKey"
+        [selectedTransitionKey]="selectedTransitionKey"
+        [readOnly]="!canEditDefinition()"
+        (addState)="addState()"
+        (selectState)="selectState($event)"
+        (selectTransition)="selectTransition($event)"
+        (createTransition)="createTransitionFromCanvas($event)"
+        (moveState)="onMoveState($event)">
+      </app-workflow-builder-canvas>
+
+      <div class="workflow-builder-side">
+        <app-workflow-state-properties-panel
+          [state]="selectedStateModel"
+          [readOnly]="!canEditDefinition()"
+          (stateChange)="onStateChange($event)"
+          (deleteState)="onDeleteState($event)">
+        </app-workflow-state-properties-panel>
+
+        <section class="workflow-transition-list">
+          <div class="workflow-transition-list-header">
+            <span>Transicoes</span>
+            <span class="text-xs text-[var(--muted)]">{{ transitions.length }} item(ns)</span>
+          </div>
+          <div class="workflow-transition-list-body">
+            <button
+              type="button"
+              class="workflow-transition-row"
+              *ngFor="let transition of transitions; trackBy: trackByTransition"
+              [class.workflow-transition-row--selected]="transition.key === selectedTransitionKey"
+              (click)="selectTransition(transition.key)">
+              <span class="workflow-transition-row-name">{{ transition.name || 'Transicao' }}</span>
+              <span class="workflow-transition-row-path">{{ stateNameByKey(transition.fromStateKey) }} -> {{ stateNameByKey(transition.toStateKey) }}</span>
+            </button>
+            <div class="workflow-transition-empty" *ngIf="transitions.length === 0">Nenhuma transicao cadastrada.</div>
+          </div>
+        </section>
+
+        <app-workflow-transition-properties-panel
+          [transition]="selectedTransitionModel"
+          [stateOptions]="stateOptionsList"
+          [readOnly]="!canEditDefinition()"
+          (transitionChange)="onTransitionChange($event)"
+          (deleteTransition)="onDeleteTransition($event)">
+        </app-workflow-transition-properties-panel>
+      </div>
+    </div>
+  </section>
+
+  <ng-template #loadingTpl>
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-sm text-[var(--muted)] shadow-[var(--shadow-xs)]">
+      Carregando workflow...
+    </section>
+  </ng-template>
+</div>

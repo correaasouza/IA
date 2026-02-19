@@ -1,0 +1,91 @@
+<section class="workflow-canvas" #canvasRoot>
+  <svg class="workflow-canvas-grid" aria-hidden="true">
+    <defs>
+      <pattern id="canvas-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+        <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#d8dee8" stroke-width="1"></path>
+      </pattern>
+    </defs>
+    <rect width="100%" height="100%" fill="url(#canvas-grid)"></rect>
+  </svg>
+
+  <svg class="workflow-canvas-links" aria-hidden="true">
+    <defs>
+      <marker id="workflow-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+        <path d="M0,0 L8,4 L0,8 Z" fill="#4f77cf"></path>
+      </marker>
+    </defs>
+    <g *ngFor="let transition of transitionViews; trackBy: trackByTransition">
+      <path
+        class="workflow-transition-hit"
+        [attr.d]="transition.path"
+        (click)="onSelectTransition($event, transition.key)">
+      </path>
+      <path
+        class="workflow-transition-line"
+        [class.workflow-transition-line--selected]="transition.selected"
+        [attr.d]="transition.path"
+        marker-end="url(#workflow-arrow)"
+        (click)="onSelectTransition($event, transition.key)">
+      </path>
+      <text
+        class="workflow-transition-label"
+        [class.workflow-transition-label--selected]="transition.selected"
+        [attr.x]="transition.labelX"
+        [attr.y]="transition.labelY"
+        (click)="onSelectTransition($event, transition.key)">
+        {{ transition.name }}
+      </text>
+    </g>
+    <path
+      *ngIf="linkPreviewPath() as previewPath"
+      class="workflow-transition-preview"
+      [attr.d]="previewPath">
+    </path>
+  </svg>
+
+  <div class="workflow-link-mode" *ngIf="linkSourceStateKey">
+    <span>Conectando: {{ sourceStateName() }}</span>
+    <button type="button" (click)="cancelLink($event)" [disabled]="readOnly">Cancelar</button>
+  </div>
+
+  <button
+    mat-stroked-button
+    type="button"
+    class="workflow-add-state"
+    (click)="addState.emit()"
+    [disabled]="readOnly">
+    <mat-icon>add_circle</mat-icon>
+    Novo estado
+  </button>
+
+  <div
+    class="workflow-state-node"
+    *ngFor="let state of states; trackBy: trackByState"
+    cdkDrag
+    [cdkDragDisabled]="readOnly"
+    [cdkDragFreeDragPosition]="{ x: state.uiX || 0, y: state.uiY || 0 }"
+    [class.workflow-state-node--selected]="state.key === selectedStateKey"
+    [class.workflow-state-node--link-target]="isLinkTarget(state.key)"
+    [style.--node-color]="state.color || '#3b82f6'"
+    (cdkDragEnded)="onDragEnd(state, $event)"
+    (mouseenter)="onStateMouseEnter(state.key)"
+    (mouseleave)="onStateMouseLeave(state.key)"
+    (click)="onStateClick(state.key)">
+    <div class="workflow-state-node-title">
+      <span>{{ state.name || 'Estado' }}</span>
+    </div>
+    <div class="workflow-state-node-meta">
+      <span *ngIf="state.isInitial">Inicial</span>
+      <span *ngIf="state.isFinal">Final</span>
+    </div>
+    <button
+      type="button"
+      class="workflow-state-link-trigger"
+      [class.workflow-state-link-trigger--active]="isLinkSource(state.key)"
+      [disabled]="readOnly"
+      (mousedown)="startLinkDrag($event, state.key)"
+      title="Criar transicao visual">
+      <mat-icon>call_made</mat-icon>
+    </button>
+  </div>
+</section>

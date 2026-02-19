@@ -57,6 +57,24 @@ public class MovimentoEstoqueItem extends AuditableEntity {
   @Column(name = "observacao", length = 255)
   private String observacao;
 
+  @Column(name = "status", length = 80)
+  private String status;
+
+  @Column(name = "estoque_movimentado", nullable = false)
+  private boolean estoqueMovimentado;
+
+  @Column(name = "estoque_movimentado_em")
+  private java.time.Instant estoqueMovimentadoEm;
+
+  @Column(name = "estoque_movimentado_por", length = 120)
+  private String estoqueMovimentadoPor;
+
+  @Column(name = "estoque_movimentacao_id")
+  private Long estoqueMovimentacaoId;
+
+  @Column(name = "estoque_movimentacao_chave", length = 180)
+  private String estoqueMovimentacaoChave;
+
   public Long getId() {
     return id;
   }
@@ -163,5 +181,53 @@ public class MovimentoEstoqueItem extends AuditableEntity {
 
   public void setObservacao(String observacao) {
     this.observacao = observacao;
+  }
+
+  public String getStatus() {
+    return status;
+  }
+
+  public void setStatus(String status) {
+    this.status = status;
+  }
+
+  public boolean isEstoqueMovimentado() {
+    return estoqueMovimentado;
+  }
+
+  public void setEstoqueMovimentado(boolean estoqueMovimentado) {
+    this.estoqueMovimentado = estoqueMovimentado;
+  }
+
+  public java.time.Instant getEstoqueMovimentadoEm() {
+    return estoqueMovimentadoEm;
+  }
+
+  public void setEstoqueMovimentadoEm(java.time.Instant estoqueMovimentadoEm) {
+    this.estoqueMovimentadoEm = estoqueMovimentadoEm;
+  }
+
+  public String getEstoqueMovimentadoPor() {
+    return estoqueMovimentadoPor;
+  }
+
+  public void setEstoqueMovimentadoPor(String estoqueMovimentadoPor) {
+    this.estoqueMovimentadoPor = estoqueMovimentadoPor;
+  }
+
+  public Long getEstoqueMovimentacaoId() {
+    return estoqueMovimentacaoId;
+  }
+
+  public void setEstoqueMovimentacaoId(Long estoqueMovimentacaoId) {
+    this.estoqueMovimentacaoId = estoqueMovimentacaoId;
+  }
+
+  public String getEstoqueMovimentacaoChave() {
+    return estoqueMovimentacaoChave;
+  }
+
+  public void setEstoqueMovimentacaoChave(String estoqueMovimentacaoChave) {
+    this.estoqueMovimentacaoChave = estoqueMovimentacaoChave;
   }
 }

@@ -57,6 +57,9 @@ movimento:
     strict-enabled: ${MOVIMENTO_CONFIG_STRICT_ENABLED:false}
   seed-defaults-enabled: ${MOVIMENTO_SEED_DEFAULTS_ENABLED:false}
 
+workflow:
+  enabled: ${WORKFLOW_ENABLED:true}
+
 management:
   endpoints:
     web:

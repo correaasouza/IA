@@ -4,7 +4,8 @@ import java.util.Locale;
 
 public enum CatalogMovementOriginType {
   MUDANCA_GRUPO,
-  SYSTEM;
+  SYSTEM,
+  WORKFLOW_ACTION;
 
   public static CatalogMovementOriginType fromNullable(String raw) {
     if (raw == null || raw.isBlank()) {

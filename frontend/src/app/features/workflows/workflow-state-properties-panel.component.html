@@ -1,0 +1,45 @@
+<section class="workflow-props" *ngIf="state; else emptyStateTpl">
+  <div class="workflow-props-title">Propriedades do estado</div>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Nome</mat-label>
+    <input matInput [(ngModel)]="state.name" (ngModelChange)="emitState()" [readonly]="readOnly" />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline">
+    <mat-label>Cor</mat-label>
+    <input matInput [(ngModel)]="state.color" (ngModelChange)="emitState()" [readonly]="readOnly" />
+  </mat-form-field>
+
+  <div class="workflow-props-toggles">
+    <mat-slide-toggle
+      [(ngModel)]="state.isInitial"
+      (change)="emitState()"
+      [disabled]="readOnly">
+      Estado inicial
+    </mat-slide-toggle>
+    <mat-slide-toggle
+      [(ngModel)]="state.isFinal"
+      (change)="emitState()"
+      [disabled]="readOnly">
+      Estado final
+    </mat-slide-toggle>
+  </div>
+
+  <div class="workflow-props-actions">
+    <button
+      mat-button
+      color="warn"
+      type="button"
+      [disabled]="readOnly"
+      (click)="deleteState.emit(state.key)">
+      Remover estado
+    </button>
+  </div>
+</section>
+
+<ng-template #emptyStateTpl>
+  <section class="workflow-props workflow-props--empty">
+    Selecione um estado no canvas.
+  </section>
+</ng-template>

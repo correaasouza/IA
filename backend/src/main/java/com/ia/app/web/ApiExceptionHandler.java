@@ -24,6 +24,10 @@ public class ApiExceptionHandler {
       pd.setDetail("Configuracao de movimento nao encontrada no locatario atual.");
     } else if (message.startsWith("movimento_estoque_not_found")) {
       pd.setDetail("Movimento de estoque nao encontrado no contexto atual.");
+    } else if (message.startsWith("workflow_definition_not_found")) {
+      pd.setDetail("Definicao de workflow nao encontrada.");
+    } else if (message.startsWith("workflow_instance_not_found")) {
+      pd.setDetail("Instancia de workflow nao encontrada para o registro informado.");
     } else {
       pd.setDetail(ex.getMessage());
     }
@@ -38,12 +42,15 @@ public class ApiExceptionHandler {
       : message.equals("unauthorized")
         ? HttpStatus.UNAUTHORIZED
         : message.equals("movimento_config_feature_disabled")
+          || message.equals("workflow_feature_disabled")
           ? HttpStatus.SERVICE_UNAVAILABLE
         : HttpStatus.BAD_REQUEST;
     ProblemDetail pd = ProblemDetail.forStatus(status);
     pd.setTitle("Requisicao invalida");
     if (message.startsWith("movimento_config_feature_disabled")) {
       pd.setDetail("Modulo de Configuracoes de Movimentos desabilitado por feature flag.");
+    } else if (message.startsWith("workflow_feature_disabled")) {
+      pd.setDetail("Modulo de Workflow desabilitado por feature flag.");
     } else {
       pd.setDetail(ex.getMessage());
     }
@@ -253,6 +260,36 @@ public class ApiExceptionHandler {
         "Nao existe configuracao aplicavel. Acesse Configuracoes de Movimentos, selecione o tipo e vincule a empresa.");
     } else if (message.startsWith("movimento_config_integridade_invalida")) {
       pd.setDetail("A configuracao viola restricoes de integridade dos dados.");
+    } else if (message.startsWith("movimento_estoque_stock_adjustment_required")) {
+      pd.setDetail("Informe o tipo de ajuste de estoque no cabecalho do movimento.");
+    } else if (message.startsWith("movimento_estoque_stock_adjustment_invalid")) {
+      pd.setDetail("Tipo de ajuste de estoque invalido ou inativo.");
+    } else if (message.startsWith("workflow_payload_required")) {
+      pd.setDetail("Payload de workflow obrigatorio.");
+    } else if (message.startsWith("workflow_definition_not_draft")) {
+      pd.setDetail("Somente versoes em rascunho podem ser alteradas/publicadas.");
+    } else if (message.startsWith("workflow_definition_origin_immutable")) {
+      pd.setDetail("A origem da definicao de workflow nao pode ser alterada.");
+    } else if (message.startsWith("workflow_definition_not_published")) {
+      pd.setDetail("Nao existe workflow publicado para a origem informada.");
+    } else if (message.startsWith("workflow_state_initial_exactly_one")) {
+      pd.setDetail("A definicao precisa de exatamente um estado inicial.");
+    } else if (message.startsWith("workflow_transition_not_found")) {
+      pd.setDetail("Transicao de workflow nao encontrada.");
+    } else if (message.startsWith("workflow_transition_disabled")) {
+      pd.setDetail("A transicao de workflow esta desabilitada.");
+    } else if (message.startsWith("workflow_transition_state_invalid")) {
+      pd.setDetail("A transicao nao e valida para o estado atual.");
+    } else if (message.startsWith("workflow_current_state_mismatch")) {
+      pd.setDetail("O estado atual mudou. Atualize a tela e tente novamente.");
+    } else if (message.startsWith("workflow_action_move_stock_origin_invalid")) {
+      pd.setDetail("A acao de movimentar estoque so pode ser usada no workflow de item de movimento.");
+    } else if (message.startsWith("workflow_action_json_invalid")) {
+      pd.setDetail("Configuracao de acoes do workflow invalida.");
+    } else if (message.startsWith("workflow_import_payload_invalid")) {
+      pd.setDetail("Arquivo JSON de importacao de workflow invalido.");
+    } else if (message.startsWith("workflow_json_invalid")) {
+      pd.setDetail("Falha ao serializar dados do workflow.");
     } else {
       pd.setDetail(ex.getMessage());
     }
@@ -313,6 +350,20 @@ public class ApiExceptionHandler {
       pd.setDetail("Ja existe tipo de item com este nome no locatario.");
     } else if (normalized.contains("ux_mov_config_item_tipo_scope")) {
       pd.setDetail("Tipo de item ja vinculado a configuracao de movimento.");
+    } else if (normalized.contains("ux_workflow_def_tenant_origin_version")) {
+      pd.setDetail("Ja existe versao de workflow com este numero para a origem.");
+    } else if (normalized.contains("ux_workflow_def_tenant_origin_published")) {
+      pd.setDetail("Ja existe workflow publicado ativo para esta origem.");
+    } else if (normalized.contains("ux_workflow_state_def_key")) {
+      pd.setDetail("Chave de estado duplicada na mesma definicao.");
+    } else if (normalized.contains("ux_workflow_transition_def_key")) {
+      pd.setDetail("Chave de transicao duplicada na mesma definicao.");
+    } else if (normalized.contains("ux_workflow_instance_origin_entity")) {
+      pd.setDetail("Instancia de workflow ja existe para este registro.");
+    } else if (normalized.contains("ux_wf_action_exec_key")) {
+      pd.setDetail("Execucao de acao de workflow duplicada (idempotencia).");
+    } else if (normalized.contains("ux_mov_item_tenant_mov_chave")) {
+      pd.setDetail("Item ja possui movimentacao de estoque com esta chave de idempotencia.");
     } else {
       pd.setDetail("Operacao violou uma restricao de integridade.");
     }
@@ -373,7 +424,8 @@ public class ApiExceptionHandler {
       || message.startsWith("catalog_stock_adjustment_codigo_duplicado")
       || message.startsWith("movimento_item_tipo_nome_duplicado")
       || message.startsWith("movimento_config_conflito_prioridade_contexto_empresa")
-      || message.startsWith("movimento_config_conflito_resolucao");
+      || message.startsWith("movimento_config_conflito_resolucao")
+      || message.startsWith("workflow_current_state_mismatch");
   }
 
   private Throwable rootCause(Throwable ex) {

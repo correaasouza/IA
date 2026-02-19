@@ -78,6 +78,10 @@ public class PermissaoCatalogService {
     seed(tenantId, "RELATORIO_VIEW", "Visualizar relatórios");
     seed(tenantId, "ENTIDADE_EDIT", "Editar entidades");
     seed(tenantId, "MOVIMENTO_ESTOQUE_OPERAR", "Operar movimento de estoque");
+    seed(tenantId, "MOVIMENTO_ITEM_CONFIGURAR", "Configurar tipos de itens de movimento");
+    seed(tenantId, "MOVIMENTO_ESTOQUE_ITEM_OPERAR", "Operar itens no movimento de estoque");
+    seed(tenantId, "WORKFLOW_CONFIGURAR", "Configurar workflows");
+    seed(tenantId, "WORKFLOW_TRANSICIONAR", "Executar transicoes de workflow");
   }
 
   private void seed(Long tenantId, String codigo, String label) {

@@ -1,0 +1,7 @@
+.workflow-import-field {
+  width: 100%;
+}
+
+mat-dialog-content {
+  min-width: min(920px, 92vw);
+}

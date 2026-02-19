@@ -14,6 +14,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 import { AccessControlDirective } from '../../shared/access-control.directive';
+import { WorkflowService } from '../workflows/workflow.service';
 import { MovementOperationService, MovimentoEstoqueItemResponse, MovimentoEstoqueResponse } from './movement-operation.service';
 import { MovimentoItensListComponent } from './components/movimento-itens-list.component';
 
@@ -39,7 +40,7 @@ import { MovimentoItensListComponent } from './components/movimento-itens-list.c
   styleUrls: ['./movimento-estoque-list.component.css']
 })
 export class MovimentoEstoqueListComponent implements OnInit {
-  displayedColumns = ['nome', 'movimentoConfig', 'tipoEntidadePadrao', 'acoes'];
+  displayedColumns = ['nome', 'movimentoConfig', 'tipoEntidadePadrao', 'status', 'acoes'];
   rows: MovimentoEstoqueResponse[] = [];
   showTipoEntidadePadrao = false;
   selectedMovimentoId: number | null = null;
@@ -54,15 +55,19 @@ export class MovimentoEstoqueListComponent implements OnInit {
   loading = false;
   isMobile = false;
   mobileFiltersOpen = false;
+  workflowEnabled = true;
+  itemTransitionsByItemId: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
+  itemStateNamesByItemId: Record<number, string> = {};
+  itemStateKeysByItemId: Record<number, string> = {};
+  movimentoStateNamesById: Record<number, string> = {};
+  movimentoStateKeysById: Record<number, string> = {};
+  movimentoTransitionsById: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
 
   searchOptions: FieldSearchOption[] = [
     { key: 'nome', label: 'Nome' }
   ];
   searchTerm = '';
   searchFields = ['nome'];
-  readonly handleListItemConsult = (item: MovimentoEstoqueItemResponse) => this.consultItem(item);
-  readonly handleListItemEdit = (item: MovimentoEstoqueItemResponse) => this.openItemOnMovimentoForm(item);
-  readonly handleListItemDelete = (item: MovimentoEstoqueItemResponse) => this.removeItem(item);
   @ViewChild('movimentosPane') movimentosPane?: ElementRef<HTMLElement>;
   @ViewChild('itensPane') itensPane?: ElementRef<HTMLElement>;
 
@@ -70,7 +75,8 @@ export class MovimentoEstoqueListComponent implements OnInit {
     private dialog: MatDialog,
     private router: Router,
     private notify: NotificationService,
-    private service: MovementOperationService
+    private service: MovementOperationService,
+    private workflowService: WorkflowService
   ) {}
 
   ngOnInit(): void {
@@ -114,6 +120,12 @@ export class MovimentoEstoqueListComponent implements OnInit {
       this.rows = [];
       this.selectedMovimentoId = null;
       this.visibleItemCount = this.itemChunkSize;
+      this.itemTransitionsByItemId = {};
+      this.itemStateNamesByItemId = {};
+      this.itemStateKeysByItemId = {};
+      this.movimentoStateNamesById = {};
+      this.movimentoStateKeysById = {};
+      this.movimentoTransitionsById = {};
     }
     const nome = this.searchFields.includes('nome') ? this.searchTerm : '';
     const targetPage = reset ? 0 : this.pageIndex;
@@ -142,10 +154,12 @@ export class MovimentoEstoqueListComponent implements OnInit {
         }
         this.pageIndex = targetPage + 1;
         this.syncSelectedRow();
+        this.loadMovementStateNames();
+        this.loadTransitionsForSelectedItems();
         this.showTipoEntidadePadrao = this.rows.some(item => item.tipoEntidadePadraoId != null);
         this.displayedColumns = this.showTipoEntidadePadrao
-          ? ['nome', 'movimentoConfig', 'tipoEntidadePadrao', 'acoes']
-          : ['nome', 'movimentoConfig', 'acoes'];
+          ? ['nome', 'movimentoConfig', 'tipoEntidadePadrao', 'status', 'acoes']
+          : ['nome', 'movimentoConfig', 'status', 'acoes'];
         this.ensureMovimentosFillViewport();
       },
       error: err => {
@@ -154,7 +168,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
         this.pageIndex = 0;
         this.hasMoreRows = false;
         this.showTipoEntidadePadrao = false;
-        this.displayedColumns = ['nome', 'movimentoConfig', 'acoes'];
+        this.displayedColumns = ['nome', 'movimentoConfig', 'status', 'acoes'];
         this.notify.error(err?.error?.detail || 'Nao foi possivel carregar movimentos de estoque.');
       }
     });
@@ -216,6 +230,10 @@ export class MovimentoEstoqueListComponent implements OnInit {
   selectRow(row: MovimentoEstoqueResponse): void {
     this.selectedMovimentoId = row.id;
     this.visibleItemCount = this.itemChunkSize;
+    this.itemTransitionsByItemId = {};
+    this.itemStateNamesByItemId = {};
+    this.itemStateKeysByItemId = {};
+    this.loadTransitionsForSelectedItems();
     this.ensureItensFillViewport();
   }
 
@@ -254,6 +272,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
       empresaId: selected.empresaId,
       nome: selected.nome,
       tipoEntidadeId: selected.tipoEntidadePadraoId,
+      stockAdjustmentId: selected.stockAdjustmentId,
       version: selected.version,
       itens: remaining.map((current, idx) => ({
         movimentoItemTipoId: current.movimentoItemTipoId,
@@ -272,6 +291,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
           this.rows = this.rows.map(row => row.id === updated.id ? updated : row);
           this.notify.success('Item excluido do movimento.');
           this.syncSelectedRow();
+          this.loadTransitionsForSelectedItems();
         },
         error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel excluir o item do movimento.')
       });
@@ -302,7 +322,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
     });
   }
 
-  private openItemOnMovimentoForm(item: MovimentoEstoqueItemResponse): void {
+  openItemOnMovimentoForm(item: MovimentoEstoqueItemResponse): void {
     const selected = this.selectedRow();
     if (!selected) {
       return;
@@ -310,9 +330,37 @@ export class MovimentoEstoqueListComponent implements OnInit {
     this.router.navigate(['/movimentos/estoque', selected.id, 'edit'], {
       queryParams: {
         returnTo: '/movimentos/estoque',
-        editItemUid: item.id
+        editItemUid: item.id,
+        editCatalogItemId: item.catalogItemId
       }
     });
+  }
+
+  onTransitionItem(event: {
+    item: MovimentoEstoqueItemResponse;
+    transitionKey: string;
+    expectedCurrentStateKey?: string | null;
+  }): void {
+    if (!this.workflowEnabled) {
+      return;
+    }
+    const itemId = Number(event?.item?.id || 0);
+    if (!itemId || !event.transitionKey) {
+      return;
+    }
+    this.itemSaving = true;
+    this.workflowService.transition('ITEM_MOVIMENTO_ESTOQUE', itemId, {
+      transitionKey: event.transitionKey,
+      expectedCurrentStateKey: event.expectedCurrentStateKey || null,
+      notes: 'Transicao manual pela lista de movimentos'
+    }).pipe(finalize(() => (this.itemSaving = false)))
+      .subscribe({
+        next: () => {
+          this.notify.success('Transicao executada com sucesso.');
+          this.load(true);
+        },
+        error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel transicionar o item.')
+      });
   }
 
   private updateViewportMode(): void {
@@ -327,6 +375,11 @@ export class MovimentoEstoqueListComponent implements OnInit {
     if (!this.rows.length) {
       this.selectedMovimentoId = null;
       this.visibleItemCount = this.itemChunkSize;
+      this.itemTransitionsByItemId = {};
+      this.itemStateNamesByItemId = {};
+      this.itemStateKeysByItemId = {};
+      this.movimentoTransitionsById = {};
+      this.movimentoStateKeysById = {};
       return;
     }
     if (this.selectedMovimentoId != null && this.rows.some(item => item.id === this.selectedMovimentoId)) {
@@ -335,6 +388,12 @@ export class MovimentoEstoqueListComponent implements OnInit {
     this.selectedMovimentoId = this.rows[0]?.id ?? null;
     if (previousId !== this.selectedMovimentoId) {
       this.visibleItemCount = this.itemChunkSize;
+      this.itemTransitionsByItemId = {};
+      this.itemStateNamesByItemId = {};
+      this.itemStateKeysByItemId = {};
+      this.movimentoTransitionsById = {};
+      this.movimentoStateKeysById = {};
+      this.loadTransitionsForSelectedItems();
       this.ensureItensFillViewport();
     }
   }
@@ -374,5 +433,153 @@ export class MovimentoEstoqueListComponent implements OnInit {
         this.ensureItensFillViewport();
       }
     }, 0);
+  }
+
+  private loadTransitionsForSelectedItems(): void {
+    if (!this.workflowEnabled) {
+      this.itemTransitionsByItemId = {};
+      this.itemStateNamesByItemId = {};
+      this.itemStateKeysByItemId = {};
+      return;
+    }
+    const selected = this.selectedRow();
+    if (!selected) {
+      this.itemTransitionsByItemId = {};
+      this.itemStateNamesByItemId = {};
+      this.itemStateKeysByItemId = {};
+      return;
+    }
+    const items = selected.itens || [];
+    if (!items.length) {
+      this.itemTransitionsByItemId = {};
+      this.itemStateNamesByItemId = {};
+      this.itemStateKeysByItemId = {};
+      return;
+    }
+    this.itemTransitionsByItemId = {};
+    this.itemStateNamesByItemId = {};
+    this.itemStateKeysByItemId = {};
+    const nextMap: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
+    const nextStateNames: Record<number, string> = {};
+    const nextStateKeys: Record<number, string> = {};
+    for (const item of items) {
+      const itemId = Number(item?.id || 0);
+      if (!itemId) {
+        continue;
+      }
+      this.workflowService.getRuntimeState('ITEM_MOVIMENTO_ESTOQUE', itemId).subscribe({
+        next: runtime => {
+          nextMap[itemId] = runtime.transitions || [];
+          const stateName = (runtime.currentStateName || '').trim();
+          const stateKey = (runtime.currentStateKey || '').trim();
+          if (stateName) {
+            nextStateNames[itemId] = stateName;
+          }
+          if (stateKey) {
+            nextStateKeys[itemId] = stateKey;
+          }
+          this.itemTransitionsByItemId = { ...this.itemTransitionsByItemId, ...nextMap };
+          this.itemStateNamesByItemId = { ...this.itemStateNamesByItemId, ...nextStateNames };
+          this.itemStateKeysByItemId = { ...this.itemStateKeysByItemId, ...nextStateKeys };
+        },
+        error: () => {
+          nextMap[itemId] = [];
+          this.itemTransitionsByItemId = { ...this.itemTransitionsByItemId, ...nextMap };
+        }
+      });
+    }
+  }
+
+  movementStatus(row: MovimentoEstoqueResponse): string {
+    const rowId = Number(row?.id || 0);
+    const mapped = rowId > 0 ? (this.movimentoStateNamesById[rowId] || '').trim() : '';
+    if (mapped) {
+      return mapped;
+    }
+    const raw = (row?.status || '').trim();
+    if (!raw) {
+      return '-';
+    }
+    return this.looksLikeUuid(raw) ? '-' : raw;
+  }
+
+  movementTransitions(row: MovimentoEstoqueResponse): Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }> {
+    const rowId = Number(row?.id || 0);
+    if (!rowId) {
+      return [];
+    }
+    return this.movimentoTransitionsById[rowId] || [];
+  }
+
+  onTransitionMovement(row: MovimentoEstoqueResponse, transitionKey: string): void {
+    const rowId = Number(row?.id || 0);
+    if (!rowId || !transitionKey) {
+      return;
+    }
+    const expectedCurrentStateKey = (this.movimentoStateKeysById[rowId] || '').trim();
+    this.itemSaving = true;
+    this.workflowService.transition('MOVIMENTO_ESTOQUE', rowId, {
+      transitionKey,
+      expectedCurrentStateKey: expectedCurrentStateKey || null,
+      notes: 'Transicao manual pela lista de movimentos'
+    }).pipe(finalize(() => (this.itemSaving = false)))
+      .subscribe({
+        next: () => {
+          this.notify.success('Transicao do movimento executada com sucesso.');
+          this.load(true);
+        },
+        error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel transicionar o movimento.')
+      });
+  }
+
+  private loadMovementStateNames(): void {
+    if (!this.workflowEnabled) {
+      this.movimentoStateNamesById = {};
+      this.movimentoStateKeysById = {};
+      this.movimentoTransitionsById = {};
+      return;
+    }
+    if (!this.rows.length) {
+      this.movimentoStateNamesById = {};
+      this.movimentoStateKeysById = {};
+      this.movimentoTransitionsById = {};
+      return;
+    }
+    this.movimentoStateNamesById = {};
+    this.movimentoStateKeysById = {};
+    this.movimentoTransitionsById = {};
+    const nextStateNames: Record<number, string> = {};
+    const nextStateKeys: Record<number, string> = {};
+    const nextTransitions: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
+    for (const row of this.rows) {
+      const rowId = Number(row?.id || 0);
+      if (!rowId) {
+        continue;
+      }
+      this.workflowService.getRuntimeState('MOVIMENTO_ESTOQUE', rowId).subscribe({
+        next: runtime => {
+          const stateName = (runtime.currentStateName || '').trim();
+          const stateKey = (runtime.currentStateKey || '').trim();
+          if (stateName) {
+            nextStateNames[rowId] = stateName;
+          }
+          if (stateKey) {
+            nextStateKeys[rowId] = stateKey;
+          }
+          nextTransitions[rowId] = runtime.transitions || [];
+          this.movimentoStateNamesById = { ...this.movimentoStateNamesById, ...nextStateNames };
+          this.movimentoStateKeysById = { ...this.movimentoStateKeysById, ...nextStateKeys };
+          this.movimentoTransitionsById = { ...this.movimentoTransitionsById, ...nextTransitions };
+        },
+        error: () => {
+          nextTransitions[rowId] = [];
+          this.movimentoTransitionsById = { ...this.movimentoTransitionsById, ...nextTransitions };
+        }
+      });
+    }
+  }
+
+  private looksLikeUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
   }
 }

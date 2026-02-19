@@ -10,5 +10,6 @@ public record MovimentoEstoqueCreateRequest(
   @NotNull @Positive Long empresaId,
   @NotBlank @Size(max = 120) String nome,
   @Positive Long tipoEntidadeId,
+  @Positive Long stockAdjustmentId,
   List<MovimentoEstoqueItemRequest> itens
 ) {}

@@ -6,6 +6,7 @@ import com.ia.app.service.MovimentoConfigFeatureToggle;
 import com.ia.app.service.PermissaoUsuarioService;
 import com.ia.app.service.UsuarioEmpresaPreferenciaService;
 import com.ia.app.tenant.TenantContext;
+import com.ia.app.workflow.service.WorkflowFeatureToggle;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.LinkedHashMap;
@@ -30,14 +31,17 @@ public class MeController {
   private final PermissaoUsuarioService permissaoUsuarioService;
   private final UsuarioEmpresaPreferenciaService usuarioEmpresaPreferenciaService;
   private final MovimentoConfigFeatureToggle movimentoConfigFeatureToggle;
+  private final WorkflowFeatureToggle workflowFeatureToggle;
 
   public MeController(
       PermissaoUsuarioService permissaoUsuarioService,
       UsuarioEmpresaPreferenciaService usuarioEmpresaPreferenciaService,
-      MovimentoConfigFeatureToggle movimentoConfigFeatureToggle) {
+      MovimentoConfigFeatureToggle movimentoConfigFeatureToggle,
+      WorkflowFeatureToggle workflowFeatureToggle) {
     this.permissaoUsuarioService = permissaoUsuarioService;
     this.usuarioEmpresaPreferenciaService = usuarioEmpresaPreferenciaService;
     this.movimentoConfigFeatureToggle = movimentoConfigFeatureToggle;
+    this.workflowFeatureToggle = workflowFeatureToggle;
   }
 
   @GetMapping("/me")
@@ -92,7 +96,8 @@ public class MeController {
       payload.put("tenantId", tenantFromClaim != null ? tenantFromClaim : tenantId);
       payload.put("features", Map.of(
         "movementConfigEnabled", movimentoConfigFeatureToggle.isEnabled(),
-        "movementConfigStrictEnabled", movimentoConfigFeatureToggle.isStrictEnabled()));
+        "movementConfigStrictEnabled", movimentoConfigFeatureToggle.isStrictEnabled(),
+        "workflowEnabled", workflowFeatureToggle.isEnabled()));
 
       return ResponseEntity.ok()
         .header(HttpHeaders.CACHE_CONTROL, "no-store")

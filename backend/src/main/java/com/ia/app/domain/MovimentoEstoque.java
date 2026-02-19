@@ -25,6 +25,9 @@ public class MovimentoEstoque extends MovimentoBase {
   @Column(name = "tipo_entidade_padrao_id")
   private Long tipoEntidadePadraoId;
 
+  @Column(name = "stock_adjustment_id")
+  private Long stockAdjustmentId;
+
   @Version
   @Column(name = "version", nullable = false)
   private Long version = 0L;
@@ -69,5 +72,13 @@ public class MovimentoEstoque extends MovimentoBase {
 
   public void setVersion(Long version) {
     this.version = version;
+  }
+
+  public Long getStockAdjustmentId() {
+    return stockAdjustmentId;
+  }
+
+  public void setStockAdjustmentId(Long stockAdjustmentId) {
+    this.stockAdjustmentId = stockAdjustmentId;
   }
 }

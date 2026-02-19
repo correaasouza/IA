@@ -7,11 +7,21 @@ export interface MovimentoTemplateRequest {
   empresaId: number;
 }
 
+export interface MovimentoStockAdjustmentOption {
+  id: number;
+  codigo: string;
+  nome: string;
+  tipo: 'ENTRADA' | 'SAIDA' | 'TRANSFERENCIA';
+  catalogType: 'PRODUCTS' | 'SERVICES';
+}
+
 export interface MovimentoEstoqueTemplateResponse {
   tipoMovimento: string;
   empresaId: number;
   movimentoConfigId: number;
   tipoEntidadePadraoId: number | null;
+  stockAdjustmentId: number | null;
+  stockAdjustments: MovimentoStockAdjustmentOption[];
   tiposEntidadePermitidos: number[];
   tiposItensPermitidos: MovimentoTipoItemTemplate[];
   nome: string;
@@ -45,6 +55,7 @@ export interface MovimentoEstoqueItemResponse {
   valorUnitario: number;
   valorTotal: number;
   cobrar: boolean;
+  status?: string | null;
   ordem: number;
   observacao?: string | null;
 }
@@ -69,6 +80,7 @@ export interface MovimentoEstoqueCreateRequest {
   empresaId: number;
   nome: string;
   tipoEntidadeId?: number | null;
+  stockAdjustmentId?: number | null;
   itens: MovimentoEstoqueItemRequest[];
 }
 
@@ -76,6 +88,7 @@ export interface MovimentoEstoqueUpdateRequest {
   empresaId: number;
   nome: string;
   tipoEntidadeId?: number | null;
+  stockAdjustmentId?: number | null;
   version: number;
   itens: MovimentoEstoqueItemRequest[];
 }
@@ -87,6 +100,8 @@ export interface MovimentoEstoqueResponse {
   nome: string;
   movimentoConfigId: number;
   tipoEntidadePadraoId: number | null;
+  stockAdjustmentId: number | null;
+  status?: string | null;
   itens: MovimentoEstoqueItemResponse[];
   totalItens: number;
   totalCobrado: number;

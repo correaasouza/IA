@@ -11,6 +11,7 @@ public record MovimentoEstoqueUpdateRequest(
   @NotNull @Positive Long empresaId,
   @NotBlank @Size(max = 120) String nome,
   @Positive Long tipoEntidadeId,
+  @Positive Long stockAdjustmentId,
   @NotNull @PositiveOrZero Long version,
   List<MovimentoEstoqueItemRequest> itens
 ) {}

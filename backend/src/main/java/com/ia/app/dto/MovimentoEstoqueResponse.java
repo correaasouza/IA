@@ -12,6 +12,8 @@ public record MovimentoEstoqueResponse(
   String nome,
   Long movimentoConfigId,
   Long tipoEntidadePadraoId,
+  Long stockAdjustmentId,
+  String status,
   List<MovimentoEstoqueItemResponse> itens,
   Integer totalItens,
   BigDecimal totalCobrado,

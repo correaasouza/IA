@@ -18,6 +18,8 @@ public interface CatalogStockAdjustmentRepository extends JpaRepository<CatalogS
     Long tenantId,
     Long catalogConfigurationId);
 
+  Optional<CatalogStockAdjustment> findByIdAndTenantIdAndActiveTrue(Long id, Long tenantId);
+
   @Query("""
     select coalesce(max(a.ordem), 0)
     from CatalogStockAdjustment a

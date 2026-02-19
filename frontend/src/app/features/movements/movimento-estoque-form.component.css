@@ -18,13 +18,20 @@
 
 .item-toggle-box {
   min-height: 56px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0 12px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: var(--surface);
+  justify-content: flex-start;
+  padding: 0;
+}
+
+.item-toggle-tag {
+  margin: 0;
+}
+
+.item-catalog-label {
+  margin-top: 2px;
+  margin-bottom: 10px;
+  line-height: 1.25;
 }
 
 .item-row-summary {
@@ -68,5 +75,9 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
     white-space: normal;
+  }
+
+  .item-catalog-label {
+    margin-bottom: 12px;
   }
 }

@@ -5,6 +5,7 @@
       <p class="mt-1 text-xs text-[var(--muted)]">Ficha de movimento de estoque</p>
       <p class="mt-1 text-xs text-[var(--muted-strong)]">Empresa: {{ empresaAtual() }}</p>
       <p class="mt-1 text-xs text-[var(--muted-strong)]">Nome: {{ nomeAtual() }}</p>
+      <p class="mt-1 text-xs text-[var(--muted-strong)]">Ajuste estoque: {{ stockAdjustmentAtual() }}</p>
       <p class="mt-1 text-xs text-[var(--muted-strong)]" *ngIf="hasTiposEntidadeConfigurados()">Destinatario: {{ tipoEntidadeAtual() }}</p>
     </div>
     <div class="flex flex-wrap gap-2">
@@ -69,8 +70,18 @@
         <mat-label>Destinatario do movimento</mat-label>
         <mat-select formControlName="tipoEntidadeId" [disabled]="mode === 'view'">
           <mat-option [value]="null">Selecione</mat-option>
-          <mat-option *ngFor="let tipoEntidadeId of tiposEntidadePermitidos()" [value]="tipoEntidadeId">
+          <mat-option *ngFor="let tipoEntidadeId of tiposEntidadePermitidosView" [value]="tipoEntidadeId">
             {{ tipoEntidadeOptionLabel(tipoEntidadeId) }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo de ajuste de estoque</mat-label>
+        <mat-select formControlName="stockAdjustmentId" [disabled]="mode === 'view'">
+          <mat-option [value]="null">Selecione</mat-option>
+          <mat-option *ngFor="let adjustment of stockAdjustmentsView" [value]="adjustment.id">
+            {{ stockAdjustmentOptionLabel(adjustment) }}
           </mat-option>
         </mat-select>
       </mat-form-field>
@@ -87,22 +98,23 @@
     </div>
 
     <div class="grid gap-2" *ngIf="itemRows.length > 0; else semItensTpl">
-      <div #itemEditorAnchor class="text-xs font-semibold text-[var(--muted)]" *ngIf="editingItemRows().length > 0">
+      <div #itemEditorAnchor class="text-xs font-semibold text-[var(--muted)]" *ngIf="editingRowsView.length > 0">
         Item(ns) em edicao
       </div>
 
-      <article class="item-row" *ngFor="let row of editingItemRows(); let idx = index">
+      <article class="item-row" *ngFor="let entry of editingRowsView">
+        <ng-container *ngIf="entry.row as row">
         <div class="item-row-header">
           <div class="text-xs font-semibold">{{ row.saved ? 'Editar item' : 'Novo item' }}</div>
           <div class="flex items-center gap-1" *ngIf="mode !== 'view'">
-            <button mat-stroked-button type="button" (click)="saveItemRow(itemRows.indexOf(row))">
+            <button mat-stroked-button type="button" (click)="saveItemRow(entry.index)">
               <mat-icon>check</mat-icon>
               Salvar item
             </button>
-            <button mat-icon-button type="button" (click)="cancelItemRow(itemRows.indexOf(row))">
+            <button mat-icon-button type="button" (click)="cancelItemRow(entry.index)">
               <mat-icon>close</mat-icon>
             </button>
-            <button mat-icon-button color="warn" type="button" (click)="removeItemRow(itemRows.indexOf(row))">
+            <button mat-icon-button color="warn" type="button" (click)="removeItemRow(entry.index)">
               <mat-icon>delete</mat-icon>
             </button>
           </div>
@@ -113,15 +125,16 @@
             <mat-label>Tipo de item</mat-label>
             <mat-select [(value)]="row.movimentoItemTipoId" (selectionChange)="onTipoItemChange(row)" [disabled]="!isRowEditable(row)">
               <mat-option [value]="null">Selecione</mat-option>
-              <mat-option *ngFor="let tipo of itemTypesPermitidos()" [value]="tipo.tipoItemId">{{ tipo.nome }}</mat-option>
+              <mat-option *ngFor="let tipo of itemTypesPermitidosView" [value]="tipo.tipoItemId">{{ tipo.nome }}</mat-option>
             </mat-select>
           </mat-form-field>
 
           <div class="item-toggle-box">
-            <span class="text-sm font-medium">Cobrar</span>
             <mat-slide-toggle
+              class="item-toggle-tag"
               [(ngModel)]="row.cobrar"
               [ngModelOptions]="{ standalone: true }"
+              aria-label="Cobrar item"
               [disabled]="!isRowEditable(row)"
               (change)="onValorUnitarioChange(row)">
               {{ row.cobrar ? 'Sim' : 'Nao' }}
@@ -129,7 +142,7 @@
           </div>
         </div>
 
-        <div class="text-xs text-[var(--muted)]">
+        <div class="item-catalog-label text-xs text-[var(--muted)]">
           Catalogo: {{ catalogTypeLabel(row.catalogType) }}
         </div>
 
@@ -177,17 +190,23 @@
             <input matInput [(ngModel)]="row.observacao" [ngModelOptions]="{ standalone: true }" [readonly]="!isRowEditable(row)" />
           </mat-form-field>
         </div>
+        </ng-container>
       </article>
 
       <app-movimento-itens-list
-        [items]="savedItemsAsResponse()"
+        [items]="savedItemsView"
         [inlineEditEnabled]="false"
+        [showWorkflowTransitions]="workflowEnabled && mode !== 'new'"
+        [transitionsByItem]="itemTransitionsByItemId"
+        [stateNamesByItemId]="itemStateNamesByItemId"
+        [stateKeysByItemId]="itemStateKeysByItemId"
         [itemSaving]="saving"
         [emptyMessage]="'Nenhum item salvo.'"
         [actionButtonsEnabled]="true"
-        [onConsult]="handleSavedItemConsult"
-        [onEdit]="handleSavedItemEdit"
-        [onDelete]="handleSavedItemDelete">
+        (consultItem)="onSavedItemConsult($event)"
+        (editItem)="onSavedItemEdit($event)"
+        (transitionItem)="onSavedItemTransition($event)"
+        (deleteItem)="onSavedItemDelete($event)">
       </app-movimento-itens-list>
     </div>
 

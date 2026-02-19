@@ -328,6 +328,9 @@ export class AppComponent {
     if (item.id === 'movement-configs' && !this.isFeatureEnabled('movementConfigEnabled', true)) {
       return false;
     }
+    if (item.id === 'workflow-configs' && !this.isFeatureEnabled('workflowEnabled', true)) {
+      return false;
+    }
     const roleOk = !item.roles || item.roles.length === 0
       || this.accessControl.can(controlKey, item.roles);
     const permOk = !item.perms || item.perms.length === 0 || item.perms.some(p => this.permissions.includes(p));

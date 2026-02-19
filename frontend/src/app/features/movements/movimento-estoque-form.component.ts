@@ -15,13 +15,16 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { AccessControlDirective } from '../../shared/access-control.directive';
+import { FeatureFlagService } from '../../core/features/feature-flag.service';
 import { EntityTypeService } from '../entity-types/entity-type.service';
+import { WorkflowService } from '../workflows/workflow.service';
 import { MovimentoItensListComponent } from './components/movimento-itens-list.component';
 import {
   MovimentoEstoqueCreateRequest,
   MovimentoEstoqueItemResponse,
   MovimentoEstoqueItemRequest,
   MovimentoEstoqueResponse,
+  MovimentoStockAdjustmentOption,
   MovimentoEstoqueTemplateResponse,
   MovimentoItemCatalogOption,
   MovimentoTipoItemTemplate,
@@ -38,10 +41,16 @@ interface MovimentoEstoqueItemDraft {
   cobrar: boolean;
   ordem: number;
   observacao: string;
+  status?: string | null;
   catalogSearchText: string;
   catalogOptions: MovimentoItemCatalogOption[];
   editing: boolean;
   saved: boolean;
+}
+
+interface MovimentoEstoqueEditingRowView {
+  row: MovimentoEstoqueItemDraft;
+  index: number;
 }
 
 @Component({
@@ -78,20 +87,29 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   templateData: MovimentoEstoqueTemplateResponse | null = null;
   empresaNomeHeader = '-';
   itemRows: MovimentoEstoqueItemDraft[] = [];
+  editingRowsView: MovimentoEstoqueEditingRowView[] = [];
+  savedItemsView: MovimentoEstoqueItemResponse[] = [];
+  stockAdjustmentsView: MovimentoStockAdjustmentOption[] = [];
+  tiposEntidadePermitidosView: number[] = [];
+  itemTypesPermitidosView: MovimentoTipoItemTemplate[] = [];
   loadingCatalogByRow = new Map<number, boolean>();
   tipoEntidadeNomeById = new Map<number, string>();
+  itemTypeNameById = new Map<number, string>();
+  workflowEnabled = true;
+  itemTransitionsByItemId: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
+  itemStateNamesByItemId: Record<number, string> = {};
+  itemStateKeysByItemId: Record<number, string> = {};
   @ViewChild('itemEditorAnchor') itemEditorAnchor?: ElementRef<HTMLElement>;
-  readonly handleSavedItemConsult = (item: MovimentoEstoqueItemResponse) => this.onSavedItemConsult(item);
-  readonly handleSavedItemEdit = (item: MovimentoEstoqueItemResponse) => this.onSavedItemEdit(item);
-  readonly handleSavedItemDelete = (item: MovimentoEstoqueItemResponse) => this.onSavedItemDelete(item);
 
   private nextRowUid = 1;
   private pendingEditItemUid: number | null = null;
+  private pendingEditCatalogItemId: number | null = null;
 
   form = this.fb.group({
     empresaId: [null as number | null, Validators.required],
     nome: ['', [Validators.required, Validators.maxLength(120)]],
     tipoEntidadeId: [null as number | null],
+    stockAdjustmentId: [null as number | null],
     version: [null as number | null]
   });
 
@@ -102,18 +120,23 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     private dialog: MatDialog,
     private notify: NotificationService,
     private service: MovementOperationService,
-    private entityTypeService: EntityTypeService
+    private entityTypeService: EntityTypeService,
+    private workflowService: WorkflowService,
+    private featureFlagService: FeatureFlagService
   ) {}
 
   ngOnInit(): void {
+    this.workflowEnabled = this.featureFlagService.isEnabled('workflowEnabled', true);
     const id = Number(this.route.snapshot.paramMap.get('id') || 0);
     const isEdit = this.route.snapshot.url.some(item => item.path === 'edit');
     const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
     const editItemUid = Number(this.route.snapshot.queryParamMap.get('editItemUid') || 0);
+    const editCatalogItemId = Number(this.route.snapshot.queryParamMap.get('editCatalogItemId') || 0);
     if (returnTo) {
       this.returnTo = returnTo;
     }
     this.pendingEditItemUid = editItemUid > 0 ? editItemUid : null;
+    this.pendingEditCatalogItemId = editCatalogItemId > 0 ? editCatalogItemId : null;
     this.mode = id > 0 ? (isEdit ? 'edit' : 'view') : 'new';
     this.title = this.mode === 'new'
       ? 'Novo movimento de estoque'
@@ -145,10 +168,11 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     const empresaId = Number(this.form.value.empresaId || 0);
     const nome = (this.form.value.nome || '').trim();
     const tipoEntidadeId = this.normalizeTipoEntidadeId(this.form.value.tipoEntidadeId);
+    const stockAdjustmentId = this.normalizeStockAdjustmentId(this.form.value.stockAdjustmentId);
     this.saving = true;
 
     if (this.mode === 'new') {
-      const payload: MovimentoEstoqueCreateRequest = { empresaId, nome, tipoEntidadeId, itens };
+      const payload: MovimentoEstoqueCreateRequest = { empresaId, nome, tipoEntidadeId, stockAdjustmentId, itens };
       this.service.createEstoque(payload)
         .pipe(finalize(() => (this.saving = false)))
         .subscribe({
@@ -166,7 +190,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       return;
     }
     const version = Number(this.form.value.version ?? this.movimento.version);
-    this.service.updateEstoque(this.movimento.id, { empresaId, nome, tipoEntidadeId, version, itens })
+    this.service.updateEstoque(this.movimento.id, { empresaId, nome, tipoEntidadeId, stockAdjustmentId, version, itens })
       .pipe(finalize(() => (this.saving = false)))
       .subscribe({
         next: updated => {
@@ -227,9 +251,24 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     return this.tipoEntidadeNomeById.get(tipoEntidadeId) || `Tipo #${tipoEntidadeId}`;
   }
 
+  stockAdjustmentAtual(): string {
+    const id = this.normalizeStockAdjustmentId(this.form.get('stockAdjustmentId')?.value);
+    if (id == null) {
+      return '-';
+    }
+    const option = this.stockAdjustmentsView.find(item => item.id === id);
+    if (!option) {
+      return `Ajuste #${id}`;
+    }
+    return `${option.codigo} - ${option.nome} (${option.tipo})`;
+  }
+
+  stockAdjustmentOptionLabel(option: MovimentoStockAdjustmentOption): string {
+    return `${option.codigo} - ${option.nome} (${option.tipo})`;
+  }
+
   tiposEntidadePermitidos(): number[] {
-    const source = this.templateData?.tiposEntidadePermitidos || [];
-    return source.filter((id): id is number => Number(id) > 0);
+    return this.tiposEntidadePermitidosView;
   }
 
   hasTiposEntidadeConfigurados(): boolean {
@@ -241,19 +280,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   }
 
   itemTypesPermitidos(): MovimentoTipoItemTemplate[] {
-    if (this.templateData?.tiposItensPermitidos?.length) {
-      return this.templateData.tiposItensPermitidos;
-    }
-    const byId = new Map<number, MovimentoTipoItemTemplate>();
-    for (const item of this.movimento?.itens || []) {
-      byId.set(item.movimentoItemTipoId, {
-        tipoItemId: item.movimentoItemTipoId,
-        nome: item.movimentoItemTipoNome,
-        catalogType: item.catalogType,
-        cobrar: item.cobrar
-      });
-    }
-    return [...byId.values()];
+    return this.itemTypesPermitidosView;
   }
 
   itemTypesPermitidosLabel(): string {
@@ -275,6 +302,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       cobrar: true,
       ordem: this.itemRows.length,
       observacao: '',
+      status: null,
       catalogSearchText: '',
       catalogOptions: [],
       editing: true,
@@ -307,6 +335,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     if (!row) return;
     row.editing = true;
     this.itemRows = [...this.itemRows];
+    this.refreshItemViews();
   }
 
   cancelItemRow(index: number): void {
@@ -391,44 +420,19 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     if (!tipoItemId) {
       return '-';
     }
-    return this.itemTypesPermitidos().find(item => item.tipoItemId === tipoItemId)?.nome || `Tipo #${tipoItemId}`;
+    return this.itemTypeNameById.get(tipoItemId) || `Tipo #${tipoItemId}`;
   }
 
   itemCatalogoResumo(row: MovimentoEstoqueItemDraft): string {
     return (row.catalogSearchText || '').trim() || '-';
   }
 
-  editingItemRows(): MovimentoEstoqueItemDraft[] {
-    return this.itemRows.filter(row => row.editing);
-  }
-
-  savedItemRows(): MovimentoEstoqueItemDraft[] {
-    return this.itemRows.filter(row => row.saved && !row.editing);
-  }
-
-  savedItemsAsResponse(): MovimentoEstoqueItemResponse[] {
-    return this.savedItemRows().map(row => {
-      const catalogSummary = this.parseCatalogSummary(row.catalogSearchText);
-      return {
-        id: row.uid,
-        movimentoItemTipoId: row.movimentoItemTipoId || 0,
-        movimentoItemTipoNome: this.tipoItemLabel(row.movimentoItemTipoId),
-        catalogType: row.catalogType || 'PRODUCTS',
-        catalogItemId: row.catalogItemId || 0,
-        catalogCodigoSnapshot: catalogSummary.codigo,
-        catalogNomeSnapshot: catalogSummary.nome,
-        quantidade: Number(row.quantidade || 0),
-        valorUnitario: Number(row.cobrar ? row.valorUnitario : 0),
-        valorTotal: this.lineTotal(row),
-        cobrar: row.cobrar,
-        ordem: row.ordem,
-        observacao: row.observacao || null
-      };
-    });
-  }
-
   onSavedItemConsult(item: MovimentoEstoqueItemResponse): void {
-    const row = this.findRowByUid(item.id);
+    const index = this.findRowIndexForItem(item);
+    if (index < 0) {
+      return;
+    }
+    const row = this.itemRows[index];
     if (!row) {
       return;
     }
@@ -438,11 +442,15 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   onSavedItemEdit(item: MovimentoEstoqueItemResponse): void {
     if (this.mode === 'view' && this.movimento?.id) {
       this.router.navigate(['/movimentos/estoque', this.movimento.id, 'edit'], {
-        queryParams: { returnTo: this.returnTo, editItemUid: item.id }
+        queryParams: {
+          returnTo: this.returnTo,
+          editItemUid: item.id,
+          editCatalogItemId: item.catalogItemId
+        }
       });
       return;
     }
-    const index = this.findRowIndexByUid(item.id);
+    const index = this.findRowIndexForItem(item);
     if (index >= 0) {
       this.editItemRow(index);
       this.scrollToItemEditor();
@@ -463,10 +471,39 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       this.notify.info('Abra a ficha em modo de edicao para excluir itens.');
       return;
     }
-    const index = this.findRowIndexByUid(item.id);
+    const index = this.findRowIndexForItem(item);
     if (index >= 0) {
       this.removeItemRow(index);
     }
+  }
+
+  onSavedItemTransition(event: {
+    item: MovimentoEstoqueItemResponse;
+    transitionKey: string;
+    expectedCurrentStateKey?: string | null;
+  }): void {
+    if (!this.workflowEnabled || this.mode === 'new') {
+      return;
+    }
+    const itemId = Number(event?.item?.id || 0);
+    if (!itemId || !event.transitionKey) {
+      return;
+    }
+    this.saving = true;
+    this.workflowService.transition('ITEM_MOVIMENTO_ESTOQUE', itemId, {
+      transitionKey: event.transitionKey,
+      expectedCurrentStateKey: event.expectedCurrentStateKey || null,
+      notes: 'Transicao manual na ficha do movimento'
+    }).pipe(finalize(() => (this.saving = false)))
+      .subscribe({
+        next: () => {
+          this.notify.success('Transicao executada com sucesso.');
+          if (this.movimento?.id) {
+            this.loadMovimento(this.movimento.id);
+          }
+        },
+        error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel transicionar o item.')
+      });
   }
 
   catalogTypeLabel(value: 'PRODUCTS' | 'SERVICES' | null): string {
@@ -531,23 +568,29 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       .subscribe({
         next: template => {
           this.templateData = template;
+          this.refreshAllowedViews();
           this.ensureTipoEntidadeLabels(template.tiposEntidadePermitidos || []);
           const tipoEntidadeId = this.resolveTipoEntidadeInicial(template, this.movimento?.tipoEntidadePadraoId || null);
           this.empresaNomeHeader = this.resolveEmpresaNome(empresaId);
           if (this.mode === 'new') {
-            this.form.patchValue({
-              empresaId: template.empresaId,
-              nome: template.nome || '',
-              tipoEntidadeId,
-              version: null
-            });
-          } else if (this.mode === 'edit') {
-            this.form.patchValue({ tipoEntidadeId });
-          } else {
-            this.form.patchValue({
-              tipoEntidadeId: this.movimento?.tipoEntidadePadraoId || tipoEntidadeId || null
-            }, { emitEvent: false });
-          }
+          this.form.patchValue({
+            empresaId: template.empresaId,
+            nome: template.nome || '',
+            tipoEntidadeId,
+            stockAdjustmentId: this.normalizeStockAdjustmentId(template.stockAdjustmentId),
+            version: null
+          });
+        } else if (this.mode === 'edit') {
+          this.form.patchValue({
+            tipoEntidadeId,
+            stockAdjustmentId: this.normalizeStockAdjustmentId(this.movimento?.stockAdjustmentId)
+          });
+        } else {
+          this.form.patchValue({
+            tipoEntidadeId: this.movimento?.tipoEntidadePadraoId || tipoEntidadeId || null,
+            stockAdjustmentId: this.normalizeStockAdjustmentId(this.movimento?.stockAdjustmentId)
+          }, { emitEvent: false });
+        }
           if (initializeRows && this.mode !== 'view' && this.itemRows.length === 0) {
             this.addItemRow();
           }
@@ -575,23 +618,27 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       .subscribe({
         next: movimento => {
           this.movimento = movimento;
+          this.refreshAllowedViews();
           this.ensureTipoEntidadeLabels([movimento.tipoEntidadePadraoId || 0]);
           this.form.patchValue({
             empresaId: movimento.empresaId,
             nome: movimento.nome || '',
             tipoEntidadeId: movimento.tipoEntidadePadraoId,
+            stockAdjustmentId: this.normalizeStockAdjustmentId(movimento.stockAdjustmentId),
             version: movimento.version
           });
           this.empresaNomeHeader = this.resolveEmpresaNome(movimento.empresaId);
 
-          this.itemRows = (movimento.itens || []).map((item, idx) => ({
-            uid: this.nextRowUid++,
+          const loadedRows = (movimento.itens || []).map((item, idx) => ({
+            // Preserve backend id so list-driven edit can target the exact row.
+            uid: Number(item.id || 0) > 0 ? Number(item.id) : this.nextRowUid++,
             movimentoItemTipoId: item.movimentoItemTipoId,
             catalogType: item.catalogType,
             catalogItemId: item.catalogItemId,
             quantidade: Number(item.quantidade || 0),
             valorUnitario: Number(item.valorUnitario || 0),
             cobrar: item.cobrar,
+            status: item.status || null,
             ordem: idx,
             observacao: item.observacao || '',
             catalogSearchText: `${item.catalogCodigoSnapshot} - ${item.catalogNomeSnapshot}`,
@@ -605,8 +652,12 @@ export class MovimentoEstoqueFormComponent implements OnInit {
             editing: false,
             saved: true
           }));
+          const maxLoadedUid = loadedRows.reduce((maxUid, row) => Math.max(maxUid, Number(row.uid || 0)), 0);
+          this.nextRowUid = Math.max(this.nextRowUid, maxLoadedUid + 1);
+          this.itemRows = loadedRows;
           this.reindexRows();
           this.activatePendingItemEdit();
+          this.loadTransitionsForSavedItems();
 
           this.loadTemplateByEmpresa(movimento.empresaId, false);
 
@@ -633,6 +684,11 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   }
 
   private normalizeTipoEntidadeId(value: unknown): number | null {
+    const parsed = Number(value || 0);
+    return parsed > 0 ? parsed : null;
+  }
+
+  private normalizeStockAdjustmentId(value: unknown): number | null {
     const parsed = Number(value || 0);
     return parsed > 0 ? parsed : null;
   }
@@ -700,15 +756,97 @@ export class MovimentoEstoqueFormComponent implements OnInit {
 
   private reindexRows(): void {
     this.itemRows = this.itemRows.map((item, idx) => ({ ...item, ordem: idx }));
+    this.refreshItemViews();
   }
 
-  private findRowByUid(uid: number): MovimentoEstoqueItemDraft | undefined {
-    return this.itemRows.find(row => row.uid === uid);
+  private refreshAllowedViews(): void {
+    const tiposEntidade = (this.templateData?.tiposEntidadePermitidos || [])
+      .filter((id): id is number => Number(id) > 0);
+    this.tiposEntidadePermitidosView = tiposEntidade;
+    this.stockAdjustmentsView = (this.templateData?.stockAdjustments || [])
+      .filter(item => Number(item?.id || 0) > 0);
+
+    let itemTypes: MovimentoTipoItemTemplate[] = [];
+    if (this.templateData?.tiposItensPermitidos?.length) {
+      itemTypes = this.templateData.tiposItensPermitidos.slice();
+    } else {
+      const byId = new Map<number, MovimentoTipoItemTemplate>();
+      for (const item of this.movimento?.itens || []) {
+        byId.set(item.movimentoItemTipoId, {
+          tipoItemId: item.movimentoItemTipoId,
+          nome: item.movimentoItemTipoNome,
+          catalogType: item.catalogType,
+          cobrar: item.cobrar
+        });
+      }
+      itemTypes = [...byId.values()];
+    }
+    this.itemTypesPermitidosView = itemTypes;
+    this.itemTypeNameById = new Map<number, string>(itemTypes.map(item => [item.tipoItemId, item.nome]));
+  }
+
+  private refreshItemViews(): void {
+    const tipoNomeById = this.itemTypeNameById;
+    const editing: MovimentoEstoqueEditingRowView[] = [];
+    const saved: MovimentoEstoqueItemResponse[] = [];
+    for (let idx = 0; idx < this.itemRows.length; idx += 1) {
+      const row = this.itemRows[idx];
+      if (!row) {
+        continue;
+      }
+      if (row.editing) {
+        editing.push({ row, index: idx });
+      }
+      if (row.saved && !row.editing) {
+        const catalogSummary = this.parseCatalogSummary(row.catalogSearchText);
+        saved.push({
+          id: row.uid,
+          movimentoItemTipoId: row.movimentoItemTipoId || 0,
+          movimentoItemTipoNome: row.movimentoItemTipoId
+            ? (tipoNomeById.get(row.movimentoItemTipoId) || `Tipo #${row.movimentoItemTipoId}`)
+            : '-',
+          catalogType: row.catalogType || 'PRODUCTS',
+          catalogItemId: row.catalogItemId || 0,
+          catalogCodigoSnapshot: catalogSummary.codigo,
+          catalogNomeSnapshot: catalogSummary.nome,
+          quantidade: Number(row.quantidade || 0),
+          valorUnitario: Number(row.cobrar ? row.valorUnitario : 0),
+          valorTotal: this.lineTotal(row),
+          cobrar: row.cobrar,
+          status: row.status || null,
+          ordem: row.ordem,
+          observacao: row.observacao || null
+        });
+      }
+    }
+    this.editingRowsView = editing;
+    this.savedItemsView = saved;
+    this.loadTransitionsForSavedItems();
   }
 
   private findRowIndexByUid(uid: number): number {
     const target = Number(uid || 0);
     return this.itemRows.findIndex(row => Number(row.uid || 0) === target);
+  }
+
+  private findRowIndexForItem(item: MovimentoEstoqueItemResponse): number {
+    const byUid = this.findRowIndexByUid(item.id);
+    if (byUid >= 0) {
+      return byUid;
+    }
+    const catalogItemId = Number(item.catalogItemId || 0);
+    const movimentoItemTipoId = Number(item.movimentoItemTipoId || 0);
+    const ordem = Number(item.ordem ?? -1);
+    const byComposite = this.itemRows.findIndex(row =>
+      Number(row.catalogItemId || 0) === catalogItemId
+      && Number(row.movimentoItemTipoId || 0) === movimentoItemTipoId
+      && Number(row.ordem ?? -1) === ordem);
+    if (byComposite >= 0) {
+      return byComposite;
+    }
+    return this.itemRows.findIndex(row =>
+      Number(row.catalogItemId || 0) === catalogItemId
+      && Number(row.movimentoItemTipoId || 0) === movimentoItemTipoId);
   }
 
   private parseCatalogSummary(value: string): { codigo: number; nome: string } {
@@ -736,14 +874,69 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   }
 
   private activatePendingItemEdit(): void {
-    if (this.mode !== 'edit' || !this.pendingEditItemUid) {
+    if (this.mode !== 'edit') {
       return;
     }
-    const index = this.findRowIndexByUid(this.pendingEditItemUid);
+    let index = -1;
+    if (this.pendingEditItemUid) {
+      index = this.findRowIndexByUid(this.pendingEditItemUid);
+    }
+    if (index < 0 && this.pendingEditCatalogItemId) {
+      index = this.itemRows.findIndex(row => Number(row.catalogItemId || 0) === this.pendingEditCatalogItemId);
+    }
     if (index >= 0) {
       this.editItemRow(index);
       this.scrollToItemEditor();
     }
     this.pendingEditItemUid = null;
+    this.pendingEditCatalogItemId = null;
+  }
+
+  private loadTransitionsForSavedItems(): void {
+    if (!this.workflowEnabled || this.mode === 'new') {
+      this.itemTransitionsByItemId = {};
+      this.itemStateNamesByItemId = {};
+      this.itemStateKeysByItemId = {};
+      return;
+    }
+    const savedItems = this.savedItemsView || [];
+    if (!savedItems.length) {
+      this.itemTransitionsByItemId = {};
+      this.itemStateNamesByItemId = {};
+      this.itemStateKeysByItemId = {};
+      return;
+    }
+    this.itemTransitionsByItemId = {};
+    this.itemStateNamesByItemId = {};
+    this.itemStateKeysByItemId = {};
+    const nextMap: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
+    const nextStateNames: Record<number, string> = {};
+    const nextStateKeys: Record<number, string> = {};
+    for (const item of savedItems) {
+      const itemId = Number(item?.id || 0);
+      if (!itemId) {
+        continue;
+      }
+      this.workflowService.getRuntimeState('ITEM_MOVIMENTO_ESTOQUE', itemId).subscribe({
+        next: runtime => {
+          nextMap[itemId] = runtime.transitions || [];
+          const stateName = (runtime.currentStateName || '').trim();
+          const stateKey = (runtime.currentStateKey || '').trim();
+          if (stateName) {
+            nextStateNames[itemId] = stateName;
+          }
+          if (stateKey) {
+            nextStateKeys[itemId] = stateKey;
+          }
+          this.itemTransitionsByItemId = { ...this.itemTransitionsByItemId, ...nextMap };
+          this.itemStateNamesByItemId = { ...this.itemStateNamesByItemId, ...nextStateNames };
+          this.itemStateKeysByItemId = { ...this.itemStateKeysByItemId, ...nextStateKeys };
+        },
+        error: () => {
+          nextMap[itemId] = [];
+          this.itemTransitionsByItemId = { ...this.itemTransitionsByItemId, ...nextMap };
+        }
+      });
+    }
   }
 }

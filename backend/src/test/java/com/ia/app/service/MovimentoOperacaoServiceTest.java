@@ -79,6 +79,7 @@ class MovimentoOperacaoServiceTest {
       empresa.getId(),
       "Movimento de ajuste 31/12/2025",
       null,
+      null,
       List.of());
     MovimentoEstoqueResponse created = estoqueHandler.create(objectMapper.valueToTree(request));
 
@@ -104,6 +105,7 @@ class MovimentoOperacaoServiceTest {
     MovimentoEstoqueCreateRequest request = new MovimentoEstoqueCreateRequest(
       outraEmpresa.getId(),
       "Movimento fora do contexto",
+      null,
       null,
       List.of());
 

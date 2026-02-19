@@ -15,6 +15,7 @@ public record MovimentoEstoqueItemResponse(
   BigDecimal valorUnitario,
   BigDecimal valorTotal,
   boolean cobrar,
+  String status,
   Integer ordem,
   String observacao
 ) {}

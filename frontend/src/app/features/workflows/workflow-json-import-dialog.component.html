@@ -1,0 +1,13 @@
+<h2 mat-dialog-title>Importar workflow por JSON</h2>
+
+<mat-dialog-content>
+  <mat-form-field appearance="outline" class="workflow-import-field">
+    <mat-label>JSON da definicao</mat-label>
+    <textarea matInput rows="16" [(ngModel)]="jsonText"></textarea>
+  </mat-form-field>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-stroked-button type="button" (click)="close()">Cancelar</button>
+  <button mat-flat-button color="primary" type="button" (click)="confirm()" [disabled]="!jsonText.trim()">Importar</button>
+</mat-dialog-actions>

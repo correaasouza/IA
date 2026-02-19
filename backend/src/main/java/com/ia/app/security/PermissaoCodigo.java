@@ -8,7 +8,9 @@ public enum PermissaoCodigo {
   ENTIDADE_EDIT("Editar entidades"),
   MOVIMENTO_ESTOQUE_OPERAR("Operar movimento de estoque"),
   MOVIMENTO_ITEM_CONFIGURAR("Configurar tipos de itens de movimento"),
-  MOVIMENTO_ESTOQUE_ITEM_OPERAR("Operar itens no movimento de estoque");
+  MOVIMENTO_ESTOQUE_ITEM_OPERAR("Operar itens no movimento de estoque"),
+  WORKFLOW_CONFIGURAR("Configurar workflows"),
+  WORKFLOW_TRANSICIONAR("Executar transicoes de workflow");
 
   private final String label;
 

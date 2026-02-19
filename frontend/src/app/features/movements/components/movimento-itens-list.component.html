@@ -1,4 +1,4 @@
-<div class="overflow-auto">
+<div class="movimento-itens-table-wrap" *ngIf="!isMobile">
   <table mat-table [dataSource]="items" class="w-full movimento-itens-table">
     <ng-container matColumnDef="tipo">
       <th mat-header-cell *matHeaderCellDef>Tipo</th>
@@ -8,6 +8,11 @@
     <ng-container matColumnDef="catalogo">
       <th mat-header-cell *matHeaderCellDef>Item Catalogo</th>
       <td mat-cell *matCellDef="let item">{{ item.catalogCodigoSnapshot }} - {{ item.catalogNomeSnapshot }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="status">
+      <th mat-header-cell *matHeaderCellDef>Situacao</th>
+      <td mat-cell *matCellDef="let item">{{ displayStatus(item) }}</td>
     </ng-container>
 
     <ng-container matColumnDef="quantidade">
@@ -94,12 +99,135 @@
           (click)="onDeleteClick($event, item)">
           <mat-icon>delete</mat-icon>
         </button>
+
+        <ng-container *ngIf="showWorkflowTransitions">
+          <button
+            mat-icon-button
+            type="button"
+            matTooltip="Transicionar estado"
+            [matMenuTriggerFor]="transitionMenu"
+            [disabled]="itemSaving || !actionButtonsEnabled || itemTransitions(item).length === 0">
+            <mat-icon>sync_alt</mat-icon>
+          </button>
+          <mat-menu #transitionMenu="matMenu">
+            <button
+              mat-menu-item
+              *ngFor="let transition of itemTransitions(item)"
+              (click)="onTransitionSelect($event, item, transition.key)">
+              <span>{{ transition.name }}<ng-container *ngIf="transition.toStateName"> -> {{ transition.toStateName }}</ng-container></span>
+            </button>
+            <button mat-menu-item disabled *ngIf="itemTransitions(item).length === 0">
+              <span>Sem transicoes disponiveis</span>
+            </button>
+          </mat-menu>
+        </ng-container>
       </td>
     </ng-container>
 
     <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
     <tr mat-row *matRowDef="let item; columns: displayedColumns"></tr>
   </table>
+</div>
+
+<div class="movimento-itens-cards" *ngIf="isMobile && items.length">
+  <article class="movimento-item-card" *ngFor="let item of items">
+    <div class="movimento-item-card-main">
+      <div class="movimento-item-card-field">
+        <span class="movimento-item-card-label">Tipo</span>
+        <span class="movimento-item-card-value">{{ item.movimentoItemTipoNome }}</span>
+      </div>
+      <div class="movimento-item-card-field">
+        <span class="movimento-item-card-label">Item Catalogo</span>
+        <span class="movimento-item-card-value">{{ item.catalogCodigoSnapshot }} - {{ item.catalogNomeSnapshot }}</span>
+      </div>
+      <div class="movimento-item-card-field">
+        <span class="movimento-item-card-label">Situacao</span>
+        <span class="movimento-item-card-value">{{ displayStatus(item) }}</span>
+      </div>
+      <div class="movimento-item-card-grid">
+        <div class="movimento-item-card-field">
+          <span class="movimento-item-card-label">Qtd</span>
+          <span class="movimento-item-card-value">{{ item.quantidade | number : '1.2-6' }}</span>
+        </div>
+        <div class="movimento-item-card-field">
+          <span class="movimento-item-card-label">Vlr Unit.</span>
+          <span class="movimento-item-card-value">{{ item.valorUnitario | number : '1.2-6' }}</span>
+        </div>
+        <div class="movimento-item-card-field">
+          <span class="movimento-item-card-label">Vlr Total</span>
+          <span class="movimento-item-card-value">{{ item.valorTotal | number : '1.2-6' }}</span>
+        </div>
+        <div class="movimento-item-card-field">
+          <span class="movimento-item-card-label">Cobrar</span>
+          <span class="movimento-item-card-value">{{ item.cobrar ? 'Sim' : 'Nao' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="movimento-item-card-actions">
+      <button mat-icon-button type="button" matTooltip="Consultar item" (click)="onConsultClick($event, item)" [disabled]="!actionButtonsEnabled">
+        <mat-icon>visibility</mat-icon>
+      </button>
+
+      <ng-container *ngIf="inlineEditEnabled && isEditingItem(item); else editActionMobileTpl">
+        <button
+          mat-icon-button
+          type="button"
+          color="primary"
+          matTooltip="Salvar item"
+          [disabled]="itemSaving || !actionButtonsEnabled"
+          (click)="onSaveClick($event, item)">
+          <mat-icon>save</mat-icon>
+        </button>
+        <button mat-icon-button type="button" matTooltip="Cancelar edicao" (click)="onCancelClick($event)" [disabled]="!actionButtonsEnabled">
+          <mat-icon>close</mat-icon>
+        </button>
+      </ng-container>
+
+      <ng-template #editActionMobileTpl>
+        <button
+          mat-icon-button
+          type="button"
+          matTooltip="Alterar item"
+          (click)="onEditClick($event, item)"
+          [disabled]="itemSaving || !actionButtonsEnabled">
+          <mat-icon>edit</mat-icon>
+        </button>
+      </ng-template>
+
+      <button
+        mat-icon-button
+        type="button"
+        color="warn"
+        matTooltip="Excluir item"
+        [disabled]="itemSaving || !actionButtonsEnabled"
+        (click)="onDeleteClick($event, item)">
+        <mat-icon>delete</mat-icon>
+      </button>
+
+      <ng-container *ngIf="showWorkflowTransitions">
+        <button
+          mat-icon-button
+          type="button"
+          matTooltip="Transicionar estado"
+          [matMenuTriggerFor]="transitionMenuMobile"
+          [disabled]="itemSaving || !actionButtonsEnabled || itemTransitions(item).length === 0">
+          <mat-icon>sync_alt</mat-icon>
+        </button>
+        <mat-menu #transitionMenuMobile="matMenu">
+          <button
+            mat-menu-item
+            *ngFor="let transition of itemTransitions(item)"
+            (click)="onTransitionSelect($event, item, transition.key)">
+            <span>{{ transition.name }}<ng-container *ngIf="transition.toStateName"> -> {{ transition.toStateName }}</ng-container></span>
+          </button>
+          <button mat-menu-item disabled *ngIf="itemTransitions(item).length === 0">
+            <span>Sem transicoes disponiveis</span>
+          </button>
+        </mat-menu>
+      </ng-container>
+    </div>
+  </article>
 </div>
 
 <div class="p-3 text-xs text-[var(--muted)]" *ngIf="!items.length">
