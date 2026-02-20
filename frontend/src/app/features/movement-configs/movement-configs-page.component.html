@@ -447,21 +447,26 @@
         </button>
       </div>
     </div>
+
+    <div class="mov-config-dialog-tabs-row">
+      <div class="agrupador-form-tabs">
+        <button type="button" class="agrupador-form-tab" [class.active]="activeFormTab === 'FILIAIS'" (click)="setFormTab('FILIAIS')">
+          Empresas ({{ assignedEmpresaIds().length }})
+        </button>
+        <button type="button" class="agrupador-form-tab" [class.active]="activeFormTab === 'CONFIGURACAO'" (click)="setFormTab('CONFIGURACAO')">
+          Configuracao
+        </button>
+        <button type="button" class="agrupador-form-tab" [class.active]="activeFormTab === 'ITENS'" (click)="setFormTab('ITENS')">
+          Tipos de Itens ({{ configItemTipos.length }})
+        </button>
+        <button *ngIf="workflowEnabled" type="button" class="agrupador-form-tab" [class.active]="activeFormTab === 'WORKFLOWS'" (click)="setFormTab('WORKFLOWS')">
+          Workflows
+        </button>
+      </div>
+    </div>
   </div>
 
   <form [formGroup]="form" class="mov-config-dialog-content">
-    <div class="agrupador-form-tabs">
-      <button type="button" class="agrupador-form-tab" [class.active]="activeFormTab === 'FILIAIS'" (click)="setFormTab('FILIAIS')">
-        Empresas ({{ assignedEmpresaIds().length }})
-      </button>
-      <button type="button" class="agrupador-form-tab" [class.active]="activeFormTab === 'CONFIGURACAO'" (click)="setFormTab('CONFIGURACAO')">
-        Configuracao
-      </button>
-      <button type="button" class="agrupador-form-tab" [class.active]="activeFormTab === 'ITENS'" (click)="setFormTab('ITENS')">
-        Tipos de Itens ({{ configItemTipos.length }})
-      </button>
-    </div>
-
     <section class="mov-config-tab-panel" *ngIf="activeFormTab === 'CONFIGURACAO'">
       <div class="mov-config-tab-body">
         <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
@@ -521,6 +526,54 @@
       </div>
     </section>
 
+    <section class="mov-config-tab-panel" *ngIf="workflowEnabled && activeFormTab === 'WORKFLOWS'">
+      <div class="mb-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2 text-xs text-[var(--muted-strong)]">
+        Nesta guia, abra e configure os workflows da configuracao de movimento: movimento e item de movimento.
+      </div>
+
+      <div class="mb-2 rounded-lg border border-dashed border-[#fdb022] bg-[#fffaeb] px-2.5 py-2 text-xs text-[#7a2e0e]" *ngIf="!editingConfigId">
+        Salve a configuracao primeiro para habilitar os workflows.
+      </div>
+
+      <div class="workflow-configs-tab-grid" *ngIf="editingConfigId">
+        <article class="workflow-config-card" *ngFor="let origin of ['MOVIMENTO_ESTOQUE', 'ITEM_MOVIMENTO_ESTOQUE']">
+          <div class="workflow-config-card-header">
+            <div>
+              <div class="workflow-config-card-title">{{ workflowCardTitle($any(origin)) }}</div>
+              <div class="workflow-config-card-hint">{{ workflowCardHint($any(origin)) }}</div>
+              <div class="workflow-config-card-meta">{{ workflowVersionLabel($any(origin)) }}</div>
+            </div>
+            <span
+              class="workflow-config-state"
+              [class.workflow-config-state--ok]="!!workflowDefinitions[$any(origin)]">
+              {{ workflowStatusLabel($any(origin)) }}
+            </span>
+          </div>
+
+          <div class="workflow-config-actions">
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="openWorkflowConfigDialog($any(origin))"
+              appAccessControl="workflow.configurar"
+              [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+              <mat-icon>open_in_new</mat-icon>
+              Abrir configuracao
+            </button>
+            <button
+              mat-stroked-button
+              type="button"
+              (click)="refreshWorkflowCards()"
+              [disabled]="workflowCardLoading[$any(origin)]">
+              <mat-icon>refresh</mat-icon>
+              Atualizar
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <section class="mov-config-tab-panel" *ngIf="activeFormTab === 'FILIAIS'">
       <div class="mb-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2 text-xs text-[var(--muted-strong)]">
         Passo: selecione as empresas do grupo para esta configuracao nesta aba. O salvamento considera apenas as empresas aqui selecionadas.
@@ -541,6 +594,38 @@
       </app-agrupadores-empresa>
     </section>
   </form>
+</ng-template>
+
+<ng-template #workflowConfigDialog>
+  <div class="mov-config-dialog-title" role="heading" aria-level="2">
+    <div class="mov-config-dialog-header-card">
+      <div class="mov-config-dialog-title-main">
+        <div class="mov-config-dialog-title-label">
+          {{ workflowCardTitle($any(workflowDialogOrigin)) }}
+        </div>
+        <div class="mov-config-dialog-title-origin">
+          {{ workflowCardHint($any(workflowDialogOrigin)) }}
+        </div>
+      </div>
+      <div class="mov-config-dialog-header-actions">
+        <button class="mov-config-dialog-header-btn" mat-stroked-button type="button" (click)="closeWorkflowConfigDialog()">
+          <mat-icon>arrow_back</mat-icon>
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="workflow-config-modal-content">
+    <app-workflow-definition-form
+      *ngIf="workflowDialogOrigin"
+      [embedded]="true"
+      [embeddedOrigin]="workflowDialogOrigin"
+      [embeddedContextType]="'MOVIMENTO_CONFIG'"
+      [embeddedContextId]="editingConfigId"
+      [embeddedReadOnly]="readOnlyMode">
+    </app-workflow-definition-form>
+  </div>
 </ng-template>
 
 <ng-template #itemTypeFormDialog>

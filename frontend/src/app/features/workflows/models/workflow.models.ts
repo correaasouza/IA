@@ -1,7 +1,8 @@
 export type WorkflowOrigin = 'MOVIMENTO_ESTOQUE' | 'ITEM_MOVIMENTO_ESTOQUE';
 export type WorkflowDefinitionStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-export type WorkflowActionType = 'MOVE_STOCK';
+export type WorkflowActionType = 'MOVE_STOCK' | 'SET_ITEM_STATUS';
 export type WorkflowTriggerType = 'ON_TRANSITION' | 'ON_ENTER_STATE';
+export type WorkflowContextType = 'MOVIMENTO_CONFIG';
 
 export interface WorkflowActionConfig {
   type: WorkflowActionType;
@@ -37,6 +38,8 @@ export interface WorkflowTransitionDefinition {
 export interface WorkflowDefinition {
   id: number;
   origin: WorkflowOrigin;
+  contextType?: WorkflowContextType | null;
+  contextId?: number | null;
   name: string;
   versionNum: number;
   status: WorkflowDefinitionStatus;
@@ -53,6 +56,8 @@ export interface WorkflowDefinition {
 
 export interface WorkflowDefinitionUpsertRequest {
   origin: WorkflowOrigin;
+  contextType?: WorkflowContextType | null;
+  contextId?: number | null;
   name: string;
   description?: string | null;
   layoutJson?: string | null;

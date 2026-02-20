@@ -1,10 +1,10 @@
 import { CommonModule } from '@angular/common';
-import { Component, HostListener, Inject, OnInit } from '@angular/core';
+import { Component, ElementRef, HostListener, Inject, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatTableModule } from '@angular/material/table';
 import { finalize } from 'rxjs/operators';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { CatalogCrudType } from './catalog-item.service';
@@ -33,13 +33,14 @@ export interface CatalogItemHistoryDialogData {
     MatDialogModule,
     MatButtonModule,
     MatIconModule,
-    MatPaginatorModule,
+    MatTableModule,
     InlineLoaderComponent
   ],
   templateUrl: './catalog-item-history-dialog.component.html',
   styleUrls: ['./catalog-item-history-dialog.component.css']
 })
 export class CatalogItemHistoryDialogComponent implements OnInit {
+  @ViewChild('historyScrollContainer') historyScrollContainer?: ElementRef<HTMLElement>;
   isMobile = false;
   mobileFiltersOpen = false;
   loading = false;
@@ -50,10 +51,13 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
   ledgerEntries: CatalogMovement[] = [];
   ledgerDisplayEntries: CatalogMovement[] = [];
   ledgerDisplayLines: CatalogLedgerLineRow[] = [];
-  ledgerPageIndex = 0;
-  ledgerPageSize = 10;
+  ledgerPageSize = 20;
   ledgerTotalElements = 0;
+  ledgerHasMore = true;
+  ledgerLoadingMore = false;
   ledgerSortOrder: 'RECENT' | 'OLDEST' = 'RECENT';
+  private ledgerNextPage = 0;
+  private ledgerLoadRevision = 0;
 
   ledgerOrigins: Array<{ value: CatalogMovementOriginType; label: string }> = [
     { value: 'MUDANCA_GRUPO', label: 'Mudanca de grupo' },
@@ -95,13 +99,15 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
   }
 
   refresh(resetPage = false): void {
-    if (resetPage) this.ledgerPageIndex = 0;
+    if (resetPage) {
+      this.resetLedgerPagination();
+    }
     this.loadBalancesAndLedger();
   }
 
   applyLedgerFilters(): void {
-    this.ledgerPageIndex = 0;
-    this.loadLedger();
+    this.resetLedgerPagination();
+    this.loadLedger(false);
   }
 
   toggleMobileFilters(): void {
@@ -193,10 +199,14 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     this.applyLedgerSort();
   }
 
-  onLedgerPageChange(event: PageEvent): void {
-    this.ledgerPageIndex = event.pageIndex;
-    this.ledgerPageSize = event.pageSize;
-    this.loadLedger();
+  onDialogScroll(event: Event): void {
+    const target = event.target as HTMLElement | null;
+    if (!target || !this.ledgerHasMore || this.ledgerLoadingMore || this.loading) {
+      return;
+    }
+    if (target.scrollTop + target.clientHeight >= target.scrollHeight - 180) {
+      this.loadLedger(true);
+    }
   }
 
   ledgerStockTypeOptions(): Array<{ id: number; label: string }> {
@@ -255,16 +265,27 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
           this.ledgerDisplayEntries = [];
           this.ledgerDisplayLines = [];
           this.ledgerTotalElements = 0;
+          this.ledgerHasMore = false;
           this.error = err?.error?.detail || 'Nao foi possivel carregar historico do item.';
         }
       });
   }
 
-  private loadLedger(): void {
+  private loadLedger(append = false): void {
+    if (this.ledgerLoadingMore) {
+      return;
+    }
+    if (append && !this.ledgerHasMore) {
+      return;
+    }
     const filters = this.ledgerFilters.value;
-    this.loading = true;
+    const currentPage = append ? this.ledgerNextPage : 0;
+    const currentRevision = this.ledgerLoadRevision;
+    this.loading = !append;
+    this.ledgerLoadingMore = true;
+    this.error = '';
     this.stockService.getLedger(this.data.type, this.data.itemId, {
-      page: this.ledgerPageIndex,
+      page: currentPage,
       size: this.ledgerPageSize,
       origemTipo: (filters.origemTipo || '').trim() as CatalogMovementOriginType | '',
       metricType: (filters.metricType || '').trim() as CatalogMovementMetricType | '',
@@ -272,21 +293,52 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
       filialId: this.toPositive((filters.filialId || '').trim()),
       fromDate: this.toLedgerDateIsoStart((filters.fromDate || '').trim()),
       toDate: this.toLedgerDateIsoEnd((filters.toDate || '').trim())
-    }).pipe(finalize(() => (this.loading = false)))
+    }).pipe(finalize(() => {
+      if (currentRevision !== this.ledgerLoadRevision) {
+        return;
+      }
+      this.loading = false;
+      this.ledgerLoadingMore = false;
+    }))
       .subscribe({
         next: payload => {
-          this.ledgerEntries = payload?.content || [];
+          if (currentRevision !== this.ledgerLoadRevision) {
+            return;
+          }
+          const incoming = this.extractContent(payload);
+          this.ledgerEntries = append
+            ? this.mergeLedgerEntries(this.ledgerEntries, incoming)
+            : incoming;
           this.ledgerTotalElements = this.extractTotalElements(payload);
+          this.ledgerNextPage = currentPage + 1;
+          this.ledgerHasMore = this.computeHasMore(incoming.length);
           this.applyLedgerSort();
         },
         error: err => {
+          if (currentRevision !== this.ledgerLoadRevision) {
+            return;
+          }
           this.ledgerEntries = [];
           this.ledgerDisplayEntries = [];
           this.ledgerDisplayLines = [];
           this.ledgerTotalElements = 0;
+          this.ledgerHasMore = false;
           this.error = err?.error?.detail || 'Nao foi possivel carregar historico do item.';
         }
       });
+  }
+
+  private extractContent(payload: any): CatalogMovement[] {
+    if (Array.isArray(payload?.content)) {
+      return payload.content;
+    }
+    if (Array.isArray(payload?.page?.content)) {
+      return payload.page.content;
+    }
+    if (Array.isArray(payload?.items)) {
+      return payload.items;
+    }
+    return [];
   }
 
   private applyLedgerSort(): void {
@@ -301,6 +353,7 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
       return this.ledgerSortOrder === 'OLDEST' ? aid - bid : bid - aid;
     });
     this.syncLedgerDisplayLines();
+    this.ensureLedgerFillViewport();
   }
 
   private syncLedgerDisplayLines(): void {
@@ -344,6 +397,55 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     if (typeof payload?.totalElements === 'number') return payload.totalElements;
     if (typeof payload?.page?.totalElements === 'number') return payload.page.totalElements;
     return (payload?.content || []).length;
+  }
+
+  private resetLedgerPagination(): void {
+    this.ledgerLoadRevision += 1;
+    this.ledgerNextPage = 0;
+    this.ledgerTotalElements = 0;
+    this.ledgerHasMore = true;
+    this.ledgerEntries = [];
+    this.ledgerDisplayEntries = [];
+    this.ledgerDisplayLines = [];
+    this.ledgerLoadingMore = false;
+  }
+
+  private mergeLedgerEntries(existing: CatalogMovement[], incoming: CatalogMovement[]): CatalogMovement[] {
+    const merged = [...(existing || [])];
+    const seenIds = new Set<number>(
+      (existing || [])
+        .map(item => Number(item?.id || 0))
+        .filter(id => id > 0));
+    for (const item of incoming || []) {
+      const id = Number(item?.id || 0);
+      if (id > 0 && seenIds.has(id)) {
+        continue;
+      }
+      if (id > 0) {
+        seenIds.add(id);
+      }
+      merged.push(item);
+    }
+    return merged;
+  }
+
+  private computeHasMore(lastIncomingSize: number): boolean {
+    if (this.ledgerTotalElements > 0) {
+      return this.ledgerEntries.length < this.ledgerTotalElements;
+    }
+    return lastIncomingSize >= this.ledgerPageSize;
+  }
+
+  private ensureLedgerFillViewport(): void {
+    setTimeout(() => {
+      const container = this.historyScrollContainer?.nativeElement;
+      if (!container || this.loading || this.ledgerLoadingMore || !this.ledgerHasMore) {
+        return;
+      }
+      if (container.scrollHeight <= container.clientHeight + 8) {
+        this.loadLedger(true);
+      }
+    }, 0);
   }
 
   private toPositive(value: unknown): number | null {

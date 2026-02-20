@@ -36,6 +36,7 @@ export class WorkflowBuilderCanvasComponent implements OnChanges {
   @Output() selectTransition = new EventEmitter<string>();
   @Output() moveState = new EventEmitter<{ key: string; x: number; y: number }>();
   @Output() createTransition = new EventEmitter<{ fromStateKey: string; toStateKey: string }>();
+  @Output() updateStateColor = new EventEmitter<{ key: string; color: string }>();
 
   transitionViews: TransitionViewModel[] = [];
   linkSourceStateKey: string | null = null;
@@ -148,6 +149,24 @@ export class WorkflowBuilderCanvasComponent implements OnChanges {
 
   isLinkTarget(stateKey: string): boolean {
     return this.dragLinkActive && this.linkHoverStateKey === stateKey;
+  }
+
+  stateColorValue(state: WorkflowStateDefinition): string {
+    const color = (state.color || '').trim();
+    return /^#[\da-fA-F]{6}$/.test(color) ? color : '#3b82f6';
+  }
+
+  onColorPickerPointer(event: Event): void {
+    event.stopPropagation();
+  }
+
+  onStateColorInput(event: Event, stateKey: string): void {
+    event.stopPropagation();
+    const color = ((event.target as HTMLInputElement | null)?.value || '').trim();
+    if (!color) {
+      return;
+    }
+    this.updateStateColor.emit({ key: stateKey, color });
   }
 
   sourceStateName(): string {

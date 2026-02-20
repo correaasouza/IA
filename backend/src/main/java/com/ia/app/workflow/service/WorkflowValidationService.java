@@ -1,6 +1,7 @@
 package com.ia.app.workflow.service;
 
 import com.ia.app.workflow.domain.WorkflowActionType;
+import com.ia.app.workflow.domain.WorkflowDefinitionContextType;
 import com.ia.app.workflow.domain.WorkflowOrigin;
 import com.ia.app.workflow.domain.WorkflowTriggerType;
 import com.ia.app.workflow.dto.WorkflowActionConfigRequest;
@@ -28,6 +29,17 @@ public class WorkflowValidationService {
       origin = WorkflowOrigin.from(request.origin());
     } catch (RuntimeException ex) {
       errors.add("workflow_origin_invalid");
+    }
+    try {
+      WorkflowDefinitionContextType.fromNullable(request.contextType());
+    } catch (RuntimeException ex) {
+      errors.add("workflow_context_invalid");
+    }
+    if ((request.contextType() == null) != (request.contextId() == null)) {
+      errors.add("workflow_context_invalid");
+    }
+    if (request.contextId() != null && request.contextId() <= 0) {
+      errors.add("workflow_context_id_invalid");
     }
     if (request.name() == null || request.name().isBlank()) {
       errors.add("workflow_name_required");
@@ -103,8 +115,11 @@ public class WorkflowValidationService {
           errors.add("workflow_action_type_invalid");
           continue;
         }
-        if (origin != WorkflowOrigin.ITEM_MOVIMENTO_ESTOQUE && actionType == WorkflowActionType.MOVE_STOCK) {
+        if (actionType == WorkflowActionType.MOVE_STOCK && origin != WorkflowOrigin.ITEM_MOVIMENTO_ESTOQUE) {
           errors.add("workflow_action_move_stock_origin_invalid");
+        }
+        if (actionType == WorkflowActionType.SET_ITEM_STATUS && origin != WorkflowOrigin.MOVIMENTO_ESTOQUE) {
+          errors.add("workflow_action_set_item_status_origin_invalid");
         }
         try {
           WorkflowTriggerType.from(action.trigger() == null ? "ON_TRANSITION" : action.trigger());

@@ -27,8 +27,6 @@ import { CatalogGroupsPageComponent } from './features/catalog/catalog-groups-pa
 import { MovementConfigsPageComponent } from './features/movement-configs/movement-configs-page.component';
 import { MovimentoEstoqueListComponent } from './features/movements/movimento-estoque-list.component';
 import { MovimentoEstoqueFormComponent } from './features/movements/movimento-estoque-form.component';
-import { WorkflowDefinitionsListComponent } from './features/workflows/workflow-definitions-list.component';
-import { WorkflowDefinitionFormComponent } from './features/workflows/workflow-definition-form.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent, canActivate: [AuthGuard] },
@@ -55,10 +53,9 @@ export const routes: Routes = [
   { path: 'access-controls/:key/edit', component: AccessControlFormComponent, canActivate: [AuthGuard] },
   { path: 'configs', component: ConfigsComponent, canActivate: [AuthGuard] },
   { path: 'configs/movimentos', component: MovementConfigsPageComponent, canActivate: [AuthGuard] },
-  { path: 'configs/workflows', component: WorkflowDefinitionsListComponent, canActivate: [AuthGuard] },
-  { path: 'configs/workflows/new', component: WorkflowDefinitionFormComponent, canActivate: [AuthGuard] },
-  { path: 'configs/workflows/:id', component: WorkflowDefinitionFormComponent, canActivate: [AuthGuard] },
-  { path: 'configs/workflows/:id/edit', component: WorkflowDefinitionFormComponent, canActivate: [AuthGuard] },
+  { path: 'configs/workflows', redirectTo: 'configs/movimentos', pathMatch: 'full' },
+  { path: 'configs/workflows/:any', redirectTo: 'configs/movimentos' },
+  { path: 'configs/workflows/:any/:any2', redirectTo: 'configs/movimentos' },
   { path: 'movimentos/estoque', component: MovimentoEstoqueListComponent, canActivate: [AuthGuard] },
   { path: 'movimentos/estoque/new', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard] },
   { path: 'movimentos/estoque/:id', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard] },

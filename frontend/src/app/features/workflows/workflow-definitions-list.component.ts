@@ -1,12 +1,16 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { AccessControlDirective } from '../../shared/access-control.directive';
 import { FeatureFlagService } from '../../core/features/feature-flag.service';
+import { MovementConfigService, MovimentoConfig } from '../movement-configs/movement-config.service';
 import { WorkflowJsonImportDialogComponent } from './workflow-json-import-dialog.component';
 import { WorkflowService } from './workflow.service';
 import { WorkflowDefinition, WorkflowOrigin } from './models/workflow.models';
@@ -22,9 +26,12 @@ interface WorkflowOriginCard {
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     MatButtonModule,
     MatDialogModule,
+    MatFormFieldModule,
     MatIconModule,
+    MatSelectModule,
     AccessControlDirective
   ],
   templateUrl: './workflow-definitions-list.component.html',
@@ -32,6 +39,9 @@ interface WorkflowOriginCard {
 })
 export class WorkflowDefinitionsListComponent implements OnInit {
   canUseModule = true;
+  loadingConfigs = false;
+  movimentoConfigs: MovimentoConfig[] = [];
+  selectedMovimentoConfigId: number | null = null;
   cards: WorkflowOriginCard[] = [
     { origin: 'MOVIMENTO_ESTOQUE', definition: null, loading: true },
     { origin: 'ITEM_MOVIMENTO_ESTOQUE', definition: null, loading: true }
@@ -39,6 +49,7 @@ export class WorkflowDefinitionsListComponent implements OnInit {
 
   constructor(
     private workflowService: WorkflowService,
+    private movementConfigService: MovementConfigService,
     private featureFlagService: FeatureFlagService,
     private notify: NotificationService,
     private dialog: MatDialog,
@@ -50,10 +61,14 @@ export class WorkflowDefinitionsListComponent implements OnInit {
     if (!this.canUseModule) {
       return;
     }
-    this.loadAll();
+    this.loadMovimentoConfigs();
   }
 
   loadAll(): void {
+    if (!this.selectedMovimentoConfigId) {
+      this.cards = this.cards.map(item => ({ ...item, definition: null, loading: false }));
+      return;
+    }
     this.cards = this.cards.map(item => ({ ...item, loading: true }));
     for (const card of this.cards) {
       this.loadCard(card.origin);
@@ -61,12 +76,20 @@ export class WorkflowDefinitionsListComponent implements OnInit {
   }
 
   openConfiguration(card: WorkflowOriginCard): void {
+    if (!this.selectedMovimentoConfigId) {
+      this.notify.error('Selecione uma configuracao de movimento para continuar.');
+      return;
+    }
     if (card.definition?.id) {
       this.router.navigate(['/configs/workflows', card.definition.id, 'edit']);
       return;
     }
     this.router.navigate(['/configs/workflows/new'], {
-      queryParams: { origin: card.origin }
+      queryParams: {
+        origin: card.origin,
+        contextType: 'MOVIMENTO_CONFIG',
+        contextId: this.selectedMovimentoConfigId
+      }
     });
   }
 
@@ -110,6 +133,10 @@ export class WorkflowDefinitionsListComponent implements OnInit {
     });
   }
 
+  onMovimentoConfigChange(): void {
+    this.loadAll();
+  }
+
   originLabel(origin: WorkflowOrigin): string {
     return origin === 'ITEM_MOVIMENTO_ESTOQUE' ? 'Item de Movimento de Estoque' : 'Movimento de Estoque';
   }
@@ -121,7 +148,14 @@ export class WorkflowDefinitionsListComponent implements OnInit {
   }
 
   private loadCard(origin: WorkflowOrigin): void {
-    this.workflowService.getDefinitionByOrigin(origin).subscribe({
+    if (!this.selectedMovimentoConfigId) {
+      this.updateCard(origin, null, false);
+      return;
+    }
+    this.workflowService.getDefinitionByOrigin(origin, {
+      type: 'MOVIMENTO_CONFIG',
+      id: this.selectedMovimentoConfigId
+    }).subscribe({
       next: definition => this.updateCard(origin, definition, false),
       error: err => {
         this.updateCard(origin, null, false);
@@ -138,5 +172,24 @@ export class WorkflowDefinitionsListComponent implements OnInit {
       item.origin === origin
         ? { ...item, definition, loading }
         : item);
+  }
+
+  private loadMovimentoConfigs(): void {
+    this.loadingConfigs = true;
+    this.movementConfigService.listByTipo('MOVIMENTO_ESTOQUE', 0, 500).subscribe({
+      next: page => {
+        this.loadingConfigs = false;
+        this.movimentoConfigs = (page?.content || []).filter(item => item?.id && item.ativo !== false);
+        this.selectedMovimentoConfigId = this.movimentoConfigs[0]?.id || null;
+        this.loadAll();
+      },
+      error: err => {
+        this.loadingConfigs = false;
+        this.movimentoConfigs = [];
+        this.selectedMovimentoConfigId = null;
+        this.cards = this.cards.map(item => ({ ...item, definition: null, loading: false }));
+        this.notify.error(err?.error?.detail || 'Nao foi possivel carregar configuracoes de movimento.');
+      }
+    });
   }
 }

@@ -1,21 +1,23 @@
-<mat-dialog-content class="dialog-content">
+<mat-dialog-content #historyScrollContainer class="dialog-content" (scroll)="onDialogScroll($event)">
   <div class="page-list-sticky grid gap-3 history-list-sticky">
-    <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
-      <div class="min-w-0">
-        <h1 class="m-0 text-lg font-bold">Historico do item #{{ data.itemCodigo }} - {{ data.itemNome }}</h1>
-        <p class="mt-1 text-xs text-[var(--muted)]">Movimentacoes de estoque e preco registradas para este item.</p>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <button mat-stroked-button type="button" (click)="refresh(true)" [disabled]="loading">
-          <mat-icon>refresh</mat-icon>
-          Atualizar
-        </button>
-        <button mat-stroked-button type="button" (click)="close()">
-          <mat-icon>close</mat-icon>
-          Fechar
-        </button>
-      </div>
-    </header>
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+      <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+        <div class="min-w-0">
+          <h1 class="m-0 text-lg font-bold">Historico do item #{{ data.itemCodigo }} - {{ data.itemNome }}</h1>
+          <p class="mt-1 text-xs text-[var(--muted)]">Movimentacoes de estoque e preco registradas para este item.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button mat-stroked-button type="button" (click)="refresh(true)" [disabled]="loading">
+            <mat-icon>refresh</mat-icon>
+            Atualizar
+          </button>
+          <button mat-stroked-button type="button" (click)="close()">
+            <mat-icon>close</mat-icon>
+            Fechar
+          </button>
+        </div>
+      </header>
+    </section>
 
     <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
       <div class="catalog-filters-head mb-2">
@@ -202,12 +204,8 @@
       Nenhuma movimentacao encontrada para os filtros atuais.
     </div>
 
-    <mat-paginator
-      [length]="ledgerTotalElements"
-      [pageIndex]="ledgerPageIndex"
-      [pageSize]="ledgerPageSize"
-      [pageSizeOptions]="[10, 20, 50]"
-      (page)="onLedgerPageChange($event)">
-    </mat-paginator>
+    <div class="flex justify-center px-3 pb-3" *ngIf="ledgerLoadingMore && ledgerDisplayLines.length > 0">
+      <app-inline-loader label="Carregando mais registros"></app-inline-loader>
+    </div>
   </section>
 </mat-dialog-content>

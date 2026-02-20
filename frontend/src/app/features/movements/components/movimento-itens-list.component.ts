@@ -46,6 +46,7 @@ export class MovimentoItensListComponent implements OnInit {
   @Input() transitionsByItem: Record<number, ItemWorkflowTransition[]> = {};
   @Input() stateNamesByItemId: Record<number, string> = {};
   @Input() stateKeysByItemId: Record<number, string> = {};
+  @Input() stateColorsByStateKey: Record<string, string> = {};
   @Input() itemSaving = false;
   @Input() emptyMessage = 'Movimento sem itens.';
   @Input() updateControlKey = 'movimentos.estoque.update';
@@ -158,6 +159,15 @@ export class MovimentoItensListComponent implements OnInit {
     return this.looksLikeUuid(raw) ? '-' : raw;
   }
 
+  statusColor(item: MovimentoEstoqueItemResponse): string | null {
+    const stateKey = this.resolveStateKey(item);
+    if (!stateKey) {
+      return null;
+    }
+    const color = (this.stateColorsByStateKey[stateKey] || '').trim();
+    return /^#[\da-fA-F]{6}$/.test(color) ? color : null;
+  }
+
   onTransitionSelect(event: Event, item: MovimentoEstoqueItemResponse, transitionKey: string): void {
     event.preventDefault();
     event.stopPropagation();
@@ -200,6 +210,21 @@ export class MovimentoItensListComponent implements OnInit {
       return null;
     }
     return this.looksLikeUuid(raw) ? raw : null;
+  }
+
+  private resolveStateKey(item: MovimentoEstoqueItemResponse): string | null {
+    const itemId = Number(item?.id || 0);
+    if (itemId > 0) {
+      const runtimeStateKey = (this.stateKeysByItemId[itemId] || '').trim().toUpperCase();
+      if (runtimeStateKey) {
+        return runtimeStateKey;
+      }
+    }
+    const raw = (item?.status || '').trim().toUpperCase();
+    if (!raw || this.looksLikeUuid(raw)) {
+      return null;
+    }
+    return raw;
   }
 
   private updateViewportColumns(): void {

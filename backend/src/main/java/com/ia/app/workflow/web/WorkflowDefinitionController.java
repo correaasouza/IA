@@ -1,6 +1,7 @@
 package com.ia.app.workflow.web;
 
 import com.ia.app.workflow.domain.WorkflowOrigin;
+import com.ia.app.workflow.domain.WorkflowDefinitionContextType;
 import com.ia.app.workflow.dto.WorkflowDefinitionResponse;
 import com.ia.app.workflow.dto.WorkflowDefinitionUpsertRequest;
 import com.ia.app.workflow.dto.WorkflowImportRequest;
@@ -74,9 +75,19 @@ public class WorkflowDefinitionController {
 
   @GetMapping("/by-origin")
   @PreAuthorize("@permissaoGuard.hasPermissao('WORKFLOW_CONFIGURAR')")
-  public ResponseEntity<WorkflowDefinitionResponse> getByOrigin(@RequestParam String origin) {
+  public ResponseEntity<WorkflowDefinitionResponse> getByOrigin(
+      @RequestParam String origin,
+      @RequestParam(required = false) String contextType,
+      @RequestParam(required = false) Long contextId) {
     featureToggle.assertEnabled();
-    return ResponseEntity.ok(definitionService.getByOrigin(WorkflowOrigin.from(origin)));
+    WorkflowDefinitionResponse response = definitionService.getByOrigin(
+      WorkflowOrigin.from(origin),
+      WorkflowDefinitionContextType.fromNullable(contextType),
+      contextId);
+    if (response == null) {
+      return ResponseEntity.noContent().build();
+    }
+    return ResponseEntity.ok(response);
   }
 
   @GetMapping("/{id}/export")

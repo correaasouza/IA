@@ -3,7 +3,8 @@ package com.ia.app.workflow.domain;
 import java.util.Locale;
 
 public enum WorkflowActionType {
-  MOVE_STOCK;
+  MOVE_STOCK,
+  SET_ITEM_STATUS;
 
   public static WorkflowActionType from(String raw) {
     if (raw == null || raw.isBlank()) {

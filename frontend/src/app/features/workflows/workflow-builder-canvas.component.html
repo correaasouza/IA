@@ -73,6 +73,16 @@
     (click)="onStateClick(state.key)">
     <div class="workflow-state-node-title">
       <span>{{ state.name || 'Estado' }}</span>
+      <input
+        class="workflow-state-color-input"
+        type="color"
+        [value]="stateColorValue(state)"
+        [disabled]="readOnly"
+        [attr.aria-label]="'Selecionar cor do estado ' + (state.name || 'Estado')"
+        (mousedown)="onColorPickerPointer($event)"
+        (click)="onColorPickerPointer($event)"
+        (input)="onStateColorInput($event, state.key)"
+        (change)="onStateColorInput($event, state.key)" />
     </div>
     <div class="workflow-state-node-meta">
       <span *ngIf="state.isInitial">Inicial</span>

@@ -17,6 +17,29 @@
   margin-bottom: 12px;
 }
 
+.workflow-context-grid {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.workflow-embedded-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.workflow-context-field {
+  width: min(460px, 100%);
+}
+
+.workflow-context-help {
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .workflow-builder-grid {
   display: grid;
   gap: 12px;

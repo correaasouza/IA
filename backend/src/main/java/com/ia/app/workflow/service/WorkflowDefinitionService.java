@@ -3,8 +3,11 @@ package com.ia.app.workflow.service;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ia.app.repository.MovimentoConfigRepository;
 import com.ia.app.tenant.TenantContext;
 import com.ia.app.workflow.domain.WorkflowDefinition;
+import com.ia.app.workflow.domain.WorkflowDefinitionContext;
+import com.ia.app.workflow.domain.WorkflowDefinitionContextType;
 import com.ia.app.workflow.domain.WorkflowDefinitionStatus;
 import com.ia.app.workflow.domain.WorkflowOrigin;
 import com.ia.app.workflow.domain.WorkflowState;
@@ -39,6 +42,7 @@ public class WorkflowDefinitionService {
   private final WorkflowStateRepository stateRepository;
   private final WorkflowTransitionRepository transitionRepository;
   private final WorkflowValidationService validationService;
+  private final MovimentoConfigRepository movimentoConfigRepository;
   private final ObjectMapper objectMapper;
 
   public WorkflowDefinitionService(
@@ -46,11 +50,13 @@ public class WorkflowDefinitionService {
       WorkflowStateRepository stateRepository,
       WorkflowTransitionRepository transitionRepository,
       WorkflowValidationService validationService,
+      MovimentoConfigRepository movimentoConfigRepository,
       ObjectMapper objectMapper) {
     this.definitionRepository = definitionRepository;
     this.stateRepository = stateRepository;
     this.transitionRepository = transitionRepository;
     this.validationService = validationService;
+    this.movimentoConfigRepository = movimentoConfigRepository;
     this.objectMapper = objectMapper;
   }
 
@@ -68,34 +74,45 @@ public class WorkflowDefinitionService {
 
   @Transactional
   public WorkflowDefinitionResponse create(WorkflowDefinitionUpsertRequest request) {
-    validateOrThrow(request);
+    WorkflowDefinitionUpsertRequest normalizedRequest = normalizeUpsertRequest(request);
+    validateOrThrow(normalizedRequest);
     Long tenantId = requireTenant();
-    WorkflowOrigin origin = WorkflowOrigin.from(request.origin());
-    WorkflowDefinition definition = savePublishedVersion(tenantId, origin, request);
+    WorkflowOrigin origin = WorkflowOrigin.from(normalizedRequest.origin());
+    WorkflowDefinitionContext context = resolveContext(tenantId, normalizedRequest);
+    WorkflowDefinition definition = savePublishedVersion(tenantId, origin, context, normalizedRequest);
     return toResponse(definition);
   }
 
   @Transactional
   public WorkflowDefinitionResponse update(Long id, WorkflowDefinitionUpsertRequest request) {
-    validateOrThrow(request);
+    WorkflowDefinitionUpsertRequest normalizedRequest = normalizeUpsertRequest(request);
+    validateOrThrow(normalizedRequest);
     Long tenantId = requireTenant();
     WorkflowDefinition definition = findByIdForTenant(id, tenantId);
 
-    WorkflowOrigin requestedOrigin = WorkflowOrigin.from(request.origin());
+    WorkflowOrigin requestedOrigin = WorkflowOrigin.from(normalizedRequest.origin());
     if (definition.getOrigin() != requestedOrigin) {
       throw new IllegalArgumentException("workflow_definition_origin_immutable");
     }
-    WorkflowDefinition saved = savePublishedVersion(tenantId, requestedOrigin, request);
+    WorkflowDefinitionContext requestedContext = resolveContext(tenantId, normalizedRequest);
+    if (definition.getContextType() != requestedContext.type()
+      || !java.util.Objects.equals(definition.getContextId(), requestedContext.contextId())) {
+      throw new IllegalArgumentException("workflow_definition_context_immutable");
+    }
+    WorkflowDefinition saved = savePublishedVersion(tenantId, requestedOrigin, requestedContext, normalizedRequest);
     return toResponse(saved);
   }
 
   @Transactional(readOnly = true)
-  public WorkflowDefinitionResponse getByOrigin(WorkflowOrigin origin) {
+  public WorkflowDefinitionResponse getByOrigin(
+      WorkflowOrigin origin,
+      WorkflowDefinitionContextType contextType,
+      Long contextId) {
     Long tenantId = requireTenant();
-    WorkflowDefinition definition = definitionRepository
-      .findByTenantIdAndOriginAndStatusAndActiveTrue(tenantId, origin, WorkflowDefinitionStatus.PUBLISHED)
-      .orElseThrow(() -> new EntityNotFoundException("workflow_definition_not_published"));
-    return toResponse(definition);
+    WorkflowDefinitionContext context = normalizeContext(contextType, contextId);
+    return findPublishedDefinitionExact(tenantId, origin, context)
+      .map(this::toResponse)
+      .orElse(null);
   }
 
   @Transactional(readOnly = true)
@@ -120,7 +137,7 @@ public class WorkflowDefinitionService {
 
   @Transactional(readOnly = true)
   public List<String> validate(WorkflowDefinitionUpsertRequest request) {
-    return validationService.validateUpsert(request);
+    return validationService.validateUpsert(normalizeUpsertRequest(request));
   }
 
   private void persistGraph(WorkflowDefinition definition, WorkflowDefinitionUpsertRequest request) {
@@ -183,14 +200,13 @@ public class WorkflowDefinitionService {
   private WorkflowDefinition savePublishedVersion(
       Long tenantId,
       WorkflowOrigin origin,
+      WorkflowDefinitionContext context,
       WorkflowDefinitionUpsertRequest request) {
-    Integer nextVersion = definitionRepository
-      .findTopByTenantIdAndOriginOrderByVersionNumDesc(tenantId, origin)
+    Integer nextVersion = findLatestVersionByOriginAndContext(tenantId, origin, context)
       .map(def -> (def.getVersionNum() == null ? 0 : def.getVersionNum()) + 1)
       .orElse(1);
 
-    definitionRepository
-      .findByTenantIdAndOriginAndStatusAndActiveTrue(tenantId, origin, WorkflowDefinitionStatus.PUBLISHED)
+    findPublishedDefinitionExact(tenantId, origin, context)
       .ifPresent(current -> {
         current.setStatus(WorkflowDefinitionStatus.ARCHIVED);
         current.setActive(false);
@@ -200,6 +216,8 @@ public class WorkflowDefinitionService {
     WorkflowDefinition definition = new WorkflowDefinition();
     definition.setTenantId(tenantId);
     definition.setOrigin(origin);
+    definition.setContextType(context.type());
+    definition.setContextId(context.contextId());
     definition.setName(normalizeName(request.name()));
     definition.setDescription(normalizeOptional(request.description(), 255));
     definition.setLayoutJson(normalizeOptional(request.layoutJson(), 200000));
@@ -244,6 +262,8 @@ public class WorkflowDefinitionService {
 
     return new WorkflowDefinitionUpsertRequest(
       definition.getOrigin().name(),
+      definition.getContextType() == null ? null : definition.getContextType().name(),
+      definition.getContextId(),
       definition.getName(),
       definition.getDescription(),
       definition.getLayoutJson(),
@@ -285,6 +305,8 @@ public class WorkflowDefinitionService {
     return new WorkflowDefinitionResponse(
       definition.getId(),
       definition.getOrigin().name(),
+      definition.getContextType() == null ? null : definition.getContextType().name(),
+      definition.getContextId(),
       definition.getName(),
       definition.getVersionNum(),
       definition.getStatus().name(),
@@ -326,6 +348,158 @@ public class WorkflowDefinitionService {
     if (!errors.isEmpty()) {
       throw new IllegalArgumentException(String.join(",", errors));
     }
+  }
+
+  private WorkflowDefinitionUpsertRequest normalizeUpsertRequest(WorkflowDefinitionUpsertRequest request) {
+    if (request == null) {
+      return null;
+    }
+    WorkflowOrigin origin;
+    try {
+      origin = WorkflowOrigin.from(request.origin());
+    } catch (RuntimeException ex) {
+      return request;
+    }
+
+    List<WorkflowTransitionDefinitionRequest> normalizedTransitions = (request.transitions() == null
+      ? List.<WorkflowTransitionDefinitionRequest>of()
+      : request.transitions()).stream()
+      .map(item -> normalizeTransition(item, origin))
+      .toList();
+
+    return new WorkflowDefinitionUpsertRequest(
+      request.origin(),
+      request.contextType(),
+      request.contextId(),
+      request.name(),
+      request.description(),
+      request.layoutJson(),
+      request.states(),
+      normalizedTransitions);
+  }
+
+  private WorkflowTransitionDefinitionRequest normalizeTransition(
+      WorkflowTransitionDefinitionRequest source,
+      WorkflowOrigin origin) {
+    if (source == null) {
+      return null;
+    }
+    List<WorkflowActionConfigRequest> normalizedActions = normalizeActions(source.actions(), origin);
+    return new WorkflowTransitionDefinitionRequest(
+      source.key(),
+      source.name(),
+      source.fromStateKey(),
+      source.toStateKey(),
+      source.enabled(),
+      source.priority(),
+      source.uiMetaJson(),
+      normalizedActions);
+  }
+
+  private List<WorkflowActionConfigRequest> normalizeActions(
+      List<WorkflowActionConfigRequest> actions,
+      WorkflowOrigin origin) {
+    if (actions == null || actions.isEmpty()) {
+      return List.of();
+    }
+    WorkflowActionConfigRequest first = actions.get(0);
+    if (origin == WorkflowOrigin.ITEM_MOVIMENTO_ESTOQUE) {
+      return List.of(new WorkflowActionConfigRequest(
+        "MOVE_STOCK",
+        "ON_TRANSITION",
+        true,
+        first != null && first.params() != null ? first.params() : Map.of()));
+    }
+    if (origin == WorkflowOrigin.MOVIMENTO_ESTOQUE) {
+      String targetStateKey = null;
+      if (first != null && first.params() != null && first.params().get("targetStateKey") != null) {
+        String normalized = first.params().get("targetStateKey").toString().trim().toUpperCase(Locale.ROOT);
+        if (!normalized.isBlank()) {
+          targetStateKey = normalized.length() > 80 ? normalized.substring(0, 80) : normalized;
+        }
+      }
+      Map<String, Object> params = targetStateKey == null ? Map.of() : Map.of("targetStateKey", targetStateKey);
+      return List.of(new WorkflowActionConfigRequest(
+        "SET_ITEM_STATUS",
+        "ON_TRANSITION",
+        true,
+        params));
+    }
+    return actions;
+  }
+
+  private WorkflowDefinitionContext resolveContext(Long tenantId, WorkflowDefinitionUpsertRequest request) {
+    WorkflowDefinitionContextType contextType = WorkflowDefinitionContextType.fromNullable(
+      request == null ? null : request.contextType());
+    Long contextId = request == null ? null : request.contextId();
+    WorkflowDefinitionContext context = normalizeContext(contextType, contextId);
+    if (context.hasContext()) {
+      validateContextReference(tenantId, context);
+    }
+    return context;
+  }
+
+  private WorkflowDefinitionContext normalizeContext(WorkflowDefinitionContextType contextType, Long contextId) {
+    if (contextType == null && contextId == null) {
+      return WorkflowDefinitionContext.none();
+    }
+    if (contextType == null || contextId == null) {
+      throw new IllegalArgumentException("workflow_context_invalid");
+    }
+    if (contextId <= 0) {
+      throw new IllegalArgumentException("workflow_context_id_invalid");
+    }
+    return WorkflowDefinitionContext.of(contextType, contextId);
+  }
+
+  private void validateContextReference(Long tenantId, WorkflowDefinitionContext context) {
+    if (context == null || !context.hasContext()) {
+      return;
+    }
+    if (context.type() == WorkflowDefinitionContextType.MOVIMENTO_CONFIG) {
+      boolean exists = movimentoConfigRepository.findByIdAndTenantId(context.contextId(), tenantId).isPresent();
+      if (!exists) {
+        throw new IllegalArgumentException("workflow_context_reference_invalid");
+      }
+    }
+  }
+
+  private java.util.Optional<WorkflowDefinition> findLatestVersionByOriginAndContext(
+      Long tenantId,
+      WorkflowOrigin origin,
+      WorkflowDefinitionContext context) {
+    if (context != null && context.hasContext()) {
+      return definitionRepository
+        .findTopByTenantIdAndOriginAndContextTypeAndContextIdOrderByVersionNumDesc(
+          tenantId,
+          origin,
+          context.type(),
+          context.contextId());
+    }
+    return definitionRepository
+      .findTopByTenantIdAndOriginAndContextTypeIsNullAndContextIdIsNullOrderByVersionNumDesc(
+        tenantId,
+        origin);
+  }
+
+  private java.util.Optional<WorkflowDefinition> findPublishedDefinitionExact(
+      Long tenantId,
+      WorkflowOrigin origin,
+      WorkflowDefinitionContext context) {
+    if (context != null && context.hasContext()) {
+      return definitionRepository
+        .findByTenantIdAndOriginAndContextTypeAndContextIdAndStatusAndActiveTrue(
+          tenantId,
+          origin,
+          context.type(),
+          context.contextId(),
+          WorkflowDefinitionStatus.PUBLISHED);
+    }
+    return definitionRepository
+      .findByTenantIdAndOriginAndContextTypeIsNullAndContextIdIsNullAndStatusAndActiveTrue(
+        tenantId,
+        origin,
+        WorkflowDefinitionStatus.PUBLISHED);
   }
 
   private WorkflowDefinition findByIdForTenant(Long id, Long tenantId) {

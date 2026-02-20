@@ -75,7 +75,14 @@
 
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef>Situacao</th>
-            <td mat-cell *matCellDef="let row">{{ movementStatus(row) }}</td>
+            <td mat-cell *matCellDef="let row">
+              <span
+                class="movement-status-badge"
+                [class.movement-status-badge--default]="!movementStatusColor(row)"
+                [style.--status-color]="movementStatusColor(row)">
+                {{ movementStatus(row) }}
+              </span>
+            </td>
           </ng-container>
 
           <ng-container matColumnDef="movimentoConfig">
@@ -168,6 +175,7 @@
           [transitionsByItem]="itemTransitionsByItemId"
           [stateNamesByItemId]="itemStateNamesByItemId"
           [stateKeysByItemId]="itemStateKeysByItemId"
+          [stateColorsByStateKey]="itemStateColorsByStateKey"
           [emptyMessage]="'Movimento sem itens.'"
           (consultItem)="consultItem($event)"
           (editItem)="openItemOnMovimentoForm($event)"
@@ -187,7 +195,15 @@
           <div class="text-sm font-semibold">{{ row.nome }}</div>
         </div>
         <div class="text-xs text-[var(--muted)]">Config: #{{ row.movimentoConfigId }}</div>
-        <div class="text-xs text-[var(--muted)]">Situacao: {{ movementStatus(row) }}</div>
+        <div class="text-xs text-[var(--muted)]">
+          Situacao:
+          <span
+            class="movement-status-badge"
+            [class.movement-status-badge--default]="!movementStatusColor(row)"
+            [style.--status-color]="movementStatusColor(row)">
+            {{ movementStatus(row) }}
+          </span>
+        </div>
         <div class="text-xs text-[var(--muted)]" *ngIf="showTipoEntidadePadrao">Destinatario padrao: {{ row.tipoEntidadePadraoId ? ('#' + row.tipoEntidadePadraoId) : '-' }}</div>
         <div class="text-xs text-[var(--muted)]">Itens: {{ row.totalItens }} | Total: {{ row.totalCobrado | number : '1.2-6' }}</div>
         <div class="flex justify-end gap-1.5">

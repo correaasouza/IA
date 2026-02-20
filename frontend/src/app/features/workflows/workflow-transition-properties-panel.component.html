@@ -34,39 +34,47 @@
   <section class="workflow-actions-block">
     <div class="workflow-actions-header">
       <span>Acoes</span>
-      <button mat-stroked-button type="button" (click)="addAction()" [disabled]="readOnly">
-        Adicionar acao
-      </button>
     </div>
 
-    <article class="workflow-action-item" *ngFor="let action of transition.actions; let index = index">
-      <div class="workflow-grid-3">
-        <mat-form-field appearance="outline">
-          <mat-label>Tipo</mat-label>
-          <mat-select [(ngModel)]="action.type" (selectionChange)="emitTransition()" [disabled]="readOnly">
-            <mat-option value="MOVE_STOCK">MOVIMENTAR_ESTOQUE</mat-option>
-          </mat-select>
-        </mat-form-field>
+    <div class="workflow-action-toggle-row" *ngIf="isItemStockWorkflow()">
+      <mat-slide-toggle
+        [ngModel]="hasMoveStockAction()"
+        (ngModelChange)="setMoveStockAction($event)"
+        [disabled]="readOnly">
+        Movimenta estoque
+      </mat-slide-toggle>
+    </div>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Trigger</mat-label>
-          <mat-select [(ngModel)]="action.trigger" (selectionChange)="emitTransition()" [disabled]="readOnly">
-            <mat-option value="ON_TRANSITION">ON_TRANSITION</mat-option>
-            <mat-option value="ON_ENTER_STATE">ON_ENTER_STATE</mat-option>
-          </mat-select>
-        </mat-form-field>
+    <div class="workflow-action-toggle-row" *ngIf="isMovementWorkflow()">
+      <mat-slide-toggle
+        [ngModel]="hasSetItemStatusAction()"
+        (ngModelChange)="setSetItemStatusAction($event)"
+        [disabled]="readOnly">
+        Troca situacao do item
+      </mat-slide-toggle>
+    </div>
 
-        <mat-slide-toggle [(ngModel)]="action.requiresSuccess" (change)="emitTransition()" [disabled]="readOnly">
-          Exige sucesso
-        </mat-slide-toggle>
+    <div class="workflow-grid-2" *ngIf="isMovementWorkflow() && hasSetItemStatusAction()">
+      <mat-form-field appearance="outline">
+        <mat-label>Situacao de destino do item</mat-label>
+        <mat-select
+          [ngModel]="itemStatusTargetStateKey()"
+          (ngModelChange)="onItemStatusTargetStateKeyChange($event)"
+          [disabled]="readOnly">
+          <mat-option value="">Nenhuma</mat-option>
+          <mat-option *ngFor="let state of itemStatusOptions" [value]="state.key">{{ state.name }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <div class="workflow-actions-help">
+        Aplica a situacao para todos os itens do movimento ao executar esta transicao. Use Nenhuma para limpar a situacao.
       </div>
+    </div>
 
-      <div class="workflow-actions-footer">
-        <button mat-button color="warn" type="button" (click)="removeAction(index)" [disabled]="readOnly">
-          Remover acao
-        </button>
-      </div>
-    </article>
+    <div class="workflow-actions-empty" *ngIf="isMovementWorkflow() && hasSetItemStatusAction() && itemStatusOptions.length === 0">
+      Nenhum estado do workflow de item publicado. Somente a opcao Nenhuma esta disponivel.
+    </div>
+
   </section>
 
   <div class="workflow-props-actions">

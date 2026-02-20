@@ -50,7 +50,10 @@ export class AccessControlDirective implements OnInit, OnChanges, OnDestroy {
   }
 
   private renderConfigButton(): void {
-    if (!this.appAccessConfigurable || !this.controlKey || !this.access.canConfigure()) {
+    if (!this.appAccessConfigurable
+      || !this.controlKey
+      || !this.access.canConfigure()
+      || !this.access.securityButtonsVisible()) {
       this.removeConfigButton();
       return;
     }

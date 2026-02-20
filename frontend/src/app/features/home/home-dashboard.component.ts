@@ -2,6 +2,7 @@ import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Router, RouterLink } from '@angular/router';
 
 import { AtalhoService } from '../../core/atalhos/atalho.service';
@@ -10,7 +11,7 @@ import { MenuService, MenuItem } from '../../core/menu/menu.service';
 @Component({
   selector: 'app-home-dashboard',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, RouterLink],
+  imports: [CommonModule, MatButtonModule, MatIconModule, MatTooltipModule, RouterLink],
   templateUrl: './home-dashboard.component.html'
 })
 export class HomeDashboardComponent implements OnInit {

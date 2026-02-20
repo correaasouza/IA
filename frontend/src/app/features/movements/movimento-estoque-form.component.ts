@@ -99,6 +99,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   itemTransitionsByItemId: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
   itemStateNamesByItemId: Record<number, string> = {};
   itemStateKeysByItemId: Record<number, string> = {};
+  itemStateColorsByStateKey: Record<string, string> = {};
   @ViewChild('itemEditorAnchor') itemEditorAnchor?: ElementRef<HTMLElement>;
 
   private nextRowUid = 1;
@@ -127,6 +128,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
 
   ngOnInit(): void {
     this.workflowEnabled = this.featureFlagService.isEnabled('workflowEnabled', true);
+    this.loadItemWorkflowStateColors();
     const id = Number(this.route.snapshot.paramMap.get('id') || 0);
     const isEdit = this.route.snapshot.url.some(item => item.path === 'edit');
     const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
@@ -938,5 +940,37 @@ export class MovimentoEstoqueFormComponent implements OnInit {
         }
       });
     }
+  }
+
+  private loadItemWorkflowStateColors(): void {
+    if (!this.workflowEnabled) {
+      this.itemStateColorsByStateKey = {};
+      return;
+    }
+    this.workflowService.getDefinitionByOrigin('ITEM_MOVIMENTO_ESTOQUE').subscribe({
+      next: definition => {
+        this.itemStateColorsByStateKey = this.buildStateColorMap(definition?.states || []);
+      },
+      error: () => {
+        this.itemStateColorsByStateKey = {};
+      }
+    });
+  }
+
+  private buildStateColorMap(states: Array<{ key?: string | null; color?: string | null }>): Record<string, string> {
+    const map: Record<string, string> = {};
+    for (const state of states || []) {
+      const key = (state?.key || '').trim().toUpperCase();
+      const color = (state?.color || '').trim();
+      if (!key || !this.isValidHexColor(color)) {
+        continue;
+      }
+      map[key] = color;
+    }
+    return map;
+  }
+
+  private isValidHexColor(value: string): boolean {
+    return /^#[\da-fA-F]{6}$/.test((value || '').trim());
   }
 }

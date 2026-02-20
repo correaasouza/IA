@@ -2,6 +2,7 @@ package com.ia.app.workflow.service;
 
 import com.ia.app.tenant.TenantContext;
 import com.ia.app.workflow.domain.WorkflowDefinition;
+import com.ia.app.workflow.domain.WorkflowDefinitionContext;
 import com.ia.app.workflow.domain.WorkflowDefinitionStatus;
 import com.ia.app.workflow.domain.WorkflowInstance;
 import com.ia.app.workflow.domain.WorkflowOrigin;
@@ -51,21 +52,20 @@ public class WorkflowRuntimeService {
     if (entityId == null || entityId <= 0) {
       throw new IllegalArgumentException("workflow_entity_id_invalid");
     }
+    var resolver = originResolverRegistry.require(origin);
     WorkflowInstance existing = instanceRepository.findByTenantIdAndOriginAndEntityId(tenantId, origin, entityId).orElse(null);
     if (existing != null) {
       return syncInstanceWithPublishedDefinition(tenantId, origin, existing);
     }
 
-    WorkflowDefinition definition = definitionRepository
-      .findByTenantIdAndOriginAndStatusAndActiveTrue(tenantId, origin, WorkflowDefinitionStatus.PUBLISHED)
-      .orElse(null);
-    if (definition == null) {
-      return null;
-    }
-
-    boolean exists = originResolverRegistry.require(origin).exists(tenantId, entityId);
+    boolean exists = resolver.exists(tenantId, entityId);
     if (!exists) {
       throw new EntityNotFoundException("workflow_entity_not_found");
+    }
+    WorkflowDefinitionContext context = resolver.resolveDefinitionContext(tenantId, entityId);
+    WorkflowDefinition definition = findPublishedDefinition(tenantId, origin, context);
+    if (definition == null) {
+      return null;
     }
 
     WorkflowState initialState = stateRepository
@@ -85,7 +85,7 @@ public class WorkflowRuntimeService {
     } catch (DataIntegrityViolationException ex) {
       instance = instanceRepository.findByTenantIdAndOriginAndEntityId(tenantId, origin, entityId).orElseThrow(() -> ex);
     }
-    originResolverRegistry.require(origin).syncStatus(tenantId, entityId, initialState.getStateKey());
+    resolver.syncStatus(tenantId, entityId, initialState.getStateKey());
     return instance;
   }
 
@@ -135,9 +135,9 @@ public class WorkflowRuntimeService {
     if (instance == null) {
       return null;
     }
-    WorkflowDefinition published = definitionRepository
-      .findByTenantIdAndOriginAndStatusAndActiveTrue(tenantId, origin, WorkflowDefinitionStatus.PUBLISHED)
-      .orElse(null);
+    var resolver = originResolverRegistry.require(origin);
+    WorkflowDefinitionContext context = resolver.resolveDefinitionContext(tenantId, instance.getEntityId());
+    WorkflowDefinition published = findPublishedDefinition(tenantId, origin, context);
     if (published == null) {
       return instance;
     }
@@ -167,8 +167,33 @@ public class WorkflowRuntimeService {
     instance.setCurrentStateKey(targetState.getStateKey());
     instance.setLastTransition(null);
     WorkflowInstance saved = instanceRepository.saveAndFlush(instance);
-    originResolverRegistry.require(origin).syncStatus(tenantId, saved.getEntityId(), targetState.getStateKey());
+    resolver.syncStatus(tenantId, saved.getEntityId(), targetState.getStateKey());
     return saved;
+  }
+
+  private WorkflowDefinition findPublishedDefinition(
+      Long tenantId,
+      WorkflowOrigin origin,
+      WorkflowDefinitionContext context) {
+    if (context != null && context.hasContext()) {
+      WorkflowDefinition scoped = definitionRepository
+        .findByTenantIdAndOriginAndContextTypeAndContextIdAndStatusAndActiveTrue(
+          tenantId,
+          origin,
+          context.type(),
+          context.contextId(),
+          WorkflowDefinitionStatus.PUBLISHED)
+        .orElse(null);
+      if (scoped != null) {
+        return scoped;
+      }
+    }
+    return definitionRepository
+      .findByTenantIdAndOriginAndContextTypeIsNullAndContextIdIsNullAndStatusAndActiveTrue(
+        tenantId,
+        origin,
+        WorkflowDefinitionStatus.PUBLISHED)
+      .orElse(null);
   }
 
   private Long requireTenant() {

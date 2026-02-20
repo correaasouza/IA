@@ -270,8 +270,16 @@ public class ApiExceptionHandler {
       pd.setDetail("Somente versoes em rascunho podem ser alteradas/publicadas.");
     } else if (message.startsWith("workflow_definition_origin_immutable")) {
       pd.setDetail("A origem da definicao de workflow nao pode ser alterada.");
+    } else if (message.startsWith("workflow_definition_context_immutable")) {
+      pd.setDetail("O contexto da definicao de workflow nao pode ser alterado.");
     } else if (message.startsWith("workflow_definition_not_published")) {
       pd.setDetail("Nao existe workflow publicado para a origem informada.");
+    } else if (message.startsWith("workflow_context_invalid")) {
+      pd.setDetail("Contexto do workflow invalido.");
+    } else if (message.startsWith("workflow_context_id_invalid")) {
+      pd.setDetail("Identificador do contexto do workflow invalido.");
+    } else if (message.startsWith("workflow_context_reference_invalid")) {
+      pd.setDetail("Configuracao de contexto do workflow nao encontrada para o locatario atual.");
     } else if (message.startsWith("workflow_state_initial_exactly_one")) {
       pd.setDetail("A definicao precisa de exatamente um estado inicial.");
     } else if (message.startsWith("workflow_transition_not_found")) {
@@ -284,6 +292,10 @@ public class ApiExceptionHandler {
       pd.setDetail("O estado atual mudou. Atualize a tela e tente novamente.");
     } else if (message.startsWith("workflow_action_move_stock_origin_invalid")) {
       pd.setDetail("A acao de movimentar estoque so pode ser usada no workflow de item de movimento.");
+    } else if (message.startsWith("workflow_action_set_item_status_origin_invalid")) {
+      pd.setDetail("A acao de trocar situacao do item so pode ser usada no workflow de movimento de estoque.");
+    } else if (message.startsWith("workflow_action_item_status_target_invalid")) {
+      pd.setDetail("Situacao de destino invalida para os itens do movimento.");
     } else if (message.startsWith("workflow_action_json_invalid")) {
       pd.setDetail("Configuracao de acoes do workflow invalida.");
     } else if (message.startsWith("workflow_import_payload_invalid")) {
@@ -350,9 +362,11 @@ public class ApiExceptionHandler {
       pd.setDetail("Ja existe tipo de item com este nome no locatario.");
     } else if (normalized.contains("ux_mov_config_item_tipo_scope")) {
       pd.setDetail("Tipo de item ja vinculado a configuracao de movimento.");
-    } else if (normalized.contains("ux_workflow_def_tenant_origin_version")) {
+    } else if (normalized.contains("ux_workflow_def_tenant_origin_ctx_version")
+      || normalized.contains("ux_workflow_def_tenant_origin_version")) {
       pd.setDetail("Ja existe versao de workflow com este numero para a origem.");
-    } else if (normalized.contains("ux_workflow_def_tenant_origin_published")) {
+    } else if (normalized.contains("ux_workflow_def_tenant_origin_ctx_published")
+      || normalized.contains("ux_workflow_def_tenant_origin_published")) {
       pd.setDetail("Ja existe workflow publicado ativo para esta origem.");
     } else if (normalized.contains("ux_workflow_state_def_key")) {
       pd.setDetail("Chave de estado duplicada na mesma definicao.");

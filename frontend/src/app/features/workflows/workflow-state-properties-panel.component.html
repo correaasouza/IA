@@ -6,11 +6,6 @@
     <input matInput [(ngModel)]="state.name" (ngModelChange)="emitState()" [readonly]="readOnly" />
   </mat-form-field>
 
-  <mat-form-field appearance="outline">
-    <mat-label>Cor</mat-label>
-    <input matInput [(ngModel)]="state.color" (ngModelChange)="emitState()" [readonly]="readOnly" />
-  </mat-form-field>
-
   <div class="workflow-props-toggles">
     <mat-slide-toggle
       [(ngModel)]="state.isInitial"

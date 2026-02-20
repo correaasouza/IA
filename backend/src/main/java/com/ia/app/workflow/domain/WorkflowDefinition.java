@@ -22,7 +22,9 @@ import java.util.List;
 @Table(
   name = "workflow_definition",
   uniqueConstraints = {
-    @UniqueConstraint(name = "ux_workflow_def_tenant_origin_version", columnNames = {"tenant_id", "origin", "version_num"})
+    @UniqueConstraint(
+      name = "ux_workflow_def_tenant_origin_ctx_version",
+      columnNames = {"tenant_id", "origin", "context_type", "context_id", "version_num"})
   })
 public class WorkflowDefinition extends AuditableEntity {
 
@@ -36,6 +38,13 @@ public class WorkflowDefinition extends AuditableEntity {
   @Enumerated(EnumType.STRING)
   @Column(name = "origin", nullable = false, length = 60)
   private WorkflowOrigin origin;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "context_type", length = 60)
+  private WorkflowDefinitionContextType contextType;
+
+  @Column(name = "context_id")
+  private Long contextId;
 
   @Column(name = "name", nullable = false, length = 120)
   private String name;
@@ -92,6 +101,22 @@ public class WorkflowDefinition extends AuditableEntity {
 
   public void setOrigin(WorkflowOrigin origin) {
     this.origin = origin;
+  }
+
+  public WorkflowDefinitionContextType getContextType() {
+    return contextType;
+  }
+
+  public void setContextType(WorkflowDefinitionContextType contextType) {
+    this.contextType = contextType;
+  }
+
+  public Long getContextId() {
+    return contextId;
+  }
+
+  public void setContextId(Long contextId) {
+    this.contextId = contextId;
   }
 
   public String getName() {

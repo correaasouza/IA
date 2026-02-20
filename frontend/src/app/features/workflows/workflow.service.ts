@@ -7,6 +7,7 @@ import {
   WorkflowDefinitionUpsertRequest,
   WorkflowHistoryEntry,
   WorkflowImportRequest,
+  WorkflowContextType,
   WorkflowOrigin,
   WorkflowPage,
   WorkflowRuntimeState,
@@ -26,8 +27,18 @@ export class WorkflowService {
     return this.http.get<WorkflowDefinition>(`${this.definitionsUrl}/${id}`);
   }
 
-  getDefinitionByOrigin(origin: WorkflowOrigin): Observable<WorkflowDefinition> {
-    const params = new HttpParams().set('origin', origin);
+  getDefinitionByOrigin(
+      origin: WorkflowOrigin,
+      context?: { type?: WorkflowContextType | null; id?: number | null }): Observable<WorkflowDefinition | null> {
+    let params = new HttpParams().set('origin', origin);
+    const type = (context?.type || '').trim();
+    const id = Number(context?.id || 0);
+    if (type) {
+      params = params.set('contextType', type);
+    }
+    if (id > 0) {
+      params = params.set('contextId', String(id));
+    }
     return this.http.get<WorkflowDefinition>(`${this.definitionsUrl}/by-origin`, { params });
   }
 

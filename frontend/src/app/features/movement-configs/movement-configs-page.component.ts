@@ -21,6 +21,9 @@ import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../..
 import { CompanyService, EmpresaResponse } from '../companies/company.service';
 import { AgrupadoresEmpresaComponent } from '../configs/agrupadores-empresa.component';
 import { EntityTypeService, TipoEntidade } from '../entity-types/entity-type.service';
+import { WorkflowDefinitionFormComponent } from '../workflows/workflow-definition-form.component';
+import { WorkflowDefinition, WorkflowOrigin } from '../workflows/models/workflow.models';
+import { WorkflowService } from '../workflows/workflow.service';
 import {
   MovimentoConfig,
   MovimentoConfigItemTipo,
@@ -51,14 +54,18 @@ import {
     MatTooltipModule,
     FieldSearchComponent,
     AgrupadoresEmpresaComponent,
+    WorkflowDefinitionFormComponent,
     AccessControlDirective
   ],
   templateUrl: './movement-configs-page.component.html',
   styleUrl: './movement-configs-page.component.css'
 })
 export class MovementConfigsPageComponent implements OnInit {
+  private readonly workflowOrigins: WorkflowOrigin[] = ['MOVIMENTO_ESTOQUE', 'ITEM_MOVIMENTO_ESTOQUE'];
+
   @ViewChild('configFormDialog') configFormDialog?: TemplateRef<unknown>;
   @ViewChild('itemTypeFormDialog') itemTypeFormDialog?: TemplateRef<unknown>;
+  @ViewChild('workflowConfigDialog') workflowConfigDialog?: TemplateRef<unknown>;
 
   activeSection: 'CONFIGURACOES' | 'TIPOS_ITENS' = 'CONFIGURACOES';
 
@@ -72,6 +79,7 @@ export class MovementConfigsPageComponent implements OnInit {
   loadingCoverageWarnings = false;
   errorMessage = '';
   featureEnabled = true;
+  workflowEnabled = true;
   coverageWarnings: MovimentoConfigCoverageWarning[] = [];
   loadingItemTypes = false;
   itemTypes: MovimentoItemTipo[] = [];
@@ -110,14 +118,25 @@ export class MovementConfigsPageComponent implements OnInit {
 
   readOnlyMode = false;
   editingConfigId: number | null = null;
-  activeFormTab: 'CONFIGURACAO' | 'FILIAIS' | 'ITENS' = 'FILIAIS';
+  activeFormTab: 'CONFIGURACAO' | 'FILIAIS' | 'ITENS' | 'WORKFLOWS' = 'FILIAIS';
   configItemTipos: MovimentoConfigItemTipo[] = [];
   loadingConfigItemTipos = false;
   savingConfigItemTipos = false;
+  loadingWorkflowCards = false;
+  workflowDefinitions: Record<WorkflowOrigin, WorkflowDefinition | null> = {
+    MOVIMENTO_ESTOQUE: null,
+    ITEM_MOVIMENTO_ESTOQUE: null
+  };
+  workflowCardLoading: Record<WorkflowOrigin, boolean> = {
+    MOVIMENTO_ESTOQUE: false,
+    ITEM_MOVIMENTO_ESTOQUE: false
+  };
   editingItemTypeId: number | null = null;
   readOnlyItemTypeMode = false;
   private dialogRef: MatDialogRef<unknown> | null = null;
   private itemTypeDialogRef: MatDialogRef<unknown> | null = null;
+  private workflowDialogRef: MatDialogRef<unknown> | null = null;
+  workflowDialogOrigin: WorkflowOrigin | null = null;
 
   readonly form = this.fb.group({
     nome: ['', [Validators.required, Validators.maxLength(120)]],
@@ -140,13 +159,15 @@ export class MovementConfigsPageComponent implements OnInit {
     private entityTypeService: EntityTypeService,
     private featureFlagService: FeatureFlagService,
     private dialog: MatDialog,
-    private notify: NotificationService
+    private notify: NotificationService,
+    private workflowService: WorkflowService
   ) {
     this.updateViewportMode();
   }
 
   ngOnInit(): void {
     this.featureEnabled = this.featureFlagService.isEnabled('movementConfigEnabled', true);
+    this.workflowEnabled = this.featureFlagService.isEnabled('workflowEnabled', true);
     if (!this.featureEnabled) {
       this.errorMessage = 'Modulo de Configuracoes de Movimentos desabilitado para este ambiente.';
       return;
@@ -550,11 +571,87 @@ export class MovementConfigsPageComponent implements OnInit {
     this.readOnlyMode = false;
     this.editingConfigId = null;
     this.activeFormTab = 'FILIAIS';
+    this.closeWorkflowConfigDialog(false);
+    this.workflowDefinitions = {
+      MOVIMENTO_ESTOQUE: null,
+      ITEM_MOVIMENTO_ESTOQUE: null
+    };
+    this.workflowCardLoading = {
+      MOVIMENTO_ESTOQUE: false,
+      ITEM_MOVIMENTO_ESTOQUE: false
+    };
     this.form.enable({ emitEvent: false });
   }
 
-  setFormTab(tab: 'CONFIGURACAO' | 'FILIAIS' | 'ITENS'): void {
+  setFormTab(tab: 'CONFIGURACAO' | 'FILIAIS' | 'ITENS' | 'WORKFLOWS'): void {
     this.activeFormTab = tab;
+    if (tab === 'WORKFLOWS') {
+      this.loadWorkflowCards();
+    }
+  }
+
+  workflowCardTitle(origin: WorkflowOrigin): string {
+    return origin === 'MOVIMENTO_ESTOQUE'
+      ? 'Workflow do Movimento de Estoque'
+      : 'Workflow do Item de Movimento de Estoque';
+  }
+
+  workflowCardHint(origin: WorkflowOrigin): string {
+    return origin === 'MOVIMENTO_ESTOQUE'
+      ? 'Controla estados e transicoes do cabecalho do movimento.'
+      : 'Controla estados e transicoes dos itens do movimento.';
+  }
+
+  workflowStatusLabel(origin: WorkflowOrigin): string {
+    return this.workflowDefinitions[origin] ? 'Configurado' : 'Nao configurado';
+  }
+
+  openWorkflowConfigDialog(origin: WorkflowOrigin): void {
+    if (!this.editingConfigId || !this.workflowConfigDialog) {
+      return;
+    }
+    this.workflowDialogOrigin = origin;
+    if (this.workflowDialogRef) {
+      this.workflowDialogRef.updateSize('1200px');
+      return;
+    }
+    this.workflowDialogRef = this.dialog.open(this.workflowConfigDialog, {
+      width: '1200px',
+      maxWidth: '96vw',
+      maxHeight: 'calc(100dvh - 120px)',
+      panelClass: 'workflow-config-dialog-panel',
+      autoFocus: false,
+      restoreFocus: true,
+      position: { top: '96px' }
+    });
+    this.workflowDialogRef.afterClosed().subscribe(() => {
+      this.workflowDialogRef = null;
+      this.workflowDialogOrigin = null;
+      this.refreshWorkflowCards();
+    });
+  }
+
+  closeWorkflowConfigDialog(refresh = true): void {
+    if (this.workflowDialogRef) {
+      this.workflowDialogRef.close();
+    } else {
+      this.workflowDialogOrigin = null;
+      if (refresh) {
+        this.refreshWorkflowCards();
+      }
+    }
+  }
+
+  workflowVersionLabel(origin: WorkflowOrigin): string {
+    const definition = this.workflowDefinitions[origin];
+    if (!definition) {
+      return 'Sem versao publicada.';
+    }
+    return `Ultima versao: v${definition.versionNum} | status: ${definition.status}`;
+  }
+
+  refreshWorkflowCards(): void {
+    this.loadWorkflowCards(true);
   }
 
   onPickerEmpresaIdsChange(ids: number[]): void {
@@ -888,6 +985,15 @@ export class MovementConfigsPageComponent implements OnInit {
       this.readOnlyMode = false;
       this.editingConfigId = null;
       this.activeFormTab = 'FILIAIS';
+      this.closeWorkflowConfigDialog(false);
+      this.workflowDefinitions = {
+        MOVIMENTO_ESTOQUE: null,
+        ITEM_MOVIMENTO_ESTOQUE: null
+      };
+      this.workflowCardLoading = {
+        MOVIMENTO_ESTOQUE: false,
+        ITEM_MOVIMENTO_ESTOQUE: false
+      };
     });
   }
 
@@ -921,6 +1027,46 @@ export class MovementConfigsPageComponent implements OnInit {
 
   private errorFrom(err: any, fallback: string): string {
     return err?.error?.detail || err?.error?.message || fallback;
+  }
+
+  private loadWorkflowCards(force = false): void {
+    if (!this.workflowEnabled || !this.featureEnabled || !this.editingConfigId) {
+      this.workflowDefinitions = {
+        MOVIMENTO_ESTOQUE: null,
+        ITEM_MOVIMENTO_ESTOQUE: null
+      };
+      this.workflowCardLoading = {
+        MOVIMENTO_ESTOQUE: false,
+        ITEM_MOVIMENTO_ESTOQUE: false
+      };
+      return;
+    }
+    const shouldLoad = force || this.workflowOrigins.some(origin => this.workflowDefinitions[origin] === null);
+    if (!shouldLoad) {
+      return;
+    }
+    this.loadingWorkflowCards = true;
+    for (const origin of this.workflowOrigins) {
+      this.workflowCardLoading[origin] = true;
+      this.workflowService.getDefinitionByOrigin(origin, {
+        type: 'MOVIMENTO_CONFIG',
+        id: this.editingConfigId
+      }).subscribe({
+        next: definition => {
+          this.workflowDefinitions[origin] = definition;
+          this.workflowCardLoading[origin] = false;
+          this.loadingWorkflowCards = this.workflowOrigins.some(item => this.workflowCardLoading[item]);
+        },
+        error: err => {
+          this.workflowDefinitions[origin] = null;
+          this.workflowCardLoading[origin] = false;
+          this.loadingWorkflowCards = this.workflowOrigins.some(item => this.workflowCardLoading[item]);
+          if (err?.status !== 404) {
+            this.notify.error(this.errorFrom(err, `Nao foi possivel carregar ${this.workflowCardTitle(origin)}.`));
+          }
+        }
+      });
+    }
   }
 
   private empresaLabelFromId(id: number): string {

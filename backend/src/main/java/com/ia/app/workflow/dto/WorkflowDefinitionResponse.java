@@ -6,6 +6,8 @@ import java.util.List;
 public record WorkflowDefinitionResponse(
   Long id,
   String origin,
+  String contextType,
+  Long contextId,
   String name,
   Integer versionNum,
   String status,

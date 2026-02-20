@@ -12,7 +12,14 @@
 
     <ng-container matColumnDef="status">
       <th mat-header-cell *matHeaderCellDef>Situacao</th>
-      <td mat-cell *matCellDef="let item">{{ displayStatus(item) }}</td>
+      <td mat-cell *matCellDef="let item">
+        <span
+          class="item-status-badge"
+          [class.item-status-badge--default]="!statusColor(item)"
+          [style.--status-color]="statusColor(item)">
+          {{ displayStatus(item) }}
+        </span>
+      </td>
     </ng-container>
 
     <ng-container matColumnDef="quantidade">
@@ -142,7 +149,12 @@
       </div>
       <div class="movimento-item-card-field">
         <span class="movimento-item-card-label">Situacao</span>
-        <span class="movimento-item-card-value">{{ displayStatus(item) }}</span>
+        <span
+          class="item-status-badge"
+          [class.item-status-badge--default]="!statusColor(item)"
+          [style.--status-color]="statusColor(item)">
+          {{ displayStatus(item) }}
+        </span>
       </div>
       <div class="movimento-item-card-grid">
         <div class="movimento-item-card-field">

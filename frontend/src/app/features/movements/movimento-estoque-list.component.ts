@@ -59,8 +59,10 @@ export class MovimentoEstoqueListComponent implements OnInit {
   itemTransitionsByItemId: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
   itemStateNamesByItemId: Record<number, string> = {};
   itemStateKeysByItemId: Record<number, string> = {};
+  itemStateColorsByStateKey: Record<string, string> = {};
   movimentoStateNamesById: Record<number, string> = {};
   movimentoStateKeysById: Record<number, string> = {};
+  movimentoStateColorsByStateKey: Record<string, string> = {};
   movimentoTransitionsById: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
 
   searchOptions: FieldSearchOption[] = [
@@ -81,6 +83,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
 
   ngOnInit(): void {
     this.updateViewportMode();
+    this.loadWorkflowStateColors();
     this.load(true);
   }
 
@@ -107,7 +110,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
     }
   }
 
-  load(reset = false): void {
+  load(reset = false, keepSelection = false): void {
     if (this.loadingMoreRows) {
       return;
     }
@@ -118,8 +121,10 @@ export class MovimentoEstoqueListComponent implements OnInit {
       this.pageIndex = 0;
       this.hasMoreRows = true;
       this.rows = [];
-      this.selectedMovimentoId = null;
-      this.visibleItemCount = this.itemChunkSize;
+      if (!keepSelection) {
+        this.selectedMovimentoId = null;
+        this.visibleItemCount = this.itemChunkSize;
+      }
       this.itemTransitionsByItemId = {};
       this.itemStateNamesByItemId = {};
       this.itemStateKeysByItemId = {};
@@ -357,7 +362,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
       .subscribe({
         next: () => {
           this.notify.success('Transicao executada com sucesso.');
-          this.load(true);
+          this.load(true, true);
         },
         error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel transicionar o item.')
       });
@@ -503,6 +508,23 @@ export class MovimentoEstoqueListComponent implements OnInit {
     return this.looksLikeUuid(raw) ? '-' : raw;
   }
 
+  movementStatusColor(row: MovimentoEstoqueResponse): string | null {
+    const rowId = Number(row?.id || 0);
+    const runtimeStateKey = rowId > 0 ? (this.movimentoStateKeysById[rowId] || '').trim().toUpperCase() : '';
+    if (runtimeStateKey) {
+      const runtimeColor = (this.movimentoStateColorsByStateKey[runtimeStateKey] || '').trim();
+      if (this.isValidHexColor(runtimeColor)) {
+        return runtimeColor;
+      }
+    }
+    const raw = (row?.status || '').trim().toUpperCase();
+    if (!raw || this.looksLikeUuid(raw)) {
+      return null;
+    }
+    const fallbackColor = (this.movimentoStateColorsByStateKey[raw] || '').trim();
+    return this.isValidHexColor(fallbackColor) ? fallbackColor : null;
+  }
+
   movementTransitions(row: MovimentoEstoqueResponse): Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }> {
     const rowId = Number(row?.id || 0);
     if (!rowId) {
@@ -526,7 +548,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
       .subscribe({
         next: () => {
           this.notify.success('Transicao do movimento executada com sucesso.');
-          this.load(true);
+          this.load(true, true);
         },
         error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel transicionar o movimento.')
       });
@@ -577,6 +599,47 @@ export class MovimentoEstoqueListComponent implements OnInit {
         }
       });
     }
+  }
+
+  private loadWorkflowStateColors(): void {
+    if (!this.workflowEnabled) {
+      this.itemStateColorsByStateKey = {};
+      this.movimentoStateColorsByStateKey = {};
+      return;
+    }
+    this.workflowService.getDefinitionByOrigin('ITEM_MOVIMENTO_ESTOQUE').subscribe({
+      next: definition => {
+        this.itemStateColorsByStateKey = this.buildStateColorMap(definition?.states || []);
+      },
+      error: () => {
+        this.itemStateColorsByStateKey = {};
+      }
+    });
+    this.workflowService.getDefinitionByOrigin('MOVIMENTO_ESTOQUE').subscribe({
+      next: definition => {
+        this.movimentoStateColorsByStateKey = this.buildStateColorMap(definition?.states || []);
+      },
+      error: () => {
+        this.movimentoStateColorsByStateKey = {};
+      }
+    });
+  }
+
+  private buildStateColorMap(states: Array<{ key?: string | null; color?: string | null }>): Record<string, string> {
+    const map: Record<string, string> = {};
+    for (const state of states || []) {
+      const key = (state?.key || '').trim().toUpperCase();
+      const color = (state?.color || '').trim();
+      if (!key || !this.isValidHexColor(color)) {
+        continue;
+      }
+      map[key] = color;
+    }
+    return map;
+  }
+
+  private isValidHexColor(value: string): boolean {
+    return /^#[\da-fA-F]{6}$/.test((value || '').trim());
   }
 
   private looksLikeUuid(value: string): boolean {

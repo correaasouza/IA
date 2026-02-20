@@ -104,15 +104,6 @@ export class MenuService {
           roles: ['MASTER', 'ADMIN'],
           perms: ['CONFIG_EDITOR']
         },
-        {
-          id: 'workflow-configs',
-          label: 'Workflows',
-          route: '/configs/workflows',
-          accessKey: 'menu.workflow-configs',
-          icon: 'account_tree',
-          roles: ['MASTER', 'ADMIN'],
-          perms: ['WORKFLOW_CONFIGURAR']
-        },
         { id: 'entity-types', label: 'Tipos Ent.', route: '/entity-types', icon: 'category', roles: ['MASTER', 'ADMIN'], perms: ['ENTIDADE_EDIT'] }
       ]
     }

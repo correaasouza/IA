@@ -8,6 +8,25 @@
   grid-template-columns: 1fr;
 }
 
+.workflow-context-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 10px 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.workflow-context-field {
+  width: min(440px, 100%);
+}
+
+.workflow-context-help {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 .workflow-origin-card {
   border: 1px solid var(--border);
   border-radius: 12px;

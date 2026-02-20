@@ -37,6 +37,10 @@
   font-weight: 700;
 }
 
+.workflow-action-toggle-row {
+  display: flex;
+}
+
 .workflow-action-item {
   display: grid;
   gap: 8px;
@@ -44,6 +48,18 @@
   border-radius: 10px;
   padding: 8px;
   background: var(--surface-muted);
+}
+
+.workflow-actions-empty {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 4px 2px;
+}
+
+.workflow-actions-help {
+  font-size: 12px;
+  color: var(--muted);
+  align-self: center;
 }
 
 .workflow-actions-footer {

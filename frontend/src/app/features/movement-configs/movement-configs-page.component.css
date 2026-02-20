@@ -238,6 +238,11 @@
   padding: 0 !important;
 }
 
+:host ::ng-deep .workflow-config-dialog-panel .mat-mdc-dialog-container,
+:host ::ng-deep .workflow-config-dialog-panel .mat-mdc-dialog-surface {
+  padding: 0 !important;
+}
+
 .mov-config-dialog-title {
   display: block;
   margin: 0;
@@ -298,10 +303,17 @@
   min-width: 120px;
 }
 
+.mov-config-dialog-tabs-row {
+  display: flex;
+  align-items: center;
+  margin: 0 12px 8px;
+  padding: 0 2px;
+}
+
 .mov-config-dialog-content {
   display: grid;
   gap: 10px;
-  padding: 14px 16px 10px;
+  padding: 8px 16px 10px;
   max-height: min(72vh, 760px);
   overflow-y: auto;
   overflow-x: hidden;
@@ -386,6 +398,76 @@
   padding: 8px 10px;
 }
 
+.workflow-configs-tab-grid {
+  display: grid;
+  gap: 12px;
+}
+
+.workflow-config-card {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.workflow-config-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.workflow-config-card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.workflow-config-card-hint {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.workflow-config-card-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted-strong);
+}
+
+.workflow-config-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.workflow-config-state {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #fdb9ad;
+  color: #9f2d20;
+  background: #fff2ef;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.workflow-config-state.workflow-config-state--ok {
+  border-color: #8ad3a5;
+  color: #146b34;
+  background: #eefcf3;
+}
+
+.workflow-config-modal-content {
+  padding: 12px 14px 10px;
+  max-height: min(76vh, 840px);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 @media (max-width: 640px) {
   .top-ux-compact-row {
     grid-template-columns: 1fr;
@@ -432,6 +514,10 @@
     padding: 10px;
   }
 
+  .mov-config-dialog-tabs-row {
+    margin: 0 10px 6px;
+  }
+
   .mov-config-dialog-title-label {
     font-size: 16px;
   }
@@ -451,7 +537,12 @@
   }
 
   .mov-config-dialog-content {
-    padding: 14px 12px 8px;
+    padding: 8px 12px 8px;
+    max-height: 72vh;
+  }
+
+  .workflow-config-modal-content {
+    padding: 8px 10px 8px;
     max-height: 72vh;
   }
 }

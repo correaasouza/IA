@@ -39,6 +39,18 @@ export class AccessControlService {
     return roles.includes('MASTER') || roles.includes('ADMIN');
   }
 
+  securityButtonsVisible(): boolean {
+    if (!this.canConfigure()) {
+      return false;
+    }
+    return this.loadSecurityButtonsPreference();
+  }
+
+  setSecurityButtonsVisible(visible: boolean): void {
+    localStorage.setItem(this.securityButtonsStorageKey(), visible ? '1' : '0');
+    this.changesSubject.next(Date.now());
+  }
+
   getRoles(controlKey: string, fallbackRoles: string[] = []): string[] {
     const key = this.normalizeKey(controlKey);
     const forced = this.forcedRoles(key);
@@ -137,6 +149,19 @@ export class AccessControlService {
   private storageKey(): string {
     const tenantId = localStorage.getItem('tenantId') || 'global';
     return `acl:controls:${tenantId}`;
+  }
+
+  private securityButtonsStorageKey(): string {
+    const tenantId = localStorage.getItem('tenantId') || 'global';
+    return `acl:security-buttons-visible:${tenantId}`;
+  }
+
+  private loadSecurityButtonsPreference(): boolean {
+    const raw = (localStorage.getItem(this.securityButtonsStorageKey()) || '').trim();
+    if (!raw) {
+      return true;
+    }
+    return raw !== '0';
   }
 
   private load(): void {

@@ -108,6 +108,7 @@ export class CatalogStockService {
     Object.entries(params || {}).forEach(([key, value]) => {
       if (value !== undefined && value !== null && `${value}` !== '') query.set(key, `${value}`);
     });
-    return this.http.get<CatalogLedgerResponse>(`${this.baseUrl}/${type}/items/${catalogoId}/stock/ledger?${query.toString()}`);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return this.http.get<CatalogLedgerResponse>(`${this.baseUrl}/${type}/items/${catalogoId}/stock/ledger${suffix}`);
   }
 }

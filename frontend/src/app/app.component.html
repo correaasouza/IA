@@ -25,9 +25,15 @@
       </button>
       <div class="flex min-w-0 flex-1 items-center gap-2" aria-label="Navegação rápida">
         <ng-container *ngFor="let s of atalhosTop">
-          <button mat-button [routerLink]="s.route" [queryParams]="menuQueryParams(s)" [ngClass]="isMenuItemActive(s) ? 'bg-white/20' : ''" class="inline-flex items-center gap-1 rounded-full border border-white/20 bg-white/10 px-3 text-xs text-[#f5fbfd]">
+          <button
+            mat-icon-button
+            [routerLink]="s.route"
+            [queryParams]="menuQueryParams(s)"
+            [attr.aria-label]="getMenuLabel(s)"
+            [matTooltip]="getMenuLabel(s)"
+            [ngClass]="isMenuItemActive(s) ? 'bg-white/20 border-white/40' : ''"
+            class="h-8 w-8 rounded-full border border-white/20 bg-white/10 text-[#f5fbfd]">
             <mat-icon>{{ s.icon }}</mat-icon>
-            <span class="max-w-40 truncate" [attr.title]="s.label">{{ getMenuLabel(s) }}</span>
           </button>
         </ng-container>
         <button mat-icon-button (click)="openOrdenar()" aria-label="Ordenar atalhos rápidos" matTooltip="Ordenar atalhos" class="h-8 w-8 rounded-md bg-white/15 text-[#f5fbfd]">
@@ -70,6 +76,18 @@
           </option>
         </select>
       </div>
+
+      <button
+        mat-icon-button
+        type="button"
+        *ngIf="canConfigureAccess()"
+        (click)="toggleSecurityButtonsVisibility()"
+        [attr.aria-pressed]="isSecurityButtonsVisible()"
+        [attr.aria-label]="isSecurityButtonsVisible() ? 'Ocultar botoes de seguranca' : 'Mostrar botoes de seguranca'"
+        [matTooltip]="isSecurityButtonsVisible() ? 'Ocultar botoes de seguranca' : 'Mostrar botoes de seguranca'"
+        class="hidden h-9 w-9 rounded-xl bg-white/15 text-white min-[420px]:inline-flex">
+        <mat-icon>{{ isSecurityButtonsVisible() ? 'shield_off' : 'shield' }}</mat-icon>
+      </button>
 
       <button mat-icon-button routerLink="/help" aria-label="Ajuda" matTooltip="Ajuda" *ngIf="hasTenant" class="hidden h-9 w-9 rounded-xl bg-white/15 text-white min-[420px]:inline-flex">
         <mat-icon>help_outline</mat-icon>
@@ -138,7 +156,7 @@
                   </mat-icon>
                 </button>
                 <button
-                  *ngIf="canConfigureAccess() && child.route"
+                  *ngIf="canConfigureAccess() && isSecurityButtonsVisible() && child.route"
                   type="button"
                   class="menu-mini-action"
                   [attr.aria-label]="'Configurar acesso de ' + getMenuLabel(child)"
@@ -171,7 +189,7 @@
                   </mat-icon>
                 </button>
                 <button
-                  *ngIf="canConfigureAccess()"
+                  *ngIf="canConfigureAccess() && isSecurityButtonsVisible()"
                   type="button"
                   class="menu-mini-action"
                   [attr.aria-label]="'Configurar acesso de ' + getMenuLabel(item)"
