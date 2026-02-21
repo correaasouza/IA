@@ -70,6 +70,7 @@ export class WorkflowService {
         entityId: payload?.entityId ?? entityId,
         currentStateKey: payload?.currentStateKey ?? null,
         currentStateName: payload?.currentStateName ?? null,
+        currentStateColor: payload?.currentStateColor ?? null,
         definitionVersion: payload?.definitionVersion ?? null,
         updatedAt: payload?.updatedAt ?? null,
         transitions: payload?.transitions ?? payload?.availableTransitions ?? []

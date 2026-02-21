@@ -103,9 +103,9 @@ export class RoleFormComponent implements OnInit {
         descricao: this.form.value.descricao || undefined,
         ativo: true
       }).pipe(finalize(() => (this.saving = false))).subscribe({
-        next: created => {
+        next: () => {
           this.notify.success('Papel criado.');
-          this.router.navigate(['/roles', created.id]);
+          this.router.navigateByUrl('/roles');
         },
         error: () => this.notify.error('Não foi possível criar o papel.')
       });
@@ -120,7 +120,7 @@ export class RoleFormComponent implements OnInit {
     }).pipe(finalize(() => (this.saving = false))).subscribe({
       next: () => {
         this.notify.success('Papel atualizado.');
-        this.router.navigate(['/roles', this.papel!.id]);
+        this.router.navigateByUrl('/roles');
       },
       error: () => this.notify.error('Não foi possível atualizar o papel.')
     });

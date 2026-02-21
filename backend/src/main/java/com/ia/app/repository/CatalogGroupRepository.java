@@ -10,6 +10,12 @@ public interface CatalogGroupRepository extends JpaRepository<CatalogGroup, Long
   Optional<CatalogGroup> findByIdAndTenantIdAndCatalogConfigurationIdAndAtivoTrue(
     Long id, Long tenantId, Long catalogConfigurationId);
 
+  List<CatalogGroup> findAllByTenantIdAndCatalogConfigurationIdAndParentIdIsNullAndAtivoTrueOrderByOrdemAscNomeAsc(
+    Long tenantId, Long catalogConfigurationId);
+
+  List<CatalogGroup> findAllByTenantIdAndCatalogConfigurationIdAndParentIdAndAtivoTrueOrderByOrdemAscNomeAsc(
+    Long tenantId, Long catalogConfigurationId, Long parentId);
+
   List<CatalogGroup> findAllByTenantIdAndCatalogConfigurationIdAndAtivoTrueOrderByPathAsc(
     Long tenantId, Long catalogConfigurationId);
 
@@ -24,6 +30,9 @@ public interface CatalogGroupRepository extends JpaRepository<CatalogGroup, Long
 
   boolean existsByTenantIdAndCatalogConfigurationIdAndParentIdAndNomeNormalizadoAndAtivoTrueAndIdNot(
     Long tenantId, Long catalogConfigurationId, Long parentId, String nomeNormalizado, Long id);
+
+  boolean existsByTenantIdAndCatalogConfigurationIdAndParentIdAndAtivoTrue(
+    Long tenantId, Long catalogConfigurationId, Long parentId);
 
   long countByTenantIdAndCatalogConfigurationIdAndParentIdAndAtivoTrue(
     Long tenantId, Long catalogConfigurationId, Long parentId);

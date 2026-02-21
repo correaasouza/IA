@@ -37,9 +37,19 @@
   white-space: nowrap;
 }
 
-.group-tree-inline {
-  border-top: 1px solid var(--border-light);
-  padding-top: 8px;
+.catalog-main-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.catalog-main-layout-groups-open {
+  grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+}
+
+.catalog-main-groups {
+  min-width: 0;
 }
 
 .catalog-destination-panel {
@@ -219,6 +229,10 @@
     flex-basis: 100%;
     white-space: normal;
     overflow-wrap: anywhere;
+  }
+
+  .catalog-main-layout-groups-open {
+    grid-template-columns: 1fr;
   }
 
   :host ::ng-deep .mat-mdc-paginator-container {

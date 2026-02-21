@@ -1,197 +1,152 @@
-<div class="grid gap-3">
-  <header class="page-header-sticky flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
-    <div>
-      <h1 class="m-0 text-lg font-bold">{{ title }}</h1>
-      <p class="mt-1 text-xs text-[var(--muted)]">Ficha de movimento de estoque</p>
-      <p class="mt-1 text-xs text-[var(--muted-strong)]">Empresa: {{ empresaAtual() }}</p>
-      <p class="mt-1 text-xs text-[var(--muted-strong)]">Nome: {{ nomeAtual() }}</p>
-      <p class="mt-1 text-xs text-[var(--muted-strong)]">Ajuste estoque: {{ stockAdjustmentAtual() }}</p>
-      <p class="mt-1 text-xs text-[var(--muted-strong)]" *ngIf="hasTiposEntidadeConfigurados()">Destinatario: {{ tipoEntidadeAtual() }}</p>
+<div class="page-form-shell grid gap-3">
+  <header class="page-header-sticky movimento-form-header">
+    <div class="movimento-header-main">
+      <div>
+        <h1 class="m-0 text-lg font-bold">{{ title }}</h1>
+        <p class="mt-1 text-xs text-[var(--muted-strong)] movimento-header-summary">
+          Empresa: {{ empresaAtual() }} | Nome: {{ nomeAtual() }} | Ajuste estoque: {{ stockAdjustmentAtual() }}
+          <ng-container *ngIf="hasTiposEntidadeConfigurados()"> | Destinatario: {{ tipoEntidadeAtual() }}</ng-container>
+        </p>
+      </div>
+      <div class="movimento-header-actions">
+        <button mat-stroked-button type="button" (click)="back()">
+          <mat-icon>arrow_back</mat-icon>
+          Voltar
+        </button>
+
+        <button
+          mat-stroked-button
+          type="button"
+          *ngIf="mode === 'view' && movimento"
+          (click)="toEdit()"
+          appAccessControl="movimentos.estoque.update"
+          [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+          <mat-icon>edit</mat-icon>
+          Editar
+        </button>
+
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          *ngIf="mode !== 'view'"
+          (click)="save()"
+          [disabled]="saving || form.invalid || !!errorMessage"
+          [appAccessControl]="mode === 'edit' ? 'movimentos.estoque.update' : 'movimentos.estoque.create'"
+          [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+          <mat-icon>save</mat-icon>
+          Salvar
+        </button>
+
+        <button
+          mat-button
+          color="warn"
+          type="button"
+          *ngIf="mode !== 'new' && movimento"
+          (click)="remove()"
+          [disabled]="deleting"
+          appAccessControl="movimentos.estoque.delete"
+          [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+          <mat-icon>delete</mat-icon>
+          Excluir
+        </button>
+      </div>
     </div>
-    <div class="flex flex-wrap gap-2">
-      <button mat-stroked-button type="button" (click)="back()">
-        <mat-icon>arrow_back</mat-icon>
-        Voltar
-      </button>
 
-      <button
-        mat-stroked-button
-        type="button"
-        *ngIf="mode === 'view' && movimento"
-        (click)="toEdit()"
-        appAccessControl="movimentos.estoque.update"
-        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-        <mat-icon>edit</mat-icon>
-        Editar
-      </button>
+    <section class="movimento-section-nav">
+      <div class="movimento-section-buttons" *ngIf="!isMobileView">
+        <button
+          type="button"
+          class="movimento-section-btn"
+          [class.movimento-section-btn-active]="selectedTabIndex === 0"
+          (click)="selectedTabIndex = 0">
+          Dados do movimento
+        </button>
+        <button
+          type="button"
+          class="movimento-section-btn"
+          [class.movimento-section-btn-active]="selectedTabIndex === 1"
+          (click)="selectedTabIndex = 1">
+          Itens do movimento
+          <span class="movimento-tab-counter">{{ savedItemsView.length }}</span>
+        </button>
+      </div>
 
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        *ngIf="mode !== 'view'"
-        (click)="save()"
-        [disabled]="saving || form.invalid || !!errorMessage"
-        [appAccessControl]="mode === 'edit' ? 'movimentos.estoque.update' : 'movimentos.estoque.create'"
-        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-        <mat-icon>save</mat-icon>
-        Salvar
-      </button>
-
-      <button
-        mat-button
-        color="warn"
-        type="button"
-        *ngIf="mode !== 'new' && movimento"
-        (click)="remove()"
-        [disabled]="deleting"
-        appAccessControl="movimentos.estoque.delete"
-        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-        <mat-icon>delete</mat-icon>
-        Excluir
-      </button>
-    </div>
+      <mat-form-field appearance="outline" class="movimento-section-select" *ngIf="isMobileView">
+        <mat-label>Secao</mat-label>
+        <mat-select [(value)]="selectedTabIndex">
+          <mat-option [value]="0">{{ sectionLabel(0) }}</mat-option>
+          <mat-option [value]="1">{{ sectionLabel(1) }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </section>
   </header>
 
   <section class="rounded-xl border border-dashed border-[#fda29b] bg-[#fef3f2] p-3 text-sm text-[#b42318]" *ngIf="errorMessage">
     {{ errorMessage }}
   </section>
 
-  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-    <form [formGroup]="form" class="grid grid-cols-1 gap-2.5">
-      <mat-form-field appearance="outline" class="md:col-span-2">
-        <mat-label>Nome</mat-label>
-        <input matInput formControlName="nome" maxlength="120" [readonly]="mode === 'view'" />
-        <mat-hint align="end">{{ (form.get('nome')?.value || '').length }}/120</mat-hint>
-        <mat-error *ngIf="form.get('nome')?.hasError('required')">Informe o nome do movimento.</mat-error>
-      </mat-form-field>
+  <div class="movimento-section-content" *ngIf="selectedTabIndex === 0">
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+      <form [formGroup]="form" class="grid grid-cols-1 gap-2.5">
+        <mat-form-field appearance="outline" class="md:col-span-2">
+          <mat-label>Nome</mat-label>
+          <input matInput formControlName="nome" maxlength="120" [readonly]="mode === 'view'" />
+          <mat-hint align="end">{{ (form.get('nome')?.value || '').length }}/120</mat-hint>
+          <mat-error *ngIf="form.get('nome')?.hasError('required')">Informe o nome do movimento.</mat-error>
+        </mat-form-field>
 
-      <mat-form-field appearance="outline" *ngIf="hasTiposEntidadeConfigurados()">
-        <mat-label>Destinatario do movimento</mat-label>
-        <mat-select formControlName="tipoEntidadeId" [disabled]="mode === 'view'">
-          <mat-option [value]="null">Selecione</mat-option>
-          <mat-option *ngFor="let tipoEntidadeId of tiposEntidadePermitidosView" [value]="tipoEntidadeId">
-            {{ tipoEntidadeOptionLabel(tipoEntidadeId) }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
+        <mat-form-field appearance="outline" *ngIf="hasTiposEntidadeConfigurados()">
+          <mat-label>Destinatario do movimento</mat-label>
+          <mat-select formControlName="tipoEntidadeId" [disabled]="mode === 'view'">
+            <mat-option [value]="null">Selecione</mat-option>
+            <mat-option *ngFor="let tipoEntidadeId of tiposEntidadePermitidosView" [value]="tipoEntidadeId">
+              {{ tipoEntidadeOptionLabel(tipoEntidadeId) }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
 
-      <mat-form-field appearance="outline">
-        <mat-label>Tipo de ajuste de estoque</mat-label>
-        <mat-select formControlName="stockAdjustmentId" [disabled]="mode === 'view'">
-          <mat-option [value]="null">Selecione</mat-option>
-          <mat-option *ngFor="let adjustment of stockAdjustmentsView" [value]="adjustment.id">
-            {{ stockAdjustmentOptionLabel(adjustment) }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-    </form>
-  </section>
+        <mat-form-field appearance="outline">
+          <mat-label>Tipo de ajuste de estoque</mat-label>
+          <mat-select formControlName="stockAdjustmentId" [disabled]="mode === 'view'">
+            <mat-option [value]="null">Selecione</mat-option>
+            <mat-option *ngFor="let adjustment of stockAdjustmentsView" [value]="adjustment.id">
+              {{ stockAdjustmentOptionLabel(adjustment) }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </form>
+    </section>
+  </div>
 
-  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-    <div class="mb-2 flex items-center justify-between gap-2">
-      <div class="text-sm font-semibold">Itens do movimento</div>
-      <button mat-stroked-button type="button" (click)="addItemRow()" *ngIf="mode !== 'view'">
-        <mat-icon>add</mat-icon>
-        Adicionar item
-      </button>
-    </div>
-
-    <div class="grid gap-2" *ngIf="itemRows.length > 0; else semItensTpl">
-      <div #itemEditorAnchor class="text-xs font-semibold text-[var(--muted)]" *ngIf="editingRowsView.length > 0">
-        Item(ns) em edicao
+  <div class="movimento-section-content" *ngIf="selectedTabIndex === 1">
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+      <div class="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <div class="text-sm font-semibold">
+          Itens do movimento
+          <span class="movimento-item-inline-hint" *ngIf="isCatalogSelectorOpen()"> - Adicionar itens do catalogo | Selecione grupo, busque e adicione em lote</span>
+        </div>
+        <button
+          class="movimento-new-item-btn"
+          mat-stroked-button
+          type="button"
+          *ngIf="mode !== 'view'"
+          (click)="openCatalogSelector()"
+          [disabled]="!canRenderCatalogSelector()">
+          <mat-icon>add</mat-icon>
+          Novo item
+        </button>
       </div>
 
-      <article class="item-row" *ngFor="let entry of editingRowsView">
-        <ng-container *ngIf="entry.row as row">
-        <div class="item-row-header">
-          <div class="text-xs font-semibold">{{ row.saved ? 'Editar item' : 'Novo item' }}</div>
-          <div class="flex items-center gap-1" *ngIf="mode !== 'view'">
-            <button mat-stroked-button type="button" (click)="saveItemRow(entry.index)">
-              <mat-icon>check</mat-icon>
-              Salvar item
-            </button>
-            <button mat-icon-button type="button" (click)="cancelItemRow(entry.index)">
-              <mat-icon>close</mat-icon>
-            </button>
-            <button mat-icon-button color="warn" type="button" (click)="removeItemRow(entry.index)">
-              <mat-icon>delete</mat-icon>
-            </button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <mat-form-field appearance="outline">
-            <mat-label>Tipo de item</mat-label>
-            <mat-select [(value)]="row.movimentoItemTipoId" (selectionChange)="onTipoItemChange(row)" [disabled]="!isRowEditable(row)">
-              <mat-option [value]="null">Selecione</mat-option>
-              <mat-option *ngFor="let tipo of itemTypesPermitidosView" [value]="tipo.tipoItemId">{{ tipo.nome }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <div class="item-toggle-box">
-            <mat-slide-toggle
-              class="item-toggle-tag"
-              [(ngModel)]="row.cobrar"
-              [ngModelOptions]="{ standalone: true }"
-              aria-label="Cobrar item"
-              [disabled]="!isRowEditable(row)"
-              (change)="onValorUnitarioChange(row)">
-              {{ row.cobrar ? 'Sim' : 'Nao' }}
-            </mat-slide-toggle>
-          </div>
-        </div>
-
-        <div class="item-catalog-label text-xs text-[var(--muted)]">
-          Catalogo: {{ catalogTypeLabel(row.catalogType) }}
-        </div>
-
-        <div class="grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_auto]">
-          <mat-form-field appearance="outline">
-            <mat-label>Buscar item no catalogo</mat-label>
-            <input matInput [(ngModel)]="row.catalogSearchText" [ngModelOptions]="{ standalone: true }" [readonly]="!isRowEditable(row)" />
-          </mat-form-field>
-          <button mat-stroked-button type="button" (click)="searchCatalog(row)" [disabled]="!isRowEditable(row) || !row.movimentoItemTipoId">
-            <mat-icon>search</mat-icon>
-            Buscar
-          </button>
-        </div>
-
-        <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
-          <mat-form-field appearance="outline">
-            <mat-label>Item de catalogo</mat-label>
-            <mat-select [(value)]="row.catalogItemId" (selectionChange)="onCatalogItemChange(row)" [disabled]="!isRowEditable(row) || !row.movimentoItemTipoId">
-              <mat-option [value]="null">Selecione</mat-option>
-              <mat-option *ngFor="let item of row.catalogOptions" [value]="item.id">{{ item.codigo }} - {{ item.nome }}</mat-option>
-            </mat-select>
-          </mat-form-field>
-
-          <div class="text-xs text-[var(--muted)] pt-3" *ngIf="isRowCatalogLoading(row)">Buscando catalogo...</div>
-        </div>
-
-        <div class="grid grid-cols-1 gap-2 md:grid-cols-4">
-          <mat-form-field appearance="outline">
-            <mat-label>Quantidade</mat-label>
-            <input matInput type="number" min="0.000001" step="0.000001" [(ngModel)]="row.quantidade" [ngModelOptions]="{ standalone: true }" [readonly]="!isRowEditable(row)" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Valor unitario</mat-label>
-            <input matInput type="number" min="0" step="0.000001" [(ngModel)]="row.valorUnitario" (ngModelChange)="onValorUnitarioChange(row)" [ngModelOptions]="{ standalone: true }" [readonly]="!isRowEditable(row) || !row.cobrar" />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Total</mat-label>
-            <input matInput [value]="lineTotal(row) | number : '1.2-6'" readonly />
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Observacao</mat-label>
-            <input matInput [(ngModel)]="row.observacao" [ngModelOptions]="{ standalone: true }" [readonly]="!isRowEditable(row)" />
-          </mat-form-field>
-        </div>
-        </ng-container>
-      </article>
+      <ng-container *ngIf="mode !== 'view' && isCatalogSelectorOpen() && catalogSelectorData() as selectorData">
+        <app-movimento-catalog-selector-dialog
+          [embedded]="true"
+          [panelData]="selectorData"
+          (confirmSelection)="onCatalogSelectorAdd($event)"
+          (closeSelection)="closeCatalogSelector()"
+          (selectorStateChange)="onCatalogSelectorStateChange($event)">
+        </app-movimento-catalog-selector-dialog>
+      </ng-container>
 
       <app-movimento-itens-list
         [items]="savedItemsView"
@@ -209,26 +164,20 @@
         (transitionItem)="onSavedItemTransition($event)"
         (deleteItem)="onSavedItemDelete($event)">
       </app-movimento-itens-list>
-    </div>
 
-    <ng-template #semItensTpl>
-      <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-3 text-xs text-[var(--muted)]">
-        Nenhum item adicionado.
+      <div class="mt-2 text-right text-sm font-semibold">
+        Total cobrado: {{ itensTotalCobrado() | number : '1.2-6' }}
       </div>
-    </ng-template>
+    </section>
+  </div>
 
-    <div class="mt-2 text-right text-sm font-semibold">
-      Total cobrado: {{ itensTotalCobrado() | number : '1.2-6' }}
-    </div>
-
-    <div class="mt-2 flex justify-end" *ngIf="loading" role="status" aria-live="polite">
-      <app-inline-loader label="Carregando ficha"></app-inline-loader>
-    </div>
-    <div class="mt-2 flex justify-end" *ngIf="saving" role="status" aria-live="polite">
-      <app-inline-loader label="Salvando ficha"></app-inline-loader>
-    </div>
-    <div class="mt-2 flex justify-end" *ngIf="deleting" role="status" aria-live="polite">
-      <app-inline-loader label="Excluindo movimento"></app-inline-loader>
-    </div>
-  </section>
+  <div class="mt-2 flex justify-end" *ngIf="loading" role="status" aria-live="polite">
+    <app-inline-loader label="Carregando ficha"></app-inline-loader>
+  </div>
+  <div class="mt-2 flex justify-end" *ngIf="saving" role="status" aria-live="polite">
+    <app-inline-loader label="Salvando ficha"></app-inline-loader>
+  </div>
+  <div class="mt-2 flex justify-end" *ngIf="deleting" role="status" aria-live="polite">
+    <app-inline-loader label="Excluindo movimento"></app-inline-loader>
+  </div>
 </div>

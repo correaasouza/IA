@@ -371,6 +371,68 @@ body {
   min-height: 28px;
 }
 
+/* Compact density for ERP record pages (fichas). */
+:where(.page-form-shell, .erp-form-dialog-dense) {
+  --erp-form-field-height: 40px;
+  --mdc-outlined-text-field-container-height: var(--erp-form-field-height);
+  --mdc-filled-text-field-container-height: var(--erp-form-field-height);
+}
+
+:where(.page-form-shell, .erp-form-dialog-dense) form:not([role='search']) {
+  row-gap: 6px !important;
+  column-gap: 8px !important;
+}
+
+:where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-text-field-wrapper {
+  min-height: var(--erp-form-field-height);
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+:where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-form-field-infix {
+  min-height: 24px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+:where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-input-element,
+:where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-select-trigger {
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+:where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-form-field-subscript-wrapper {
+  padding: 0 2px;
+  min-height: 14px;
+}
+
+:where(.page-form-shell, .erp-form-dialog-dense) .mdc-floating-label,
+:where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-floating-label {
+  font-size: 11.5px;
+}
+
+:where(.page-form-shell, .erp-form-dialog-dense) .status-search-like {
+  min-height: 40px;
+}
+
+:where(.page-form-shell, .erp-form-dialog-dense) .status-native-select {
+  height: 40px;
+  border-radius: 8px;
+  background: #ffffff;
+  font-size: 12px;
+  padding: 0 32px 0 10px;
+}
+
+:where(.page-form-shell, .erp-form-dialog-dense) .item-toggle-box {
+  min-height: 40px;
+}
+
+@media (min-width: 1024px) {
+  :where(.page-form-shell, .erp-form-dialog-dense) {
+    --erp-form-field-height: 38px;
+  }
+}
+
 .filters,
 .filter-bar {
   --mdc-outlined-text-field-container-height: 36px;

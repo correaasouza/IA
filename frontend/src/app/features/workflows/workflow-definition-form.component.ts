@@ -518,7 +518,7 @@ export class WorkflowDefinitionFormComponent implements OnInit {
           this.notify.success('Workflow salvo.');
           this.patchFromDefinition(saved);
           if (!this.embedded) {
-            this.router.navigate(['/configs/workflows', saved.id]);
+            this.router.navigateByUrl('/configs/workflows');
           }
         },
         error: err => {
@@ -538,7 +538,7 @@ export class WorkflowDefinitionFormComponent implements OnInit {
         this.notify.success('Workflow salvo.');
         this.patchFromDefinition(saved);
         if (!this.embedded) {
-          this.router.navigate(['/configs/workflows', saved.id]);
+          this.router.navigateByUrl('/configs/workflows');
         }
       },
       error: err => {

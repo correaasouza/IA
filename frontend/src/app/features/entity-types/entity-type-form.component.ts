@@ -115,9 +115,9 @@ export class EntityTypeFormComponent implements OnInit {
     this.saving = true;
     if (this.mode === 'new') {
       this.service.create(payload).pipe(finalize(() => (this.saving = false))).subscribe({
-        next: created => {
+        next: () => {
           this.notify.success('Tipo de entidade criado.');
-          this.router.navigate(['/entity-types', created.id]);
+          this.router.navigateByUrl('/entity-types');
         },
         error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel criar o tipo de entidade.')
       });
@@ -131,7 +131,7 @@ export class EntityTypeFormComponent implements OnInit {
       next: updated => {
         this.tipoEntidade = updated;
         this.notify.success('Tipo de entidade atualizado.');
-        this.router.navigate(['/entity-types', updated.id]);
+        this.router.navigateByUrl('/entity-types');
       },
       error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel atualizar o tipo de entidade.')
     });

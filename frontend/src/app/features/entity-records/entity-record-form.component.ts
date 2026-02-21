@@ -111,9 +111,9 @@ export class EntityRecordFormComponent implements OnInit {
     this.saving = true;
     if (this.mode === 'new') {
       this.service.create(this.tipoEntidadeId, payload).pipe(finalize(() => (this.saving = false))).subscribe({
-        next: created => {
+        next: () => {
           this.notify.success('Entidade criada.');
-          this.router.navigate(['/entities', created.id], { queryParams: { tipoEntidadeId: this.tipoEntidadeId } });
+          this.router.navigate(['/entities'], { queryParams: { tipoEntidadeId: this.tipoEntidadeId } });
         },
         error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel criar entidade.')
       });
@@ -124,9 +124,9 @@ export class EntityRecordFormComponent implements OnInit {
       return;
     }
     this.service.update(this.tipoEntidadeId, this.entidadeId, payload).pipe(finalize(() => (this.saving = false))).subscribe({
-      next: updated => {
+      next: () => {
         this.notify.success('Entidade atualizada.');
-        this.router.navigate(['/entities', updated.id], { queryParams: { tipoEntidadeId: this.tipoEntidadeId } });
+        this.router.navigate(['/entities'], { queryParams: { tipoEntidadeId: this.tipoEntidadeId } });
       },
       error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel atualizar entidade.')
     });

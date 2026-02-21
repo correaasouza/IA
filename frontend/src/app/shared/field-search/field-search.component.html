@@ -10,7 +10,7 @@
 
     <div class="field-search-scope">
       <mat-select [formControl]="fieldScopeControl" aria-label="Campo da busca">
-        <mat-option value="all">pesquisa completa</mat-option>
+        <mat-option value="all">{{ allOptionLabel }}</mat-option>
         <mat-option *ngFor="let opt of options" [value]="opt.key">{{ opt.label }}</mat-option>
       </mat-select>
     </div>

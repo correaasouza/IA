@@ -95,6 +95,7 @@ export interface WorkflowRuntimeState {
   entityId: number;
   currentStateKey: string | null;
   currentStateName?: string | null;
+  currentStateColor?: string | null;
   definitionVersion: number | null;
   updatedAt?: string | null;
   transitions: WorkflowAvailableTransition[];

@@ -9,12 +9,23 @@
   <div class="catalog-tree-state" *ngIf="loading">Carregando grupos...</div>
   <div class="catalog-tree-state" *ngIf="!loading && nodes.length === 0">Nenhum grupo cadastrado.</div>
 
+  <button
+    type="button"
+    class="catalog-root-button"
+    *ngIf="showAllOption"
+    [class.catalog-root-button-active]="!selectedGroupId"
+    (click)="selectGroup(null)">
+    <mat-icon>layers</mat-icon>
+    <span>Todos os grupos</span>
+  </button>
+
   <ng-container *ngIf="!loading && nodes.length > 0">
     <ng-template #nodeTpl let-node>
       <li class="catalog-node">
         <div
           class="catalog-node-row"
           [class.catalog-node-row-selected]="isSelected(node)"
+          [class.catalog-node-row-expanded]="hasChildren(node) && isExpanded(node)"
           (click)="selectGroup(node.id)"
           [attr.draggable]="allowGroupDrag ? true : null"
           (dragstart)="onGroupDragStart($event, node)">
@@ -29,8 +40,10 @@
           </button>
           <span *ngIf="!hasChildren(node)" class="catalog-node-toggle-placeholder"></span>
 
-          <span class="catalog-node-title">{{ node.nome }}</span>
-          <span class="catalog-node-count">{{ node.totalItems || 0 }}</span>
+          <span class="catalog-node-main-content">
+            <span class="catalog-node-title">{{ node.nome }}</span>
+            <span class="catalog-node-count">{{ node.totalItems || 0 }}</span>
+          </span>
 
           <span class="catalog-node-actions" *ngIf="canManage">
             <button

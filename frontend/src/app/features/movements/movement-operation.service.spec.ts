@@ -89,4 +89,72 @@ describe('MovementOperationService', () => {
     expect(req.request.method).toBe('GET');
     req.flush({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 15 });
   });
+
+  it('should search catalog items with new endpoint', () => {
+    service.searchCatalogItems({
+      movementType: 'MOVIMENTO_ESTOQUE',
+      movementConfigId: 12,
+      movementItemTypeId: 9,
+      q: 'oleo',
+      groupId: 4,
+      includeDescendants: true,
+      ativo: true,
+      page: 0,
+      size: 30
+    }).subscribe();
+
+    const req = httpMock.expectOne((request) =>
+      request.url === `${environment.apiBaseUrl}/api/catalog-items/search`
+      && request.params.get('movementType') === 'MOVIMENTO_ESTOQUE'
+      && request.params.get('movementConfigId') === '12'
+      && request.params.get('movementItemTypeId') === '9'
+      && request.params.get('q') === 'oleo'
+      && request.params.get('groupId') === '4'
+      && request.params.get('includeDescendants') === 'true'
+      && request.params.get('ativo') === 'true'
+      && request.params.get('page') === '0'
+      && request.params.get('size') === '30');
+    expect(req.request.method).toBe('GET');
+    req.flush({ content: [], totalElements: 0, totalPages: 0, number: 0, size: 30 });
+  });
+
+  it('should load lazy catalog group children', () => {
+    service.loadCatalogGroupChildren({
+      movementType: 'MOVIMENTO_ESTOQUE',
+      movementConfigId: 12,
+      movementItemTypeId: 9,
+      parentId: 3
+    }).subscribe();
+
+    const req = httpMock.expectOne((request) =>
+      request.url === `${environment.apiBaseUrl}/api/catalog-groups/tree`
+      && request.params.get('movementType') === 'MOVIMENTO_ESTOQUE'
+      && request.params.get('movementConfigId') === '12'
+      && request.params.get('movementItemTypeId') === '9'
+      && request.params.get('parentId') === '3');
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
+
+  it('should append movement items in batch', () => {
+    service.appendMovementItems(55, {
+      items: [{
+        movementItemTypeId: 9,
+        catalogItemId: 200,
+        quantidade: 2,
+        valorUnitario: 10
+      }]
+    }).subscribe();
+
+    const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/movements/55/items`);
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body.items.length).toBe(1);
+    req.flush({
+      movementId: 55,
+      addedCount: 1,
+      itemsAdded: [],
+      totalItens: 1,
+      totalCobrado: 20
+    });
+  });
 });

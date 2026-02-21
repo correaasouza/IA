@@ -76,6 +76,78 @@ export interface MovimentoItemCatalogPage {
   size: number;
 }
 
+export interface CatalogItemSummary {
+  id: number;
+  catalogType: 'PRODUCTS' | 'SERVICES';
+  codigo: number;
+  nome: string;
+  descricao?: string | null;
+  groupId?: number | null;
+  groupPath?: string | null;
+  groupBreadcrumb?: string | null;
+  ativo: boolean;
+  unidade?: string | null;
+  precoBase?: number | null;
+  estoqueDisponivel?: number | null;
+}
+
+export interface CatalogSearchPage {
+  content: CatalogItemSummary[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface CatalogGroupTreeNode {
+  id: number;
+  nome: string;
+  parentId?: number | null;
+  nivel: number;
+  path: string;
+  hasChildren: boolean;
+  breadcrumb?: string | null;
+}
+
+export interface CatalogSearchParams {
+  movementType: string;
+  movementConfigId: number;
+  movementItemTypeId: number;
+  q?: string;
+  groupId?: number | null;
+  includeDescendants?: boolean;
+  ativo?: boolean;
+  page?: number;
+  size?: number;
+}
+
+export interface CatalogGroupTreeParams {
+  movementType: string;
+  movementConfigId: number;
+  movementItemTypeId: number;
+  parentId?: number | null;
+}
+
+export interface MovementItemAddRequest {
+  movementItemTypeId: number;
+  catalogItemId: number;
+  quantidade: number;
+  valorUnitario?: number | null;
+  observacao?: string | null;
+}
+
+export interface MovementItemsBatchAddRequest {
+  items: MovementItemAddRequest[];
+}
+
+export interface MovementItemsBatchAddResponse {
+  movementId: number;
+  addedCount: number;
+  itemsAdded: MovimentoEstoqueItemResponse[];
+  totalItens: number;
+  totalCobrado: number;
+}
+
 export interface MovimentoEstoqueCreateRequest {
   empresaId: number;
   nome: string;
@@ -173,5 +245,43 @@ export class MovementOperationService {
       params = params.set('text', normalizedText);
     }
     return this.http.get<MovimentoItemCatalogPage>(`${this.baseUrl}/${this.tipoEstoque}/catalogo-itens`, { params });
+  }
+
+  searchCatalogItems(params: CatalogSearchParams): Observable<CatalogSearchPage> {
+    let queryParams = new HttpParams()
+      .set('movementType', params.movementType)
+      .set('movementConfigId', String(params.movementConfigId))
+      .set('movementItemTypeId', String(params.movementItemTypeId))
+      .set('page', String(params.page ?? 0))
+      .set('size', String(params.size ?? 30))
+      .set('includeDescendants', String(params.includeDescendants ?? true));
+
+    const normalizedQ = (params.q || '').trim();
+    if (normalizedQ) {
+      queryParams = queryParams.set('q', normalizedQ);
+    }
+    if (typeof params.groupId === 'number' && params.groupId > 0) {
+      queryParams = queryParams.set('groupId', String(params.groupId));
+    }
+    if (typeof params.ativo === 'boolean') {
+      queryParams = queryParams.set('ativo', String(params.ativo));
+    }
+
+    return this.http.get<CatalogSearchPage>(`${environment.apiBaseUrl}/api/catalog-items/search`, { params: queryParams });
+  }
+
+  loadCatalogGroupChildren(params: CatalogGroupTreeParams): Observable<CatalogGroupTreeNode[]> {
+    let queryParams = new HttpParams()
+      .set('movementType', params.movementType)
+      .set('movementConfigId', String(params.movementConfigId))
+      .set('movementItemTypeId', String(params.movementItemTypeId));
+    if (typeof params.parentId === 'number' && params.parentId > 0) {
+      queryParams = queryParams.set('parentId', String(params.parentId));
+    }
+    return this.http.get<CatalogGroupTreeNode[]>(`${environment.apiBaseUrl}/api/catalog-groups/tree`, { params: queryParams });
+  }
+
+  appendMovementItems(movementId: number, payload: MovementItemsBatchAddRequest): Observable<MovementItemsBatchAddResponse> {
+    return this.http.post<MovementItemsBatchAddResponse>(`${environment.apiBaseUrl}/api/movements/${movementId}/items`, payload);
   }
 }

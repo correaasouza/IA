@@ -35,6 +35,9 @@ export class FieldSearchComponent implements OnInit, OnDestroy {
   @Input() label = 'Buscar';
   @Input() placeholder = 'Digite para buscar';
   @Input() defaultFields: string[] = [];
+  @Input() allOptionLabel = 'pesquisa completa';
+  @Input() initialTerm = '';
+  @Input() initialScope: string | null = null;
   @Input() showActions = true;
   @Input() actionLabel = 'Buscar';
   @Output() searchChange = new EventEmitter<FieldSearchValue>();
@@ -48,8 +51,18 @@ export class FieldSearchComponent implements OnInit, OnDestroy {
     if (!this.defaultFields.length) {
       this.defaultFields = this.options.map(o => o.key);
     }
-    if (this.defaultFields.length === 1) {
-      this.fieldScopeControl.setValue(this.defaultFields[0]!);
+    const normalizedInitialTerm = (this.initialTerm || '').trim();
+    if (normalizedInitialTerm) {
+      this.termControl.setValue(normalizedInitialTerm, { emitEvent: false });
+    }
+
+    const normalizedInitialScope = (this.initialScope || '').trim();
+    const hasInitialScope = !!normalizedInitialScope
+      && (normalizedInitialScope === 'all' || this.options.some(option => option.key === normalizedInitialScope));
+    if (hasInitialScope) {
+      this.fieldScopeControl.setValue(normalizedInitialScope, { emitEvent: false });
+    } else if (this.defaultFields.length === 1) {
+      this.fieldScopeControl.setValue(this.defaultFields[0]!, { emitEvent: false });
     }
 
     if (!this.showActions) {

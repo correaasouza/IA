@@ -64,6 +64,8 @@ export class MovimentoEstoqueListComponent implements OnInit {
   movimentoStateKeysById: Record<number, string> = {};
   movimentoStateColorsByStateKey: Record<string, string> = {};
   movimentoTransitionsById: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
+  private loadedItemColorConfigIds = new Set<number>();
+  private loadedMovementColorConfigIds = new Set<number>();
 
   searchOptions: FieldSearchOption[] = [
     { key: 'nome', label: 'Nome' }
@@ -83,7 +85,6 @@ export class MovimentoEstoqueListComponent implements OnInit {
 
   ngOnInit(): void {
     this.updateViewportMode();
-    this.loadWorkflowStateColors();
     this.load(true);
   }
 
@@ -128,9 +129,13 @@ export class MovimentoEstoqueListComponent implements OnInit {
       this.itemTransitionsByItemId = {};
       this.itemStateNamesByItemId = {};
       this.itemStateKeysByItemId = {};
+      this.itemStateColorsByStateKey = {};
       this.movimentoStateNamesById = {};
       this.movimentoStateKeysById = {};
+      this.movimentoStateColorsByStateKey = {};
       this.movimentoTransitionsById = {};
+      this.loadedItemColorConfigIds.clear();
+      this.loadedMovementColorConfigIds.clear();
     }
     const nome = this.searchFields.includes('nome') ? this.searchTerm : '';
     const targetPage = reset ? 0 : this.pageIndex;
@@ -159,6 +164,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
         }
         this.pageIndex = targetPage + 1;
         this.syncSelectedRow();
+        this.loadWorkflowDefinitionColorsForRows();
         this.loadMovementStateNames();
         this.loadTransitionsForSelectedItems();
         this.showTipoEntidadePadrao = this.rows.some(item => item.tipoEntidadePadraoId != null);
@@ -238,6 +244,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
     this.itemTransitionsByItemId = {};
     this.itemStateNamesByItemId = {};
     this.itemStateKeysByItemId = {};
+    this.loadWorkflowDefinitionColorsForConfig(Number(row.movimentoConfigId || 0));
     this.loadTransitionsForSelectedItems();
     this.ensureItensFillViewport();
   }
@@ -383,8 +390,10 @@ export class MovimentoEstoqueListComponent implements OnInit {
       this.itemTransitionsByItemId = {};
       this.itemStateNamesByItemId = {};
       this.itemStateKeysByItemId = {};
+      this.itemStateColorsByStateKey = {};
       this.movimentoTransitionsById = {};
       this.movimentoStateKeysById = {};
+      this.movimentoStateColorsByStateKey = {};
       return;
     }
     if (this.selectedMovimentoId != null && this.rows.some(item => item.id === this.selectedMovimentoId)) {
@@ -445,6 +454,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
       this.itemTransitionsByItemId = {};
       this.itemStateNamesByItemId = {};
       this.itemStateKeysByItemId = {};
+      this.itemStateColorsByStateKey = {};
       return;
     }
     const selected = this.selectedRow();
@@ -452,6 +462,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
       this.itemTransitionsByItemId = {};
       this.itemStateNamesByItemId = {};
       this.itemStateKeysByItemId = {};
+      this.itemStateColorsByStateKey = {};
       return;
     }
     const items = selected.itens || [];
@@ -459,6 +470,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
       this.itemTransitionsByItemId = {};
       this.itemStateNamesByItemId = {};
       this.itemStateKeysByItemId = {};
+      this.itemStateColorsByStateKey = {};
       return;
     }
     this.itemTransitionsByItemId = {};
@@ -477,11 +489,18 @@ export class MovimentoEstoqueListComponent implements OnInit {
           nextMap[itemId] = runtime.transitions || [];
           const stateName = (runtime.currentStateName || '').trim();
           const stateKey = (runtime.currentStateKey || '').trim();
+          const stateColor = (runtime.currentStateColor || '').trim();
           if (stateName) {
             nextStateNames[itemId] = stateName;
           }
           if (stateKey) {
             nextStateKeys[itemId] = stateKey;
+            if (this.isValidHexColor(stateColor)) {
+              this.itemStateColorsByStateKey = {
+                ...this.itemStateColorsByStateKey,
+                [stateKey.toUpperCase()]: stateColor
+              };
+            }
           }
           this.itemTransitionsByItemId = { ...this.itemTransitionsByItemId, ...nextMap };
           this.itemStateNamesByItemId = { ...this.itemStateNamesByItemId, ...nextStateNames };
@@ -558,12 +577,14 @@ export class MovimentoEstoqueListComponent implements OnInit {
     if (!this.workflowEnabled) {
       this.movimentoStateNamesById = {};
       this.movimentoStateKeysById = {};
+      this.movimentoStateColorsByStateKey = {};
       this.movimentoTransitionsById = {};
       return;
     }
     if (!this.rows.length) {
       this.movimentoStateNamesById = {};
       this.movimentoStateKeysById = {};
+      this.movimentoStateColorsByStateKey = {};
       this.movimentoTransitionsById = {};
       return;
     }
@@ -582,11 +603,18 @@ export class MovimentoEstoqueListComponent implements OnInit {
         next: runtime => {
           const stateName = (runtime.currentStateName || '').trim();
           const stateKey = (runtime.currentStateKey || '').trim();
+          const stateColor = (runtime.currentStateColor || '').trim();
           if (stateName) {
             nextStateNames[rowId] = stateName;
           }
           if (stateKey) {
             nextStateKeys[rowId] = stateKey;
+            if (this.isValidHexColor(stateColor)) {
+              this.movimentoStateColorsByStateKey = {
+                ...this.movimentoStateColorsByStateKey,
+                [stateKey.toUpperCase()]: stateColor
+              };
+            }
           }
           nextTransitions[rowId] = runtime.transitions || [];
           this.movimentoStateNamesById = { ...this.movimentoStateNamesById, ...nextStateNames };
@@ -601,28 +629,58 @@ export class MovimentoEstoqueListComponent implements OnInit {
     }
   }
 
-  private loadWorkflowStateColors(): void {
-    if (!this.workflowEnabled) {
-      this.itemStateColorsByStateKey = {};
-      this.movimentoStateColorsByStateKey = {};
+  private loadWorkflowDefinitionColorsForRows(): void {
+    if (!this.workflowEnabled || !this.rows.length) {
       return;
     }
-    this.workflowService.getDefinitionByOrigin('ITEM_MOVIMENTO_ESTOQUE').subscribe({
-      next: definition => {
-        this.itemStateColorsByStateKey = this.buildStateColorMap(definition?.states || []);
-      },
-      error: () => {
-        this.itemStateColorsByStateKey = {};
-      }
-    });
-    this.workflowService.getDefinitionByOrigin('MOVIMENTO_ESTOQUE').subscribe({
-      next: definition => {
-        this.movimentoStateColorsByStateKey = this.buildStateColorMap(definition?.states || []);
-      },
-      error: () => {
-        this.movimentoStateColorsByStateKey = {};
-      }
-    });
+    const configIds = [...new Set(
+      this.rows
+        .map(row => Number(row?.movimentoConfigId || 0))
+        .filter(id => Number.isFinite(id) && id > 0)
+    )];
+    for (const configId of configIds) {
+      this.loadWorkflowDefinitionColorsForConfig(configId);
+    }
+  }
+
+  private loadWorkflowDefinitionColorsForConfig(configId: number): void {
+    if (!this.workflowEnabled || !Number.isFinite(configId) || configId <= 0) {
+      return;
+    }
+    if (!this.loadedItemColorConfigIds.has(configId)) {
+      this.loadedItemColorConfigIds.add(configId);
+      this.workflowService.getDefinitionByOrigin('ITEM_MOVIMENTO_ESTOQUE', {
+        type: 'MOVIMENTO_CONFIG',
+        id: configId
+      }).subscribe({
+        next: definition => {
+          this.itemStateColorsByStateKey = {
+            ...this.itemStateColorsByStateKey,
+            ...this.buildStateColorMap(definition?.states || [])
+          };
+        },
+        error: () => {
+          this.loadedItemColorConfigIds.delete(configId);
+        }
+      });
+    }
+    if (!this.loadedMovementColorConfigIds.has(configId)) {
+      this.loadedMovementColorConfigIds.add(configId);
+      this.workflowService.getDefinitionByOrigin('MOVIMENTO_ESTOQUE', {
+        type: 'MOVIMENTO_CONFIG',
+        id: configId
+      }).subscribe({
+        next: definition => {
+          this.movimentoStateColorsByStateKey = {
+            ...this.movimentoStateColorsByStateKey,
+            ...this.buildStateColorMap(definition?.states || [])
+          };
+        },
+        error: () => {
+          this.loadedMovementColorConfigIds.delete(configId);
+        }
+      });
+    }
   }
 
   private buildStateColorMap(states: Array<{ key?: string | null; color?: string | null }>): Record<string, string> {

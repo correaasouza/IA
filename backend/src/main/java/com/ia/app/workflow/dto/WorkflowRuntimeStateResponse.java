@@ -9,6 +9,7 @@ public record WorkflowRuntimeStateResponse(
   Long entityId,
   String currentStateKey,
   String currentStateName,
+  String currentStateColor,
   Integer definitionVersion,
   Instant updatedAt,
   List<WorkflowAvailableTransitionResponse> availableTransitions

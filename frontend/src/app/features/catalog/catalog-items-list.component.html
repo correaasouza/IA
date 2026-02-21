@@ -66,10 +66,6 @@
           <mat-icon>account_tree</mat-icon>
           {{ groupTreeOpen ? 'Fechar grupos' : 'Grupos' }}
         </button>
-        <button mat-button type="button" class="filters-group-toggle" (click)="showAllGroups()" [disabled]="!selectedGroupId">
-          <mat-icon>list</mat-icon>
-          Todos
-        </button>
         <button
           *ngIf="!isMobile"
           mat-button
@@ -85,17 +81,6 @@
         <span class="selected-group-label" [attr.title]="selectedGroupLabel()">
           Grupo selecionado: <strong>{{ selectedGroupLabel() }}</strong>
         </span>
-      </div>
-
-      <div class="group-tree-inline mt-2" *ngIf="groupTreeOpen && context?.vinculado">
-        <app-catalog-groups-tree
-          [type]="type"
-          [canManage]="true"
-          [allowGroupDrag]="!isMobile && movementAreaOpen"
-          [selectedGroupId]="selectedGroupId"
-          (selectedGroupIdChange)="onGroupSelected($event)"
-          (changed)="onGroupsChanged()">
-        </app-catalog-groups-tree>
       </div>
 
       <div class="catalog-destination-panel mt-1" *ngIf="!isMobile && context?.vinculado && movementAreaOpen">
@@ -139,7 +124,20 @@
 
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="context?.vinculado">
     <div class="p-3 pt-2">
-      <div class="catalog-items-list-col">
+      <div class="catalog-main-layout" [class.catalog-main-layout-groups-open]="groupTreeOpen">
+        <aside class="catalog-main-groups" *ngIf="groupTreeOpen">
+          <app-catalog-groups-tree
+            [type]="type"
+            [canManage]="true"
+            [showAllOption]="true"
+            [allowGroupDrag]="!isMobile && movementAreaOpen"
+            [selectedGroupId]="selectedGroupId"
+            (selectedGroupIdChange)="onGroupSelected($event)"
+            (changed)="onGroupsChanged()">
+          </app-catalog-groups-tree>
+        </aside>
+
+        <div class="catalog-items-list-col">
         <div class="hidden overflow-auto border-b border-[var(--border-light)] md:block">
           <table mat-table [dataSource]="items" class="w-full">
             <ng-container matColumnDef="codigo">
@@ -259,6 +257,7 @@
           [pageSizeOptions]="[10, 20, 50]"
           (page)="pageChange($event)">
         </mat-paginator>
+        </div>
       </div>
     </div>
   </section>

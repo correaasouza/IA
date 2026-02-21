@@ -103,6 +103,7 @@ public class WorkflowRuntimeService {
         null,
         null,
         null,
+        null,
         List.of());
     }
     Long tenantId = requireTenant();
@@ -126,6 +127,7 @@ public class WorkflowRuntimeService {
       instance.getEntityId(),
       instance.getCurrentStateKey(),
       instance.getCurrentState() != null ? instance.getCurrentState().getName() : null,
+      instance.getCurrentState() != null ? instance.getCurrentState().getColor() : null,
       instance.getDefinitionVersion(),
       instance.getUpdatedAt(),
       transitions);

@@ -181,7 +181,7 @@ export class UserFormComponent implements OnInit {
           });
         }
         this.notify.success('Usuário atualizado.');
-        this.router.navigate(['/users', this.user!.id]);
+        this.router.navigateByUrl('/users');
       },
       error: () => this.notify.error('Não foi possível atualizar o usuário.')
     });

@@ -87,7 +87,7 @@ export class AccessControlFormComponent implements OnInit {
     const roles = this.normalizeRoles(this.form.get('roles')?.value || []);
     this.access.setRoles(controlKey, roles);
     this.notify.success(this.mode === 'new' ? 'Regra criada.' : 'Regra atualizada.');
-    this.router.navigate(['/access-controls', encodeURIComponent(controlKey)]);
+    this.router.navigateByUrl('/access-controls');
   }
 
   remove(): void {

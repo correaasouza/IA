@@ -147,9 +147,9 @@ export class CatalogItemFormComponent implements OnInit {
       this.itemService.create(this.type, payload)
         .pipe(finalize(() => (this.saving = false)))
         .subscribe({
-          next: created => {
+          next: () => {
             this.notify.success(`${this.titleLabel()} criado.`);
-            this.router.navigate([`/catalog/${this.routeSegment()}/${created.id}`]);
+            this.router.navigate([`/catalog/${this.routeSegment()}`]);
           },
           error: err => this.notify.error(err?.error?.detail || `Nao foi possivel criar ${this.titleLabelLower()}.`)
         });
@@ -164,9 +164,9 @@ export class CatalogItemFormComponent implements OnInit {
     this.itemService.update(this.type, this.itemId, payload)
       .pipe(finalize(() => (this.saving = false)))
       .subscribe({
-        next: updated => {
+        next: () => {
           this.notify.success(`${this.titleLabel()} atualizado.`);
-          this.router.navigate([`/catalog/${this.routeSegment()}/${updated.id}`]);
+          this.router.navigate([`/catalog/${this.routeSegment()}`]);
         },
         error: err => this.notify.error(err?.error?.detail || `Nao foi possivel atualizar ${this.titleLabelLower()}.`)
       });

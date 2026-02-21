@@ -281,7 +281,7 @@ export class TenantFormComponent implements OnInit {
     this.service.update(this.locatario.id, payload).pipe(finalize(() => this.saving = false)).subscribe({
       next: () => {
         this.notify.success('Locatário atualizado.');
-        this.router.navigate(['/tenants', this.locatario!.id]);
+        this.router.navigateByUrl('/tenants');
       },
       error: () => this.notify.error('Não foi possível atualizar o locatário.')
     });

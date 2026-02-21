@@ -1,4 +1,4 @@
-import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
+import { Component, HostListener, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -10,7 +10,6 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
@@ -19,6 +18,13 @@ import { FeatureFlagService } from '../../core/features/feature-flag.service';
 import { EntityTypeService } from '../entity-types/entity-type.service';
 import { WorkflowService } from '../workflows/workflow.service';
 import { MovimentoItensListComponent } from './components/movimento-itens-list.component';
+import {
+  MovimentoCatalogSelectorDialogComponent,
+  MovimentoCatalogSelectorDialogData,
+  MovimentoCatalogSelectorDialogResult,
+  MovimentoCatalogSelectorDialogState,
+  MovimentoCatalogSelectorResultItem
+} from './components/movimento-catalog-selector-dialog.component';
 import {
   MovimentoEstoqueCreateRequest,
   MovimentoEstoqueItemResponse,
@@ -48,11 +54,6 @@ interface MovimentoEstoqueItemDraft {
   saved: boolean;
 }
 
-interface MovimentoEstoqueEditingRowView {
-  row: MovimentoEstoqueItemDraft;
-  index: number;
-}
-
 @Component({
   selector: 'app-movimento-estoque-form',
   standalone: true,
@@ -67,9 +68,9 @@ interface MovimentoEstoqueEditingRowView {
     MatInputModule,
     MatDialogModule,
     MatSelectModule,
-    MatSlideToggleModule,
     InlineLoaderComponent,
     AccessControlDirective,
+    MovimentoCatalogSelectorDialogComponent,
     MovimentoItensListComponent
   ],
   templateUrl: './movimento-estoque-form.component.html',
@@ -86,13 +87,13 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   movimento: MovimentoEstoqueResponse | null = null;
   templateData: MovimentoEstoqueTemplateResponse | null = null;
   empresaNomeHeader = '-';
+  isMobileView = false;
+  selectedTabIndex = 0;
   itemRows: MovimentoEstoqueItemDraft[] = [];
-  editingRowsView: MovimentoEstoqueEditingRowView[] = [];
   savedItemsView: MovimentoEstoqueItemResponse[] = [];
   stockAdjustmentsView: MovimentoStockAdjustmentOption[] = [];
   tiposEntidadePermitidosView: number[] = [];
   itemTypesPermitidosView: MovimentoTipoItemTemplate[] = [];
-  loadingCatalogByRow = new Map<number, boolean>();
   tipoEntidadeNomeById = new Map<number, string>();
   itemTypeNameById = new Map<number, string>();
   workflowEnabled = true;
@@ -100,11 +101,15 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   itemStateNamesByItemId: Record<number, string> = {};
   itemStateKeysByItemId: Record<number, string> = {};
   itemStateColorsByStateKey: Record<string, string> = {};
-  @ViewChild('itemEditorAnchor') itemEditorAnchor?: ElementRef<HTMLElement>;
 
   private nextRowUid = 1;
   private pendingEditItemUid: number | null = null;
   private pendingEditCatalogItemId: number | null = null;
+  private editingItemRowUid: number | null = null;
+  private openSearchOnSelectorOpen = false;
+  private catalogSelectorState: MovimentoCatalogSelectorDialogState | null = null;
+  private catalogSelectorOpen = false;
+  private loadedItemColorConfigIds = new Set<number>();
 
   form = this.fb.group({
     empresaId: [null as number | null, Validators.required],
@@ -127,8 +132,8 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.updateViewportState();
     this.workflowEnabled = this.featureFlagService.isEnabled('workflowEnabled', true);
-    this.loadItemWorkflowStateColors();
     const id = Number(this.route.snapshot.paramMap.get('id') || 0);
     const isEdit = this.route.snapshot.url.some(item => item.path === 'edit');
     const returnTo = this.route.snapshot.queryParamMap.get('returnTo');
@@ -153,7 +158,20 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     this.loadMovimento(id);
   }
 
-  save(): void {
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateViewportState();
+  }
+
+  sectionLabel(index: number): string {
+    if (index === 1) {
+      return `Itens do movimento (${this.savedItemsView.length})`;
+    }
+    return 'Dados do movimento';
+  }
+
+  save(options?: { keepEditing?: boolean }): void {
+    const keepEditing = options?.keepEditing === true;
     if (this.mode === 'view') {
       return;
     }
@@ -180,7 +198,11 @@ export class MovimentoEstoqueFormComponent implements OnInit {
         .subscribe({
           next: created => {
             this.notify.success('Movimento de estoque criado.');
-            this.router.navigate(['/movimentos/estoque', created.id], { queryParams: { returnTo: this.returnTo } });
+            if (keepEditing) {
+              this.router.navigate(['/movimentos/estoque', created.id, 'edit'], { queryParams: { returnTo: this.returnTo } });
+              return;
+            }
+            this.router.navigateByUrl(this.returnTo);
           },
           error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel criar o movimento de estoque.')
         });
@@ -197,7 +219,11 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       .subscribe({
         next: updated => {
           this.notify.success('Movimento de estoque atualizado.');
-          this.router.navigate(['/movimentos/estoque', updated.id], { queryParams: { returnTo: this.returnTo } });
+          if (keepEditing) {
+            this.loadMovimento(updated.id);
+            return;
+          }
+          this.router.navigateByUrl(this.returnTo);
         },
         error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel atualizar o movimento de estoque.')
       });
@@ -293,112 +319,197 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     return tipos.map(item => item.nome).join(', ');
   }
 
-  addItemRow(): void {
-    const row: MovimentoEstoqueItemDraft = {
-      uid: this.nextRowUid++,
-      movimentoItemTipoId: null,
-      catalogType: null,
-      catalogItemId: null,
-      quantidade: 1,
-      valorUnitario: 0,
-      cobrar: true,
-      ordem: this.itemRows.length,
-      observacao: '',
-      status: null,
-      catalogSearchText: '',
-      catalogOptions: [],
-      editing: true,
-      saved: false
-    };
-    this.itemRows = [row, ...this.itemRows];
-    this.reindexRows();
+  canRenderCatalogSelector(): boolean {
+    if (this.mode === 'view') {
+      return false;
+    }
+    if (!this.itemTypesPermitidosView.length) {
+      return false;
+    }
+    return this.resolveMovementConfigId() > 0;
   }
 
-  removeItemRow(index: number): void {
-    this.itemRows.splice(index, 1);
-    this.reindexRows();
+  isCatalogSelectorOpen(): boolean {
+    return this.catalogSelectorOpen;
   }
 
-  saveItemRow(index: number): void {
-    const row = this.itemRows[index];
-    if (!row) return;
-    const error = this.validateItemRow(row, index);
-    if (error) {
-      this.notify.error(error);
+  openCatalogSelector(): void {
+    if (!this.canRenderCatalogSelector()) {
       return;
     }
+    this.catalogSelectorState = {
+      movementItemTypeId: this.catalogSelectorState?.movementItemTypeId ?? null,
+      q: this.catalogSelectorState?.q || '',
+      searchFields: this.catalogSelectorState?.searchFields || ['codigo', 'nome', 'descricao'],
+      status: this.catalogSelectorState?.status || (this.catalogSelectorState?.ativo === false ? 'inativo' : 'ativo'),
+      groupId: this.catalogSelectorState?.groupId ?? null,
+      groupPath: this.catalogSelectorState?.groupPath ?? null,
+      groupBreadcrumb: this.catalogSelectorState?.groupBreadcrumb ?? null,
+      includeDescendants: this.catalogSelectorState?.includeDescendants !== false,
+      ativo: this.catalogSelectorState?.ativo !== false,
+      selectedItems: []
+    };
+    this.editingItemRowUid = null;
+    this.openSearchOnSelectorOpen = true;
+    this.selectedTabIndex = 1;
+    this.reopenCatalogSelector();
+  }
+
+  closeCatalogSelector(): void {
+    this.catalogSelectorOpen = false;
+    this.editingItemRowUid = null;
+    this.openSearchOnSelectorOpen = false;
+  }
+
+  catalogSelectorData(): MovimentoCatalogSelectorDialogData | null {
+    if (!this.canRenderCatalogSelector()) {
+      return null;
+    }
+    return {
+      movementType: 'MOVIMENTO_ESTOQUE',
+      movementConfigId: this.resolveMovementConfigId(),
+      itemTypes: this.itemTypesPermitidosView,
+      mode: this.editingItemRowUid ? 'edit' : 'add',
+      openSearchOnInit: this.openSearchOnSelectorOpen,
+      state: this.catalogSelectorState
+    };
+  }
+
+  onCatalogSelectorAdd(result: MovimentoCatalogSelectorDialogResult): void {
+    if (!result) {
+      return;
+    }
+    this.catalogSelectorState = result.state
+      ? { ...result.state, selectedItems: [] }
+      : this.catalogSelectorState;
+    const selectedItems = result.items || [];
+    if (!selectedItems.length) {
+      return;
+    }
+    const selectedItem = selectedItems[0];
+    if (!selectedItem) {
+      return;
+    }
+    if (this.applyCatalogSelectionToEditingRow(selectedItem)) {
+      this.closeCatalogSelector();
+      this.persistMovementAfterItemSave();
+      return;
+    }
+    const addedCount = this.appendSelectedCatalogItemsLocally([selectedItem], false);
+    if (addedCount <= 0) {
+      return;
+    }
+    this.closeCatalogSelector();
+    this.persistMovementAfterItemSave();
+  }
+
+  onCatalogSelectorStateChange(state: MovimentoCatalogSelectorDialogState): void {
+    this.catalogSelectorState = state;
+  }
+
+  private resolveMovementConfigId(): number {
+    const fromTemplate = Number(this.templateData?.movimentoConfigId || 0);
+    if (fromTemplate > 0) {
+      return fromTemplate;
+    }
+    const fromMovimento = Number(this.movimento?.movimentoConfigId || 0);
+    return fromMovimento > 0 ? fromMovimento : 0;
+  }
+
+  private appendSelectedCatalogItemsLocally(items: MovimentoCatalogSelectorResultItem[], showSuccessMessage = true): number {
+    const rowsToAppend: MovimentoEstoqueItemDraft[] = [];
+    for (const item of items) {
+      const movementItemTypeId = Number(item.movementItemTypeId || 0);
+      const catalogItemId = Number(item.catalogItemId || 0);
+      const quantidade = Number(item.quantidade || 0);
+      if (movementItemTypeId <= 0 || catalogItemId <= 0 || quantidade <= 0) {
+        continue;
+      }
+      const itemType = this.itemTypesPermitidosView.find(current => current.tipoItemId === movementItemTypeId);
+      const cobrar = itemType?.cobrar ?? true;
+      const valorUnitario = cobrar ? Number(item.valorUnitario || 0) : 0;
+      rowsToAppend.push({
+        uid: this.nextRowUid++,
+        movimentoItemTipoId: movementItemTypeId,
+        catalogType: item.catalogType,
+        catalogItemId,
+        quantidade,
+        valorUnitario,
+        cobrar,
+        ordem: this.itemRows.length + rowsToAppend.length,
+        observacao: item.observacao || '',
+        status: null,
+        catalogSearchText: `${item.codigo} - ${item.nome}`,
+        catalogOptions: [{
+          id: catalogItemId,
+          catalogType: item.catalogType,
+          codigo: item.codigo,
+          nome: item.nome,
+          descricao: null
+        }],
+        editing: false,
+        saved: true
+      });
+    }
+
+    if (!rowsToAppend.length) {
+      this.notify.info('Nenhum item valido foi selecionado para adicionar.');
+      return 0;
+    }
+    this.itemRows = [...this.itemRows, ...rowsToAppend];
+    this.reindexRows();
+    if (showSuccessMessage) {
+      this.notify.success(`${rowsToAppend.length} item(ns) adicionado(s).`);
+    }
+    return rowsToAppend.length;
+  }
+
+  private applyCatalogSelectionToEditingRow(selectedItem: MovimentoCatalogSelectorResultItem): boolean {
+    const targetUid = Number(this.editingItemRowUid || 0);
+    if (targetUid <= 0) {
+      return false;
+    }
+    const index = this.findRowIndexByUid(targetUid);
+    this.editingItemRowUid = null;
+    if (index < 0) {
+      this.notify.error('Nao foi possivel localizar o item em edicao.');
+      return false;
+    }
+    const row = this.itemRows[index];
+    if (!row) {
+      return false;
+    }
+
+    const movementItemTypeId = Number(selectedItem.movementItemTypeId || 0);
+    const itemType = this.itemTypesPermitidosView.find(current => current.tipoItemId === movementItemTypeId);
+    row.movimentoItemTipoId = movementItemTypeId > 0 ? movementItemTypeId : null;
+    row.catalogType = itemType?.catalogType || selectedItem.catalogType || row.catalogType || 'PRODUCTS';
+    row.catalogItemId = Number(selectedItem.catalogItemId || 0) || null;
+    row.quantidade = Number(selectedItem.quantidade || 0);
+    row.cobrar = itemType?.cobrar ?? row.cobrar;
+    row.valorUnitario = row.cobrar ? Number(selectedItem.valorUnitario || 0) : 0;
+    row.observacao = (selectedItem.observacao || '').trim();
+    row.catalogSearchText = `${selectedItem.codigo} - ${selectedItem.nome}`;
+    row.catalogOptions = [{
+      id: Number(selectedItem.catalogItemId || 0),
+      catalogType: selectedItem.catalogType,
+      codigo: Number(selectedItem.codigo || 0),
+      nome: selectedItem.nome || '-',
+      descricao: null
+    }];
     row.editing = false;
     row.saved = true;
     this.reindexRows();
+    return true;
   }
 
-  editItemRow(index: number): void {
-    const row = this.itemRows[index];
-    if (!row) return;
-    row.editing = true;
-    this.itemRows = [...this.itemRows];
-    this.refreshItemViews();
-  }
-
-  cancelItemRow(index: number): void {
-    const row = this.itemRows[index];
-    if (!row) return;
-    if (!row.saved) {
-      this.removeItemRow(index);
-      return;
+  removeItemRow(index: number): void {
+    const removed = this.itemRows[index];
+    this.itemRows.splice(index, 1);
+    if (removed && Number(this.editingItemRowUid || 0) === Number(removed.uid || 0)) {
+      this.editingItemRowUid = null;
     }
-    row.editing = false;
     this.reindexRows();
-  }
-
-  onTipoItemChange(row: MovimentoEstoqueItemDraft): void {
-    const tipo = this.itemTypesPermitidos().find(item => item.tipoItemId === row.movimentoItemTipoId);
-    row.catalogType = tipo?.catalogType || null;
-    row.cobrar = tipo?.cobrar ?? true;
-    row.catalogItemId = null;
-    row.catalogOptions = [];
-    if (!row.cobrar) {
-      row.valorUnitario = 0;
-    }
-    if (row.movimentoItemTipoId) {
-      this.searchCatalog(row);
-    }
-  }
-
-  isRowEditable(row: MovimentoEstoqueItemDraft): boolean {
-    return this.mode !== 'view' && row.editing;
-  }
-
-  searchCatalog(row: MovimentoEstoqueItemDraft): void {
-    if (!row.movimentoItemTipoId) {
-      row.catalogOptions = [];
-      return;
-    }
-    this.loadingCatalogByRow.set(row.uid, true);
-    this.service.searchCatalogItemsByTipoItem(row.movimentoItemTipoId, row.catalogSearchText || '', 0, 20)
-      .pipe(finalize(() => this.loadingCatalogByRow.set(row.uid, false)))
-      .subscribe({
-        next: page => {
-          row.catalogOptions = (page?.content || []).slice();
-        },
-        error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel buscar itens de catalogo.')
-      });
-  }
-
-  onCatalogItemChange(row: MovimentoEstoqueItemDraft): void {
-    if (!row.catalogItemId) {
-      return;
-    }
-    const option = row.catalogOptions.find(item => item.id === row.catalogItemId);
-    if (option) {
-      row.catalogSearchText = `${option.codigo} - ${option.nome}`;
-    }
-  }
-
-  onValorUnitarioChange(row: MovimentoEstoqueItemDraft): void {
-    if (!row.cobrar) {
-      row.valorUnitario = 0;
-    }
   }
 
   lineTotal(row: MovimentoEstoqueItemDraft): number {
@@ -412,10 +523,6 @@ export class MovimentoEstoqueFormComponent implements OnInit {
 
   itensTotalCobrado(): number {
     return this.itemRows.reduce((acc, row) => acc + this.lineTotal(row), 0);
-  }
-
-  isRowCatalogLoading(row: MovimentoEstoqueItemDraft): boolean {
-    return !!this.loadingCatalogByRow.get(row.uid);
   }
 
   tipoItemLabel(tipoItemId: number | null): string {
@@ -454,14 +561,12 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     }
     const index = this.findRowIndexForItem(item);
     if (index >= 0) {
-      this.editItemRow(index);
-      this.scrollToItemEditor();
+      this.openCatalogSelectorForEdit(index);
       return;
     }
-    const fallbackIndex = this.itemRows.findIndex(row => row.saved && !row.editing);
+    const fallbackIndex = this.itemRows.findIndex(row => row.saved);
     if (fallbackIndex >= 0) {
-      this.editItemRow(fallbackIndex);
-      this.scrollToItemEditor();
+      this.openCatalogSelectorForEdit(fallbackIndex);
       this.notify.info('Item selecionado nao encontrado; abrindo primeiro item salvo para edicao.');
       return;
     }
@@ -508,25 +613,11 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       });
   }
 
-  catalogTypeLabel(value: 'PRODUCTS' | 'SERVICES' | null): string {
-    if (!value) {
-      return '-';
-    }
-    return value === 'SERVICES' ? 'Servicos' : 'Produtos';
-  }
-
   private buildItemRequests(): MovimentoEstoqueItemRequest[] | null {
     const items = (this.itemRows || []).map((row, idx) => ({ row, idx }));
     const requests: MovimentoEstoqueItemRequest[] = [];
     for (const current of items) {
       const row = current.row;
-      if (row.editing) {
-        if (this.rowHasContent(row)) {
-          this.notify.error(`Salve o item da linha ${current.idx + 1} antes de salvar o movimento.`);
-          return null;
-        }
-        continue;
-      }
       if (!row.saved) {
         continue;
       }
@@ -559,10 +650,10 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       this.form.disable();
       return;
     }
-    this.loadTemplateByEmpresa(empresaId, true);
+    this.loadTemplateByEmpresa(empresaId);
   }
 
-  private loadTemplateByEmpresa(empresaId: number, initializeRows = false): void {
+  private loadTemplateByEmpresa(empresaId: number): void {
     this.loading = true;
     this.errorMessage = '';
     this.service.buildTemplate('MOVIMENTO_ESTOQUE', empresaId)
@@ -571,6 +662,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
         next: template => {
           this.templateData = template;
           this.refreshAllowedViews();
+          this.loadItemWorkflowStateColorsForCurrentConfig();
           this.ensureTipoEntidadeLabels(template.tiposEntidadePermitidos || []);
           const tipoEntidadeId = this.resolveTipoEntidadeInicial(template, this.movimento?.tipoEntidadePadraoId || null);
           this.empresaNomeHeader = this.resolveEmpresaNome(empresaId);
@@ -593,9 +685,6 @@ export class MovimentoEstoqueFormComponent implements OnInit {
             stockAdjustmentId: this.normalizeStockAdjustmentId(this.movimento?.stockAdjustmentId)
           }, { emitEvent: false });
         }
-          if (initializeRows && this.mode !== 'view' && this.itemRows.length === 0) {
-            this.addItemRow();
-          }
           this.form.enable();
           if (this.mode === 'view') {
             this.form.disable();
@@ -621,6 +710,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
         next: movimento => {
           this.movimento = movimento;
           this.refreshAllowedViews();
+          this.loadItemWorkflowStateColorsForCurrentConfig();
           this.ensureTipoEntidadeLabels([movimento.tipoEntidadePadraoId || 0]);
           this.form.patchValue({
             empresaId: movimento.empresaId,
@@ -661,7 +751,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
           this.activatePendingItemEdit();
           this.loadTransitionsForSavedItems();
 
-          this.loadTemplateByEmpresa(movimento.empresaId, false);
+          this.loadTemplateByEmpresa(movimento.empresaId);
 
           if (this.mode === 'view') {
             this.form.disable();
@@ -734,14 +824,6 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     });
   }
 
-  private rowHasContent(row: MovimentoEstoqueItemDraft): boolean {
-    return !!row.movimentoItemTipoId
-      || !!row.catalogItemId
-      || Number(row.quantidade || 0) > 0
-      || Number(row.valorUnitario || 0) > 0
-      || !!(row.observacao || '').trim();
-  }
-
   private validateItemRow(row: MovimentoEstoqueItemDraft, idx: number): string | null {
     if (!row.movimentoItemTipoId) {
       return `Informe o tipo de item na linha ${idx + 1}.`;
@@ -789,17 +871,13 @@ export class MovimentoEstoqueFormComponent implements OnInit {
 
   private refreshItemViews(): void {
     const tipoNomeById = this.itemTypeNameById;
-    const editing: MovimentoEstoqueEditingRowView[] = [];
     const saved: MovimentoEstoqueItemResponse[] = [];
     for (let idx = 0; idx < this.itemRows.length; idx += 1) {
       const row = this.itemRows[idx];
       if (!row) {
         continue;
       }
-      if (row.editing) {
-        editing.push({ row, index: idx });
-      }
-      if (row.saved && !row.editing) {
+      if (row.saved) {
         const catalogSummary = this.parseCatalogSummary(row.catalogSearchText);
         saved.push({
           id: row.uid,
@@ -821,7 +899,6 @@ export class MovimentoEstoqueFormComponent implements OnInit {
         });
       }
     }
-    this.editingRowsView = editing;
     this.savedItemsView = saved;
     this.loadTransitionsForSavedItems();
   }
@@ -869,12 +946,6 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     };
   }
 
-  private scrollToItemEditor(): void {
-    setTimeout(() => {
-      this.itemEditorAnchor?.nativeElement?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 50);
-  }
-
   private activatePendingItemEdit(): void {
     if (this.mode !== 'edit') {
       return;
@@ -887,11 +958,73 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       index = this.itemRows.findIndex(row => Number(row.catalogItemId || 0) === this.pendingEditCatalogItemId);
     }
     if (index >= 0) {
-      this.editItemRow(index);
-      this.scrollToItemEditor();
+      this.openCatalogSelectorForEdit(index);
     }
     this.pendingEditItemUid = null;
     this.pendingEditCatalogItemId = null;
+  }
+
+  private openCatalogSelectorForEdit(index: number): void {
+    const row = this.itemRows[index];
+    if (!row) {
+      return;
+    }
+    const movementItemTypeId = Number(row.movimentoItemTipoId || 0);
+    const catalogItemId = Number(row.catalogItemId || 0);
+    if (movementItemTypeId <= 0 || catalogItemId <= 0) {
+      this.notify.error('Item invalido para edicao.');
+      return;
+    }
+    const summary = this.parseCatalogSummary(row.catalogSearchText);
+    const nome = summary.nome === '-' ? (row.catalogSearchText || '').trim() || `Item #${catalogItemId}` : summary.nome;
+    const itemType = this.itemTypesPermitidosView.find(current => current.tipoItemId === movementItemTypeId);
+    const catalogType = itemType?.catalogType || row.catalogType || 'PRODUCTS';
+
+    this.editingItemRowUid = Number(row.uid || 0);
+    this.openSearchOnSelectorOpen = false;
+    this.catalogSelectorState = {
+      movementItemTypeId: movementItemTypeId > 0 ? movementItemTypeId : null,
+      q: '',
+      searchFields: ['codigo', 'nome', 'descricao'],
+      status: 'ativo',
+      groupId: null,
+      groupPath: null,
+      groupBreadcrumb: null,
+      includeDescendants: true,
+      ativo: true,
+      selectedItems: [{
+        movementItemTypeId,
+        catalogItemId,
+        quantidade: Number(row.quantidade || 0),
+        valorUnitario: row.cobrar ? Number(row.valorUnitario || 0) : 0,
+        observacao: (row.observacao || '').trim() || null,
+        catalogType,
+        codigo: Number(summary.codigo || 0),
+        nome
+      }]
+    };
+    this.selectedTabIndex = 1;
+    this.reopenCatalogSelector();
+  }
+
+  private updateViewportState(): void {
+    this.isMobileView = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
+  }
+
+  private persistMovementAfterItemSave(): void {
+    if (this.mode === 'view') {
+      return;
+    }
+    this.save({ keepEditing: true });
+  }
+
+  private reopenCatalogSelector(): void {
+    if (this.catalogSelectorOpen) {
+      this.catalogSelectorOpen = false;
+      setTimeout(() => (this.catalogSelectorOpen = true), 0);
+      return;
+    }
+    this.catalogSelectorOpen = true;
   }
 
   private loadTransitionsForSavedItems(): void {
@@ -924,11 +1057,18 @@ export class MovimentoEstoqueFormComponent implements OnInit {
           nextMap[itemId] = runtime.transitions || [];
           const stateName = (runtime.currentStateName || '').trim();
           const stateKey = (runtime.currentStateKey || '').trim();
+          const stateColor = (runtime.currentStateColor || '').trim();
           if (stateName) {
             nextStateNames[itemId] = stateName;
           }
           if (stateKey) {
             nextStateKeys[itemId] = stateKey;
+            if (this.isValidHexColor(stateColor)) {
+              this.itemStateColorsByStateKey = {
+                ...this.itemStateColorsByStateKey,
+                [stateKey.toUpperCase()]: stateColor
+              };
+            }
           }
           this.itemTransitionsByItemId = { ...this.itemTransitionsByItemId, ...nextMap };
           this.itemStateNamesByItemId = { ...this.itemStateNamesByItemId, ...nextStateNames };
@@ -942,17 +1082,30 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     }
   }
 
-  private loadItemWorkflowStateColors(): void {
+  private loadItemWorkflowStateColorsForCurrentConfig(): void {
     if (!this.workflowEnabled) {
-      this.itemStateColorsByStateKey = {};
       return;
     }
-    this.workflowService.getDefinitionByOrigin('ITEM_MOVIMENTO_ESTOQUE').subscribe({
+    const configId = Number(this.resolveMovementConfigId() || 0);
+    if (!Number.isFinite(configId) || configId <= 0) {
+      return;
+    }
+    if (this.loadedItemColorConfigIds.has(configId)) {
+      return;
+    }
+    this.loadedItemColorConfigIds.add(configId);
+    this.workflowService.getDefinitionByOrigin('ITEM_MOVIMENTO_ESTOQUE', {
+      type: 'MOVIMENTO_CONFIG',
+      id: configId
+    }).subscribe({
       next: definition => {
-        this.itemStateColorsByStateKey = this.buildStateColorMap(definition?.states || []);
+        this.itemStateColorsByStateKey = {
+          ...this.itemStateColorsByStateKey,
+          ...this.buildStateColorMap(definition?.states || [])
+        };
       },
       error: () => {
-        this.itemStateColorsByStateKey = {};
+        this.loadedItemColorConfigIds.delete(configId);
       }
     });
   }
@@ -974,3 +1127,4 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     return /^#[\da-fA-F]{6}$/.test((value || '').trim());
   }
 }
+

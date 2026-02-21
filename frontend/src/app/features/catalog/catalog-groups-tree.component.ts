@@ -18,6 +18,7 @@ import { CatalogGroupNode, CatalogGroupService } from './catalog-group.service';
 export class CatalogGroupsTreeComponent implements OnChanges {
   @Input({ required: true }) type: CatalogCrudType = 'PRODUCTS';
   @Input() canManage = true;
+  @Input() showAllOption = false;
   @Input() allowGroupDrag = false;
   @Input() selectedGroupId: number | null = null;
   @Output() selectedGroupIdChange = new EventEmitter<number | null>();

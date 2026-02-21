@@ -18,6 +18,8 @@ public class ApiExceptionHandler {
     pd.setTitle("Recurso nao encontrado");
     if (message.startsWith("catalog_item_not_found")) {
       pd.setDetail("Item de catalogo nao encontrado no contexto atual (empresa/grupo).");
+    } else if (message.startsWith("catalog_group_not_found")) {
+      pd.setDetail("Grupo de catalogo nao encontrado no contexto atual.");
     } else if (message.startsWith("registro_entidade_not_found")) {
       pd.setDetail("Entidade nao encontrada no contexto atual (empresa/grupo).");
     } else if (message.startsWith("movimento_config_not_found")) {
@@ -123,6 +125,8 @@ public class ApiExceptionHandler {
       pd.setDetail("Informe o nome do grupo.");
     } else if (message.startsWith("catalog_group_nome_too_long")) {
       pd.setDetail("Nome do grupo excede o tamanho maximo permitido.");
+    } else if (message.startsWith("catalog_group_id_invalid")) {
+      pd.setDetail("Identificador do grupo de catalogo invalido.");
     } else if (message.startsWith("catalog_stock_metric_invalid")) {
       pd.setDetail("Metrica de movimentacao invalida. Use QUANTIDADE ou PRECO.");
     } else if (message.startsWith("catalog_stock_origin_invalid")) {
@@ -189,6 +193,10 @@ public class ApiExceptionHandler {
       pd.setDetail("Selecione uma empresa no topo do sistema para operar movimentos.");
     } else if (message.startsWith("movimento_empresa_context_mismatch")) {
       pd.setDetail("A empresa do movimento deve ser igual a empresa selecionada no contexto.");
+    } else if (message.startsWith("movimento_estoque_id_invalid")) {
+      pd.setDetail("Identificador do movimento de estoque invalido.");
+    } else if (message.startsWith("movimento_estoque_items_required")) {
+      pd.setDetail("Informe ao menos um item para adicionar ao movimento.");
     } else if (message.startsWith("movimento_tipo_nao_implementado")) {
       pd.setDetail("Tipo de movimento ainda nao implementado para operacao.");
     } else if (message.startsWith("movimento_tipo_invalid")) {
@@ -233,6 +241,8 @@ public class ApiExceptionHandler {
       pd.setDetail("Tipo de item invalido na configuracao de movimento.");
     } else if (message.startsWith("movimento_config_nome_required")) {
       pd.setDetail("Informe o nome da configuracao de movimento.");
+    } else if (message.startsWith("movimento_config_id_invalid")) {
+      pd.setDetail("Identificador da configuracao de movimento invalido.");
     } else if (message.startsWith("movimento_config_prioridade_invalid")) {
       pd.setDetail("Prioridade invalida. Use valor maior ou igual a zero.");
     } else if (message.startsWith("movimento_config_empresa_ids_required")) {

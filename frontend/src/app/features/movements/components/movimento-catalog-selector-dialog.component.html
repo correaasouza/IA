@@ -1,0 +1,298 @@
+<div class="selector-title" *ngIf="!embedded">
+  <div class="selector-title-main">
+    <span>Adicionar itens do catalogo</span>
+    <span class="selector-title-meta-inline">Selecione grupo, busque e adicione em lote</span>
+  </div>
+</div>
+
+<div class="selector-content">
+  <section class="selector-right">
+    <section class="selector-selected-panel" *ngIf="embedded || selectedCount() > 0 || movementItemTypeControl.value">
+      <div class="selector-selected-head">
+        <div class="selector-selected-title">Item selecionado</div>
+      </div>
+      <div class="selector-selected-empty" *ngIf="!movementItemTypeControl.value">
+        Clique em Novo item no topo da secao para buscar no catalogo.
+      </div>
+      <div class="selector-selected-empty" *ngIf="selectedCount() === 0 && movementItemTypeControl.value">
+        Selecione um item para preencher a ficha.
+      </div>
+      <article class="selector-selected-card" *ngFor="let selected of selectedItemsList()">
+        <div class="selector-selected-main">
+          <div class="selector-selected-item-head">
+            <div class="selector-selected-item-info">
+              <div class="selector-selected-item-code">Codigo: {{ selected.codigo }}</div>
+              <div class="selector-selected-item-desc-row">
+                <div class="result-title selector-selected-item-name-inline">
+                  {{ selected.nome }}
+                </div>
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="selector-search-item-btn"
+                  (click)="openCatalogSearchModal()"
+                  aria-label="Buscar item">
+                  <mat-icon>search</mat-icon>
+                  <span>Buscar</span>
+                </button>
+              </div>
+              <div class="result-meta selector-selected-item-meta">
+                <span>{{ selected.catalogType === 'SERVICES' ? 'Servico' : 'Produto' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button mat-icon-button type="button" (click)="removeSelected(selected)" aria-label="Remover item selecionado">
+          <mat-icon>close</mat-icon>
+        </button>
+        <div class="result-edit selector-selected-edit">
+          <mat-form-field appearance="outline">
+            <mat-label>Quantidade</mat-label>
+            <input
+              matInput
+              type="number"
+              min="0.000001"
+              step="0.000001"
+              [ngModel]="selected.quantidade"
+              (ngModelChange)="updateSelectedQuantidade(selected, $event)" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Valor unitario</mat-label>
+            <input
+              matInput
+              type="number"
+              min="0"
+              step="0.000001"
+              [ngModel]="selected.valorUnitario"
+              (ngModelChange)="updateSelectedValorUnitario(selected, $event)" />
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="result-observacao">
+            <mat-label>Observacao</mat-label>
+            <input
+              matInput
+              [ngModel]="selected.observacao"
+              (ngModelChange)="updateSelectedObservacao(selected, $event)"
+              maxlength="255" />
+          </mat-form-field>
+
+          <div class="selector-selected-card-actions">
+            <button mat-flat-button color="primary" type="button" (click)="addSelected()">
+              {{ saveItemLabel() }}
+            </button>
+          </div>
+        </div>
+      </article>
+    </section>
+  </section>
+</div>
+
+<div class="selector-search-modal-backdrop" *ngIf="catalogSearchModalOpen" (click)="closeCatalogSearchModal()"></div>
+<section class="selector-search-modal" *ngIf="catalogSearchModalOpen" role="dialog" aria-modal="true">
+  <header class="selector-search-modal-header">
+    <div class="selector-search-modal-titlebar">
+      <div class="selector-search-modal-titlewrap">
+        <div class="selector-search-modal-title">Seleção de itens do catálogo</div>
+        <div class="selector-search-modal-subtitle">Busque e selecione um item para preencher a ficha.</div>
+      </div>
+      <button mat-icon-button type="button" class="selector-modal-close-top" (click)="closeCatalogSearchModal()" aria-label="Fechar busca">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="selector-search-modal-head-filters">
+      <div class="status-search-like selector-header-type">
+        <select class="status-native-select" [formControl]="movementItemTypeControl" aria-label="Tipo de item">
+          <option [ngValue]="null">Tipo item: Selecione</option>
+          <option *ngFor="let itemType of itemTypes()" [ngValue]="itemType.tipoItemId">
+            Tipo item: {{ itemType.nome }}
+          </option>
+        </select>
+      </div>
+
+      <div class="selector-header-controls">
+        <div class="min-w-0 selector-search-field selector-header-search">
+          <app-field-search
+            [options]="searchOptions"
+            label="Buscar"
+            placeholder="Digite e selecione os campos"
+            [defaultFields]="searchFields"
+            [allOptionLabel]="'completa'"
+            [initialTerm]="searchControl.value"
+            [initialScope]="fieldSearchScope()"
+            [showActions]="false"
+            (searchChange)="onFieldSearchChange($event)">
+          </app-field-search>
+        </div>
+
+        <div class="status-search-like selector-header-status">
+          <select class="status-native-select" [formControl]="statusControl" aria-label="Status">
+            <option value="all">Status: Todos</option>
+            <option value="ativo">Status: Ativo</option>
+            <option value="inativo">Status: Inativo</option>
+          </select>
+        </div>
+
+        <div class="selector-filters-actions">
+          <button mat-stroked-button type="button" (click)="resetCatalogFilters()">
+            Limpar
+          </button>
+        </div>
+
+        <div class="selector-filters-count">{{ totalElements }} item(ns)</div>
+
+        <div class="selector-search-modal-header-actions">
+          <button
+            mat-stroked-button
+            type="button"
+            class="mobile-filter-toggle"
+            *ngIf="isMobileView"
+            (click)="toggleMobileSidebar()">
+            <mat-icon>tune</mat-icon>
+            Filtros<span *ngIf="activeFiltersCount() > 0"> ({{ activeFiltersCount() }})</span>
+            <mat-icon>{{ mobileSidebarOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="selector-search-modal-body">
+    <aside class="selector-search-sidebar" [class.selector-search-sidebar-hidden]="isMobileView && !mobileSidebarOpen">
+      <div class="selector-left-header">
+        <div>
+          <div class="selector-label">Grupos</div>
+          <div class="selector-left-hint">Clique no grupo para filtrar os itens</div>
+        </div>
+        <button mat-button type="button" class="selector-clear-btn" (click)="clearGroupFilter()" [disabled]="!selectedGroupId">
+          Limpar
+        </button>
+      </div>
+
+      <button
+        type="button"
+        class="selector-root-button"
+        [class.selector-root-button-active]="!selectedGroupId"
+        (click)="clearGroupFilter()">
+        <mat-icon>layers</mat-icon>
+        <span>Todos os grupos</span>
+      </button>
+
+      <div class="selector-group-chip" *ngIf="selectedGroupId">
+        <mat-icon>folder_open</mat-icon>
+        <span class="selector-group-chip-text">{{ selectedGroupBreadcrumb || ('Grupo #' + selectedGroupId) }}</span>
+      </div>
+
+      <mat-slide-toggle class="selector-left-toggle" [formControl]="includeDescendantsControl">
+        Incluir subgrupos
+      </mat-slide-toggle>
+
+      <div class="selector-tree-loading" *ngIf="loadingTree">
+        <mat-spinner diameter="20"></mat-spinner>
+        <span>Carregando grupos...</span>
+      </div>
+
+      <div class="selector-error" *ngIf="treeErrorMessage">{{ treeErrorMessage }}</div>
+
+      <div class="selector-tree" *ngIf="!loadingTree && groupNodes.length > 0">
+        <ng-container *ngTemplateOutlet="groupTreeTpl; context: { $implicit: groupNodes }"></ng-container>
+      </div>
+
+      <div class="selector-empty" *ngIf="!loadingTree && !treeErrorMessage && groupNodes.length === 0">
+        Nenhum grupo encontrado.
+      </div>
+    </aside>
+
+    <section class="selector-search-main">
+      <div class="selector-results" (scroll)="onResultsScroll($event)">
+        <div class="selector-modal-group" *ngIf="selectedGroupBreadcrumb">
+          Grupo: {{ selectedGroupBreadcrumb }}
+        </div>
+
+        <div class="selector-loading" *ngIf="loading">
+          <mat-spinner diameter="26"></mat-spinner>
+          <span>Buscando itens...</span>
+        </div>
+
+        <div class="selector-error" *ngIf="!loading && errorMessage">
+          <span>{{ errorMessage }}</span>
+          <button mat-stroked-button type="button" (click)="retrySearch()">Tentar novamente</button>
+        </div>
+
+        <div class="selector-empty" *ngIf="!loading && !errorMessage && items.length === 0">
+          Nenhum resultado encontrado.
+        </div>
+
+        <article class="result-row" *ngFor="let item of items; trackBy: trackByCatalogItemId">
+          <div class="result-row-main">
+            <div>
+              <div class="result-title">{{ item.codigo }} - {{ item.nome }}</div>
+              <div class="result-subtitle" *ngIf="item.descricao">{{ item.descricao }}</div>
+              <div class="result-meta">
+                <span *ngIf="item.groupBreadcrumb">{{ item.groupBreadcrumb }}</span>
+                <span *ngIf="item.groupBreadcrumb">|</span>
+                <span>{{ item.catalogType === 'SERVICES' ? 'Servico' : 'Produto' }}</span>
+              </div>
+            </div>
+            <div class="result-row-actions">
+              <button
+                mat-stroked-button
+                type="button"
+                class="result-row-select-btn"
+                [disabled]="!movementItemTypeControl.value || isItemSelected(item)"
+                (click)="selectAndConfirmItem(item)">
+                {{ isItemSelected(item) ? 'Selecionado' : 'Selecionar' }}
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <div class="selector-loading-more" *ngIf="loadingMore">
+          <mat-spinner diameter="18"></mat-spinner>
+          <span>Carregando mais itens...</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+</section>
+
+<div class="selector-actions" [class.selector-actions-embedded]="embedded" *ngIf="!embedded">
+  <div class="selector-summary">Selecionados: {{ selectedCount() }} / {{ totalElements }}</div>
+  <button mat-button type="button" (click)="cancel()">Cancelar</button>
+  <button mat-flat-button color="primary" type="button" (click)="addSelected()" [disabled]="selectedCount() === 0">
+    {{ primaryActionLabel() }}
+  </button>
+</div>
+
+<ng-template #groupTreeTpl let-nodes>
+  <div class="group-level">
+    <div class="group-node" *ngFor="let node of nodes; trackBy: trackByGroupId" [class.group-node-expanded]="node.expanded">
+      <div class="group-node-main" [class.group-node-selected]="isGroupSelected(node)">
+        <span class="group-toggle">
+          <button
+            type="button"
+            class="group-toggle-btn"
+            *ngIf="node.hasChildren"
+            (click)="toggleGroup(node)">
+            <mat-icon>{{ node.expanded ? 'expand_more' : 'chevron_right' }}</mat-icon>
+          </button>
+          <mat-icon *ngIf="!node.hasChildren" class="group-dot">fiber_manual_record</mat-icon>
+        </span>
+        <button class="group-name-btn" type="button" (click)="selectGroup(node)">
+          <span class="group-name">{{ node.nome }}</span>
+        </button>
+        <mat-icon class="group-selected-icon" *ngIf="isGroupSelected(node)">check_circle</mat-icon>
+      </div>
+
+      <div class="group-loading" *ngIf="node.loadingChildren">
+        <mat-spinner diameter="16"></mat-spinner>
+      </div>
+
+      <div class="group-children" *ngIf="node.expanded && node.children.length > 0">
+        <ng-container *ngTemplateOutlet="groupTreeTpl; context: { $implicit: node.children }"></ng-container>
+      </div>
+    </div>
+  </div>
+</ng-template>
