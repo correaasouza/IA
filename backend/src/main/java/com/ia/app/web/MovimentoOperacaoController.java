@@ -1,12 +1,17 @@
 package com.ia.app.web;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.ia.app.domain.CatalogConfigurationType;
 import com.ia.app.domain.MovimentoTipo;
+import com.ia.app.dto.MovimentoItemAllowedUnitResponse;
 import com.ia.app.dto.MovimentoItemCatalogOptionResponse;
+import com.ia.app.dto.MovimentoItemUnitConversionPreviewRequest;
+import com.ia.app.dto.MovimentoItemUnitConversionPreviewResponse;
 import com.ia.app.dto.MovimentoTemplateRequest;
 import com.ia.app.service.MovimentoEstoqueItemCatalogService;
 import com.ia.app.service.MovimentoOperacaoService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -99,5 +104,22 @@ public class MovimentoOperacaoController {
       @RequestParam(required = false) String text,
       Pageable pageable) {
     return ResponseEntity.ok(movimentoEstoqueItemCatalogService.searchByTipoItem(tipoItemId, text, pageable));
+  }
+
+  @GetMapping("/MOVIMENTO_ESTOQUE/catalogo-itens/{catalogType}/{catalogItemId}/allowed-units")
+  @PreAuthorize("@permissaoGuard.hasPermissao('MOVIMENTO_ESTOQUE_ITEM_OPERAR')")
+  public ResponseEntity<List<MovimentoItemAllowedUnitResponse>> allowedUnits(
+      @PathVariable String catalogType,
+      @PathVariable Long catalogItemId) {
+    return ResponseEntity.ok(movimentoEstoqueItemCatalogService.listAllowedUnits(
+      CatalogConfigurationType.from(catalogType),
+      catalogItemId));
+  }
+
+  @PostMapping("/MOVIMENTO_ESTOQUE/catalogo-itens/preview-conversion")
+  @PreAuthorize("@permissaoGuard.hasPermissao('MOVIMENTO_ESTOQUE_ITEM_OPERAR')")
+  public ResponseEntity<MovimentoItemUnitConversionPreviewResponse> previewConversion(
+      @Valid @RequestBody MovimentoItemUnitConversionPreviewRequest request) {
+    return ResponseEntity.ok(movimentoEstoqueItemCatalogService.previewConversion(request));
   }
 }

@@ -7,6 +7,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { AccessControlDirective } from '../../../shared/access-control.directive';
 import { MovimentoEstoqueItemResponse } from '../movement-operation.service';
 
 interface ItemWorkflowTransition {
@@ -14,6 +15,7 @@ interface ItemWorkflowTransition {
   name: string;
   toStateKey: string;
   toStateName?: string | null;
+  controlKey?: string | null;
 }
 
 export interface MovimentoItemInlineSaveEvent {
@@ -33,7 +35,8 @@ export interface MovimentoItemInlineSaveEvent {
     MatInputModule,
     MatMenuModule,
     MatTableModule,
-    MatTooltipModule
+    MatTooltipModule,
+    AccessControlDirective
   ],
   templateUrl: './movimento-itens-list.component.html',
   styleUrls: ['./movimento-itens-list.component.css']
@@ -42,6 +45,7 @@ export class MovimentoItensListComponent implements OnInit {
   @Input() items: MovimentoEstoqueItemResponse[] = [];
   @Input() inlineEditEnabled = false;
   @Input() actionButtonsEnabled = true;
+  @Input() movementFinalized = false;
   @Input() showWorkflowTransitions = false;
   @Input() transitionsByItem: Record<number, ItemWorkflowTransition[]> = {};
   @Input() stateNamesByItemId: Record<number, string> = {};
@@ -66,8 +70,8 @@ export class MovimentoItensListComponent implements OnInit {
     expectedCurrentStateKey?: string | null;
   }>();
 
-  displayedColumns = ['tipo', 'catalogo', 'status', 'quantidade', 'valorUnitario', 'valorTotal', 'cobrar', 'acoes'];
-  private readonly desktopColumns = ['tipo', 'catalogo', 'status', 'quantidade', 'valorUnitario', 'valorTotal', 'cobrar', 'acoes'];
+  displayedColumns = ['codigo', 'tipo', 'catalogo', 'unidade', 'status', 'quantidade', 'valorUnitario', 'valorTotal', 'cobrar', 'acoes'];
+  private readonly desktopColumns = ['codigo', 'tipo', 'catalogo', 'unidade', 'status', 'quantidade', 'valorUnitario', 'valorTotal', 'cobrar', 'acoes'];
   isMobile = false;
 
   editingItemId: number | null = null;
@@ -89,8 +93,8 @@ export class MovimentoItensListComponent implements OnInit {
 
   startEdit(item: MovimentoEstoqueItemResponse): void {
     this.editingItemId = item.id;
-    this.editingQuantidade = Number(item.quantidade || 0);
-    this.editingValorUnitario = Number(item.valorUnitario || 0);
+    this.editingQuantidade = this.toScaledNumber(item.quantidade, 3, 0) ?? 0;
+    this.editingValorUnitario = this.toScaledNumber(item.valorUnitario, 2, 0) ?? 0;
   }
 
   cancelEdit(): void {
@@ -108,6 +112,9 @@ export class MovimentoItensListComponent implements OnInit {
   onEditClick(event: Event, item: MovimentoEstoqueItemResponse): void {
     event.preventDefault();
     event.stopPropagation();
+    if (this.isEditOrDeleteDisabled(item)) {
+      return;
+    }
     if (this.inlineEditEnabled) {
       this.startEdit(item);
       return;
@@ -120,8 +127,8 @@ export class MovimentoItensListComponent implements OnInit {
     event.stopPropagation();
     const payload: MovimentoItemInlineSaveEvent = {
       item,
-      quantidade: Number(this.editingQuantidade || 0),
-      valorUnitario: Number(this.editingValorUnitario || 0)
+      quantidade: this.toScaledNumber(this.editingQuantidade, 3, 0) ?? 0,
+      valorUnitario: this.toScaledNumber(this.editingValorUnitario, 2, 0) ?? 0
     };
     this.dispatch(this.onSaveInline, this.saveInlineItem, payload);
   }
@@ -135,6 +142,9 @@ export class MovimentoItensListComponent implements OnInit {
   onDeleteClick(event: Event, item: MovimentoEstoqueItemResponse): void {
     event.preventDefault();
     event.stopPropagation();
+    if (this.isEditOrDeleteDisabled(item)) {
+      return;
+    }
     this.dispatch(this.onDelete, this.deleteItem, item);
   }
 
@@ -181,6 +191,23 @@ export class MovimentoItensListComponent implements OnInit {
     });
   }
 
+  itemUnidadeLabel(item: MovimentoEstoqueItemResponse): string {
+    const informed = (item?.tenantUnitSigla || '').trim();
+    if (informed) {
+      return informed;
+    }
+    const base = (item?.unidadeBaseCatalogoSigla || '').trim();
+    return base || '-';
+  }
+
+  isEditOrDeleteDisabled(item: MovimentoEstoqueItemResponse): boolean {
+    return this.itemSaving
+      || !this.actionButtonsEnabled
+      || this.movementFinalized
+      || !!item?.estoqueMovimentado
+      || !!item?.finalizado;
+  }
+
   private dispatch<T>(
     callback: ((payload: T) => void) | null | undefined,
     emitter: EventEmitter<T>,
@@ -225,6 +252,15 @@ export class MovimentoItensListComponent implements OnInit {
       return null;
     }
     return raw;
+  }
+
+  private toScaledNumber(value: unknown, scale: number, fallback: number | null): number | null {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return fallback;
+    }
+    const factor = Math.pow(10, scale);
+    return Math.round(parsed * factor) / factor;
   }
 
   private updateViewportColumns(): void {

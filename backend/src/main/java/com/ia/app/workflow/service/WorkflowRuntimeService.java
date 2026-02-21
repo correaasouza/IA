@@ -29,6 +29,7 @@ public class WorkflowRuntimeService {
   private final WorkflowTransitionRepository transitionRepository;
   private final WorkflowInstanceRepository instanceRepository;
   private final WorkflowOriginResolverRegistry originResolverRegistry;
+  private final WorkflowTransitionAccessService transitionAccessService;
 
   public WorkflowRuntimeService(
       WorkflowFeatureToggle featureToggle,
@@ -36,13 +37,15 @@ public class WorkflowRuntimeService {
       WorkflowStateRepository stateRepository,
       WorkflowTransitionRepository transitionRepository,
       WorkflowInstanceRepository instanceRepository,
-      WorkflowOriginResolverRegistry originResolverRegistry) {
+      WorkflowOriginResolverRegistry originResolverRegistry,
+      WorkflowTransitionAccessService transitionAccessService) {
     this.featureToggle = featureToggle;
     this.definitionRepository = definitionRepository;
     this.stateRepository = stateRepository;
     this.transitionRepository = transitionRepository;
     this.instanceRepository = instanceRepository;
     this.originResolverRegistry = originResolverRegistry;
+    this.transitionAccessService = transitionAccessService;
   }
 
   @Transactional
@@ -110,16 +113,18 @@ public class WorkflowRuntimeService {
     WorkflowInstance instance = instanceRepository.findByTenantIdAndOriginAndEntityId(tenantId, origin, entityId)
       .orElse(ensured);
     instance = syncInstanceWithPublishedDefinition(tenantId, origin, instance);
+    final WorkflowInstance currentInstance = instance;
     var transitions = transitionRepository
       .findAllByDefinitionIdAndFromStateIdAndEnabledTrueOrderByPriorityAscIdAsc(
-        instance.getDefinition().getId(),
-        instance.getCurrentState().getId())
+        currentInstance.getDefinition().getId(),
+        currentInstance.getCurrentState().getId())
       .stream()
       .map(item -> new WorkflowAvailableTransitionResponse(
         item.getTransitionKey(),
         item.getName(),
         item.getToState().getStateKey(),
-        item.getToState().getName()))
+        item.getToState().getName(),
+        transitionAccessService.buildControlKey(currentInstance.getDefinition(), item.getTransitionKey())))
       .toList();
     return new WorkflowRuntimeStateResponse(
       instance.getId(),

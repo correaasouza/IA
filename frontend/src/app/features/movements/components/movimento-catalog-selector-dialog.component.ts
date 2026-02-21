@@ -19,6 +19,7 @@ import {
   CatalogItemSummary,
   CatalogSearchPage,
   CatalogSearchParams,
+  MovimentoItemAllowedUnit,
   MovimentoTipoItemTemplate,
   MovementOperationService
 } from '../movement-operation.service';
@@ -40,6 +41,10 @@ interface GroupNodeView {
 export interface MovimentoCatalogSelectorSelectedItemState {
   movementItemTypeId: number;
   catalogItemId: number;
+  tenantUnitId?: string | null;
+  unidade?: string | null;
+  allowedUnits?: MovimentoItemAllowedUnit[];
+  unitsLoading?: boolean;
   quantidade: number;
   valorUnitario: number | null;
   observacao: string | null;
@@ -65,6 +70,8 @@ export interface MovimentoCatalogSelectorDialogState {
 export interface MovimentoCatalogSelectorResultItem {
   movementItemTypeId: number;
   catalogItemId: number;
+  tenantUnitId?: string | null;
+  unidade?: string | null;
   quantidade: number;
   valorUnitario: number | null;
   observacao: string | null;
@@ -358,6 +365,10 @@ export class MovimentoCatalogSelectorDialogComponent implements OnInit, OnDestro
     this.selectedItems.set(key, {
       movementItemTypeId,
       catalogItemId: item.id,
+      tenantUnitId: null,
+      unidade: item.unidade ?? null,
+      allowedUnits: [],
+      unitsLoading: true,
       quantidade: 1,
       valorUnitario,
       observacao: null,
@@ -366,6 +377,10 @@ export class MovimentoCatalogSelectorDialogComponent implements OnInit, OnDestro
       nome: item.nome,
       descricao: item.descricao ?? null
     });
+    const selected = this.selectedItems.get(key);
+    if (selected) {
+      this.loadAllowedUnitsForSelected(selected, selected.unidade || null);
+    }
   }
 
   selectAndConfirmItem(item: CatalogItemSummary): void {
@@ -379,18 +394,24 @@ export class MovimentoCatalogSelectorDialogComponent implements OnInit, OnDestro
 
 
   updateSelectedQuantidade(selected: MovimentoCatalogSelectorSelectedItemState, value: unknown): void {
-    const parsed = Number(value || 0);
-    selected.quantidade = Number.isFinite(parsed) ? parsed : 0;
+    selected.quantidade = this.toScaledNumber(value, 3, 0) ?? 0;
   }
 
   updateSelectedValorUnitario(selected: MovimentoCatalogSelectorSelectedItemState, value: unknown): void {
-    const parsed = Number(value);
-    selected.valorUnitario = Number.isFinite(parsed) ? parsed : null;
+    const parsed = this.toScaledNumber(value, 2, null);
+    selected.valorUnitario = parsed == null ? null : Math.max(0, parsed);
   }
 
   updateSelectedObservacao(selected: MovimentoCatalogSelectorSelectedItemState, value: string): void {
     const normalized = (value || '').trim();
     selected.observacao = normalized ? normalized : null;
+  }
+
+  updateSelectedUnit(selected: MovimentoCatalogSelectorSelectedItemState, tenantUnitId: string | null): void {
+    const normalized = `${tenantUnitId || ''}`.trim();
+    selected.tenantUnitId = normalized || null;
+    const option = (selected.allowedUnits || []).find(item => item.tenantUnitId === selected.tenantUnitId);
+    selected.unidade = option?.sigla || null;
   }
 
   removeSelected(selected: MovimentoCatalogSelectorSelectedItemState): void {
@@ -427,6 +448,10 @@ export class MovimentoCatalogSelectorDialogComponent implements OnInit, OnDestro
         this.notificationService.error('Selecione itens validos para adicionar.');
         return;
       }
+      if (!item.tenantUnitId) {
+        this.notificationService.error(`Selecione a unidade do item ${item.codigo} - ${item.nome}.`);
+        return;
+      }
       if (!Number.isFinite(item.quantidade) || item.quantidade <= 0) {
         this.notificationService.error(`Quantidade invalida para o item ${item.codigo} - ${item.nome}.`);
         return;
@@ -440,8 +465,10 @@ export class MovimentoCatalogSelectorDialogComponent implements OnInit, OnDestro
     const resultItems: MovimentoCatalogSelectorResultItem[] = items.map(item => ({
       movementItemTypeId: item.movementItemTypeId,
       catalogItemId: item.catalogItemId,
-      quantidade: item.quantidade,
-      valorUnitario: item.valorUnitario,
+      tenantUnitId: item.tenantUnitId ?? null,
+      unidade: item.unidade ?? null,
+      quantidade: this.toScaledNumber(item.quantidade, 3, 0) ?? 0,
+      valorUnitario: this.toScaledNumber(item.valorUnitario, 2, null),
       observacao: item.observacao,
       catalogType: item.catalogType,
       codigo: item.codigo,
@@ -723,6 +750,10 @@ export class MovimentoCatalogSelectorDialogComponent implements OnInit, OnDestro
       this.selectedItems.set(this.selectionKey(movementItemTypeId, catalogItemId), {
         movementItemTypeId,
         catalogItemId,
+        tenantUnitId: selected.tenantUnitId ?? null,
+        unidade: selected.unidade ?? null,
+        allowedUnits: [],
+        unitsLoading: true,
         quantidade: Number(selected.quantidade || 0),
         valorUnitario: selected.valorUnitario == null ? null : Number(selected.valorUnitario),
         observacao: selected.observacao || null,
@@ -731,6 +762,10 @@ export class MovimentoCatalogSelectorDialogComponent implements OnInit, OnDestro
         nome: selected.nome || '',
         descricao: selected.descricao || null
       });
+      const restored = this.selectedItems.get(this.selectionKey(movementItemTypeId, catalogItemId));
+      if (restored) {
+        this.loadAllowedUnitsForSelected(restored, selected.unidade || null);
+      }
     }
   }
 
@@ -748,6 +783,8 @@ export class MovimentoCatalogSelectorDialogComponent implements OnInit, OnDestro
       selectedItems: [...this.selectedItems.values()].map(item => ({
         movementItemTypeId: item.movementItemTypeId,
         catalogItemId: item.catalogItemId,
+        tenantUnitId: item.tenantUnitId ?? null,
+        unidade: item.unidade ?? null,
         quantidade: item.quantidade,
         valorUnitario: item.valorUnitario,
         observacao: item.observacao,
@@ -766,6 +803,15 @@ export class MovimentoCatalogSelectorDialogComponent implements OnInit, OnDestro
   private normalizePositive(value: unknown): number | null {
     const parsed = Number(value || 0);
     return parsed > 0 ? parsed : null;
+  }
+
+  private toScaledNumber(value: unknown, scale: number, fallback: number | null): number | null {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return fallback;
+    }
+    const factor = Math.pow(10, scale);
+    return Math.round(parsed * factor) / factor;
   }
 
   private resolveAtivoFromStatus(status: string | null | undefined): boolean | null {
@@ -788,6 +834,50 @@ export class MovimentoCatalogSelectorDialogComponent implements OnInit, OnDestro
 
   private currentData(): MovimentoCatalogSelectorDialogData {
     return this.panelData || this.data;
+  }
+
+  private loadAllowedUnitsForSelected(
+    selected: MovimentoCatalogSelectorSelectedItemState,
+    preferredSigla: string | null = null
+  ): void {
+    if (!selected.catalogType || !selected.catalogItemId) {
+      selected.allowedUnits = [];
+      selected.unitsLoading = false;
+      selected.tenantUnitId = null;
+      selected.unidade = null;
+      return;
+    }
+    selected.unitsLoading = true;
+    this.movementOperationService.listAllowedUnits(selected.catalogType, selected.catalogItemId)
+      .pipe(finalize(() => (selected.unitsLoading = false)))
+      .subscribe({
+        next: units => {
+          const allowed = [...(units || [])];
+          selected.allowedUnits = allowed;
+          if (!allowed.length) {
+            selected.tenantUnitId = null;
+            selected.unidade = null;
+            return;
+          }
+
+          const currentId = `${selected.tenantUnitId || ''}`.trim();
+          const preferredById = currentId
+            ? allowed.find(item => item.tenantUnitId === currentId)
+            : null;
+          const preferredBySigla = (preferredSigla || '').trim()
+            ? allowed.find(item => (item.sigla || '').trim().toUpperCase() === (preferredSigla || '').trim().toUpperCase())
+            : null;
+          const fallback = preferredById || preferredBySigla || allowed[0] || null;
+          selected.tenantUnitId = fallback?.tenantUnitId || null;
+          selected.unidade = fallback?.sigla || null;
+        },
+        error: err => {
+          selected.allowedUnits = [];
+          selected.tenantUnitId = null;
+          selected.unidade = null;
+          this.notificationService.error(err?.error?.detail || 'Nao foi possivel carregar as unidades permitidas do item.');
+        }
+      });
   }
 
   private updateViewportState(): void {

@@ -239,12 +239,17 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     return value === 'PRECO' ? 'Preco' : 'Quantidade';
   }
 
-  formatMetricValue(value: number | null): string {
+  formatMetricValue(value: number | null, metricType?: CatalogMovementMetricType | '' | null): string {
     if (value === null || value === undefined) return '-';
+    const decimalPlaces = metricType === 'PRECO' ? 2 : 3;
     return value.toLocaleString('pt-BR', {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 6
+      minimumFractionDigits: decimalPlaces,
+      maximumFractionDigits: decimalPlaces
     });
+  }
+
+  metricValueClass(metricType?: CatalogMovementMetricType | '' | null): string {
+    return metricType === 'PRECO' ? 'app-money-value' : 'app-qty-value';
   }
 
   private loadBalancesAndLedger(): void {

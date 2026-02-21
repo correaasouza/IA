@@ -3,17 +3,28 @@ package com.ia.app.service;
 import com.ia.app.domain.CatalogConfigurationType;
 import com.ia.app.domain.CatalogProduct;
 import com.ia.app.domain.CatalogServiceItem;
+import com.ia.app.domain.ConversionFactorSource;
 import com.ia.app.domain.MovimentoTipo;
+import com.ia.app.domain.TenantUnit;
 import com.ia.app.dto.MovimentoConfigItemTipoResponse;
 import com.ia.app.dto.MovimentoEstoqueItemRequest;
+import com.ia.app.dto.MovimentoItemAllowedUnitResponse;
 import com.ia.app.dto.MovimentoItemCatalogOptionResponse;
 import com.ia.app.dto.MovimentoConfigResolverResponse;
+import com.ia.app.dto.MovimentoItemUnitConversionPreviewRequest;
+import com.ia.app.dto.MovimentoItemUnitConversionPreviewResponse;
 import com.ia.app.repository.CatalogProductRepository;
 import com.ia.app.repository.CatalogServiceItemRepository;
+import com.ia.app.repository.TenantUnitRepository;
 import com.ia.app.tenant.EmpresaContext;
+import com.ia.app.tenant.TenantContext;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,7 +40,14 @@ public class MovimentoEstoqueItemCatalogService {
     Long catalogItemId,
     Long catalogCodigoSnapshot,
     String catalogNomeSnapshot,
+    UUID tenantUnitId,
+    String tenantUnitSigla,
+    UUID unidadeBaseCatalogoTenantUnitId,
+    String unidadeBaseCatalogoSigla,
     BigDecimal quantidade,
+    BigDecimal quantidadeConvertidaBase,
+    BigDecimal fatorAplicado,
+    ConversionFactorSource fatorFonte,
     BigDecimal valorUnitario,
     BigDecimal valorTotal,
     boolean cobrar,
@@ -42,18 +60,24 @@ public class MovimentoEstoqueItemCatalogService {
   private final CatalogItemContextService catalogItemContextService;
   private final CatalogProductRepository catalogProductRepository;
   private final CatalogServiceItemRepository catalogServiceItemRepository;
+  private final TenantUnitRepository tenantUnitRepository;
+  private final UnitConversionService unitConversionService;
 
   public MovimentoEstoqueItemCatalogService(
       MovimentoConfigService movimentoConfigService,
       MovimentoConfigItemTipoService movimentoConfigItemTipoService,
       CatalogItemContextService catalogItemContextService,
       CatalogProductRepository catalogProductRepository,
-      CatalogServiceItemRepository catalogServiceItemRepository) {
+      CatalogServiceItemRepository catalogServiceItemRepository,
+      TenantUnitRepository tenantUnitRepository,
+      UnitConversionService unitConversionService) {
     this.movimentoConfigService = movimentoConfigService;
     this.movimentoConfigItemTipoService = movimentoConfigItemTipoService;
     this.catalogItemContextService = catalogItemContextService;
     this.catalogProductRepository = catalogProductRepository;
     this.catalogServiceItemRepository = catalogServiceItemRepository;
+    this.tenantUnitRepository = tenantUnitRepository;
+    this.unitConversionService = unitConversionService;
   }
 
   @Transactional(readOnly = true)
@@ -90,8 +114,31 @@ public class MovimentoEstoqueItemCatalogService {
       case PRODUCTS -> resolveProductSnapshot(scope, catalogItemId);
       case SERVICES -> resolveServiceSnapshot(scope, catalogItemId);
     };
+    if (snapshot.unidadeBaseId() == null) {
+      throw new IllegalArgumentException("catalog_item_unit_required");
+    }
 
     BigDecimal quantidade = normalizeNonNegative(request.quantidade(), "movimento_estoque_item_quantidade_invalid");
+    UUID unidadeInformadaId = request.tenantUnitId() == null ? snapshot.unidadeBaseId() : request.tenantUnitId();
+    TenantUnit unidadeInformada = tenantUnitRepository.findByIdAndTenantId(unidadeInformadaId, scope.tenantId())
+      .orElseThrow(() -> new IllegalArgumentException("movimento_estoque_item_unidade_invalid"));
+    TenantUnit unidadeBase = tenantUnitRepository.findByIdAndTenantId(snapshot.unidadeBaseId(), scope.tenantId())
+      .orElseThrow(() -> new IllegalArgumentException("movimento_estoque_item_unidade_invalid"));
+
+    UnitConversionService.CatalogUnitRule conversionRule = new UnitConversionService.CatalogUnitRule(
+      snapshot.unidadeBaseId(),
+      snapshot.unidadeAlternativaId(),
+      snapshot.fatorAlternativo());
+    UnitConversionService.ConversionResolution baseToInformed = unitConversionService.resolveConversao(
+      scope.tenantId(),
+      snapshot.unidadeBaseId(),
+      unidadeInformadaId,
+      conversionRule);
+    BigDecimal fatorInformadaParaBase = BigDecimal.ONE
+      .divide(baseToInformed.fator(), UnitConversionService.FACTOR_SCALE, RoundingMode.HALF_UP)
+      .setScale(UnitConversionService.FACTOR_SCALE, RoundingMode.HALF_UP);
+    BigDecimal quantidadeConvertidaBase = unitConversionService.convert(quantidade, fatorInformadaParaBase);
+
     BigDecimal valorUnitarioInformado = request.valorUnitario() == null ? BigDecimal.ZERO : request.valorUnitario();
     BigDecimal valorUnitario = normalizeNonNegative(valorUnitarioInformado, "movimento_estoque_item_valor_unitario_invalid");
     boolean cobrar = vinculo.cobrar();
@@ -113,12 +160,86 @@ public class MovimentoEstoqueItemCatalogService {
       catalogItemId,
       snapshot.codigo(),
       snapshot.nome(),
+      unidadeInformadaId,
+      unidadeInformada.getSigla(),
+      snapshot.unidadeBaseId(),
+      unidadeBase.getSigla(),
       quantidade,
+      quantidadeConvertidaBase,
+      fatorInformadaParaBase,
+      baseToInformed.source(),
       valorUnitario,
       valorTotal,
       cobrar,
       ordem,
       observacao);
+  }
+
+  @Transactional(readOnly = true)
+  public List<MovimentoItemAllowedUnitResponse> listAllowedUnits(CatalogConfigurationType catalogType, Long catalogItemId) {
+    Long tenantId = requireTenant();
+    CatalogItemContextService.CatalogItemScope scope = catalogItemContextService.resolveObrigatorio(catalogType);
+    Snapshot snapshot = switch (catalogType) {
+      case PRODUCTS -> resolveProductSnapshot(scope, catalogItemId);
+      case SERVICES -> resolveServiceSnapshot(scope, catalogItemId);
+    };
+    if (snapshot.unidadeBaseId() == null) {
+      throw new IllegalArgumentException("catalog_item_unit_required");
+    }
+
+    UnitConversionService.CatalogUnitRule rule = new UnitConversionService.CatalogUnitRule(
+      snapshot.unidadeBaseId(),
+      snapshot.unidadeAlternativaId(),
+      snapshot.fatorAlternativo());
+    List<UnitConversionService.AllowedUnit> allowed = unitConversionService.listAllowedUnitsFromBase(tenantId, rule);
+
+    Set<UUID> unitIds = allowed.stream().map(UnitConversionService.AllowedUnit::unitId).collect(java.util.stream.Collectors.toSet());
+    Map<UUID, TenantUnit> unitById = tenantUnitRepository.findAllByTenantIdAndIdIn(tenantId, unitIds).stream()
+      .collect(java.util.stream.Collectors.toMap(TenantUnit::getId, unit -> unit, (a, b) -> a));
+
+    return allowed.stream()
+      .map(item -> {
+        TenantUnit unit = unitById.get(item.unitId());
+        if (unit == null) {
+          return null;
+        }
+        return new MovimentoItemAllowedUnitResponse(
+          unit.getId(),
+          unit.getSigla(),
+          unit.getNome(),
+          item.fatorBaseParaUnidade(),
+          item.source());
+      })
+      .filter(java.util.Objects::nonNull)
+      .sorted(Comparator.comparing(MovimentoItemAllowedUnitResponse::sigla, String.CASE_INSENSITIVE_ORDER))
+      .toList();
+  }
+
+  @Transactional(readOnly = true)
+  public MovimentoItemUnitConversionPreviewResponse previewConversion(MovimentoItemUnitConversionPreviewRequest request) {
+    if (request == null) {
+      throw new IllegalArgumentException("movimento_estoque_item_required");
+    }
+    Long tenantId = requireTenant();
+    UnitConversionService.PreviewResult preview = unitConversionService.preview(
+      tenantId,
+      request.catalogType(),
+      request.catalogItemId(),
+      request.unidadeOrigemId(),
+      request.unidadeDestinoId(),
+      request.quantidadeOrigem(),
+      request.valorUnitarioOrigem());
+    return new MovimentoItemUnitConversionPreviewResponse(
+      request.unidadeOrigemId(),
+      request.unidadeDestinoId(),
+      preview.fatorBaseParaOrigem(),
+      preview.fatorBaseParaDestino(),
+      preview.fatorOrigemParaDestino(),
+      preview.quantidadeDestino(),
+      preview.valorUnitarioDestino(),
+      preview.valorTotal(),
+      preview.quantidadeBase(),
+      preview.source());
   }
 
   private MovimentoConfigItemTipoResponse requireVinculo(Long movimentoConfigId, Long tipoItemId) {
@@ -137,7 +258,12 @@ public class MovimentoEstoqueItemCatalogService {
         scope.catalogConfigurationId(),
         scope.agrupadorId())
       .orElseThrow(() -> new IllegalArgumentException("movimento_estoque_item_catalogo_invalido"));
-    return new Snapshot(item.getCodigo(), item.getNome());
+    return new Snapshot(
+      item.getCodigo(),
+      item.getNome(),
+      item.getTenantUnitId(),
+      item.getUnidadeAlternativaTenantUnitId(),
+      item.getFatorConversaoAlternativa());
   }
 
   private Snapshot resolveServiceSnapshot(CatalogItemContextService.CatalogItemScope scope, Long catalogItemId) {
@@ -148,7 +274,12 @@ public class MovimentoEstoqueItemCatalogService {
         scope.catalogConfigurationId(),
         scope.agrupadorId())
       .orElseThrow(() -> new IllegalArgumentException("movimento_estoque_item_catalogo_invalido"));
-    return new Snapshot(item.getCodigo(), item.getNome());
+    return new Snapshot(
+      item.getCodigo(),
+      item.getNome(),
+      item.getTenantUnitId(),
+      item.getUnidadeAlternativaTenantUnitId(),
+      item.getFatorConversaoAlternativa());
   }
 
   private MovimentoItemCatalogOptionResponse toProductOption(CatalogProduct item) {
@@ -165,6 +296,14 @@ public class MovimentoEstoqueItemCatalogService {
       throw new IllegalArgumentException("movimento_empresa_context_required");
     }
     return empresaId;
+  }
+
+  private Long requireTenant() {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      throw new IllegalStateException("tenant_required");
+    }
+    return tenantId;
   }
 
   private Long requirePositive(Long value, String errorCode) {
@@ -196,5 +335,11 @@ public class MovimentoEstoqueItemCatalogService {
     return value.trim();
   }
 
-  private record Snapshot(Long codigo, String nome) {}
+  private record Snapshot(
+    Long codigo,
+    String nome,
+    UUID unidadeBaseId,
+    UUID unidadeAlternativaId,
+    BigDecimal fatorAlternativo
+  ) {}
 }

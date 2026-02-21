@@ -9,6 +9,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.math.BigDecimal;
+import java.util.UUID;
 
 @Entity
 @Table(
@@ -56,6 +58,25 @@ public class CatalogMovement extends AuditableEntity {
 
   @Column(name = "idempotency_key", nullable = false, length = 180)
   private String idempotencyKey;
+
+  @Column(name = "tenant_unit_id")
+  private UUID tenantUnitId;
+
+  @Column(name = "unidade_base_catalogo_tenant_unit_id")
+  private UUID unidadeBaseCatalogoTenantUnitId;
+
+  @Column(name = "quantidade_informada", precision = 19, scale = 6)
+  private BigDecimal quantidadeInformada;
+
+  @Column(name = "quantidade_convertida_base", precision = 19, scale = 6)
+  private BigDecimal quantidadeConvertidaBase;
+
+  @Column(name = "fator_aplicado", precision = 24, scale = 12)
+  private BigDecimal fatorAplicado;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "fator_fonte", length = 40)
+  private ConversionFactorSource fatorFonte;
 
   public Long getId() {
     return id;
@@ -147,5 +168,53 @@ public class CatalogMovement extends AuditableEntity {
 
   public void setIdempotencyKey(String idempotencyKey) {
     this.idempotencyKey = idempotencyKey;
+  }
+
+  public UUID getTenantUnitId() {
+    return tenantUnitId;
+  }
+
+  public void setTenantUnitId(UUID tenantUnitId) {
+    this.tenantUnitId = tenantUnitId;
+  }
+
+  public UUID getUnidadeBaseCatalogoTenantUnitId() {
+    return unidadeBaseCatalogoTenantUnitId;
+  }
+
+  public void setUnidadeBaseCatalogoTenantUnitId(UUID unidadeBaseCatalogoTenantUnitId) {
+    this.unidadeBaseCatalogoTenantUnitId = unidadeBaseCatalogoTenantUnitId;
+  }
+
+  public BigDecimal getQuantidadeInformada() {
+    return quantidadeInformada;
+  }
+
+  public void setQuantidadeInformada(BigDecimal quantidadeInformada) {
+    this.quantidadeInformada = quantidadeInformada;
+  }
+
+  public BigDecimal getQuantidadeConvertidaBase() {
+    return quantidadeConvertidaBase;
+  }
+
+  public void setQuantidadeConvertidaBase(BigDecimal quantidadeConvertidaBase) {
+    this.quantidadeConvertidaBase = quantidadeConvertidaBase;
+  }
+
+  public BigDecimal getFatorAplicado() {
+    return fatorAplicado;
+  }
+
+  public void setFatorAplicado(BigDecimal fatorAplicado) {
+    this.fatorAplicado = fatorAplicado;
+  }
+
+  public ConversionFactorSource getFatorFonte() {
+    return fatorFonte;
+  }
+
+  public void setFatorFonte(ConversionFactorSource fatorFonte) {
+    this.fatorFonte = fatorFonte;
   }
 }

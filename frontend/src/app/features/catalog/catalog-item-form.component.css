@@ -27,6 +27,18 @@
   background: #eef4ff;
 }
 
+.catalog-group-readonly {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px dashed var(--border-light);
+  border-radius: 8px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .catalog-status-chip {
   display: inline-flex;
   align-items: center;

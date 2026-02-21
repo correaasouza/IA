@@ -5,6 +5,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import java.math.BigDecimal;
+import java.util.UUID;
 
 @MappedSuperclass
 public abstract class CatalogItemBase extends AuditableEntity {
@@ -36,6 +38,18 @@ public abstract class CatalogItemBase extends AuditableEntity {
 
   @Column(name = "ativo", nullable = false)
   private boolean ativo = true;
+
+  @Column(name = "tenant_unit_id")
+  private UUID tenantUnitId;
+
+  @Column(name = "unidade_alternativa_tenant_unit_id")
+  private UUID unidadeAlternativaTenantUnitId;
+
+  @Column(name = "fator_conversao_alternativa", precision = 24, scale = 12)
+  private BigDecimal fatorConversaoAlternativa;
+
+  @Column(name = "has_stock_movements", nullable = false)
+  private boolean hasStockMovements = false;
 
   public Long getId() {
     return id;
@@ -103,5 +117,37 @@ public abstract class CatalogItemBase extends AuditableEntity {
 
   public void setAtivo(boolean ativo) {
     this.ativo = ativo;
+  }
+
+  public UUID getTenantUnitId() {
+    return tenantUnitId;
+  }
+
+  public void setTenantUnitId(UUID tenantUnitId) {
+    this.tenantUnitId = tenantUnitId;
+  }
+
+  public UUID getUnidadeAlternativaTenantUnitId() {
+    return unidadeAlternativaTenantUnitId;
+  }
+
+  public void setUnidadeAlternativaTenantUnitId(UUID unidadeAlternativaTenantUnitId) {
+    this.unidadeAlternativaTenantUnitId = unidadeAlternativaTenantUnitId;
+  }
+
+  public BigDecimal getFatorConversaoAlternativa() {
+    return fatorConversaoAlternativa;
+  }
+
+  public void setFatorConversaoAlternativa(BigDecimal fatorConversaoAlternativa) {
+    this.fatorConversaoAlternativa = fatorConversaoAlternativa;
+  }
+
+  public boolean isHasStockMovements() {
+    return hasStockMovements;
+  }
+
+  public void setHasStockMovements(boolean hasStockMovements) {
+    this.hasStockMovements = hasStockMovements;
   }
 }

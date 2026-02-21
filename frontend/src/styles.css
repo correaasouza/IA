@@ -373,31 +373,33 @@ body {
 
 /* Compact density for ERP record pages (fichas). */
 :where(.page-form-shell, .erp-form-dialog-dense) {
-  --erp-form-field-height: 40px;
+  --erp-form-field-height: 36px;
+  --erp-form-row-gap: 4px;
+  --erp-form-col-gap: 6px;
   --mdc-outlined-text-field-container-height: var(--erp-form-field-height);
   --mdc-filled-text-field-container-height: var(--erp-form-field-height);
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) form:not([role='search']) {
-  row-gap: 6px !important;
-  column-gap: 8px !important;
+  row-gap: var(--erp-form-row-gap) !important;
+  column-gap: var(--erp-form-col-gap) !important;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-text-field-wrapper {
   min-height: var(--erp-form-field-height);
-  padding-left: 8px;
-  padding-right: 8px;
+  padding-left: 6px;
+  padding-right: 6px;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-form-field-infix {
-  min-height: 24px;
-  padding-top: 3px;
-  padding-bottom: 3px;
+  min-height: 22px;
+  padding-top: 2px;
+  padding-bottom: 2px;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-input-element,
 :where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-select-trigger {
-  font-size: 12px;
+  font-size: 11.5px;
   line-height: 1.25;
 }
 
@@ -408,7 +410,7 @@ body {
 
 :where(.page-form-shell, .erp-form-dialog-dense) .mdc-floating-label,
 :where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-floating-label {
-  font-size: 11.5px;
+  font-size: 11px;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) .status-search-like {
@@ -429,7 +431,9 @@ body {
 
 @media (min-width: 1024px) {
   :where(.page-form-shell, .erp-form-dialog-dense) {
-    --erp-form-field-height: 38px;
+    --erp-form-field-height: 34px;
+    --erp-form-row-gap: 3px;
+    --erp-form-col-gap: 6px;
   }
 }
 
@@ -732,6 +736,19 @@ mat-icon {
 
 .table-sticky-actions .mat-mdc-header-cell.mat-column-acoes {
   z-index: 5;
+}
+
+/* Numeric standards: quantities (3 decimals) and monetary values (2 decimals). */
+.app-qty-input,
+.app-money-input {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-qty-value,
+.app-money-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 /* Desktop density for list pages: more rows visible and tighter headers. */

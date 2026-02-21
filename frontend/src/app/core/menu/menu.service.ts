@@ -104,7 +104,40 @@ export class MenuService {
           roles: ['MASTER', 'ADMIN'],
           perms: ['CONFIG_EDITOR']
         },
+        {
+          id: 'tenant-units',
+          label: 'Unidades Medida',
+          route: '/tenant-units',
+          accessKey: 'menu.tenant-units',
+          icon: 'straighten',
+          roles: ['MASTER', 'ADMIN'],
+          perms: ['CONFIG_EDITOR']
+        },
+        {
+          id: 'tenant-unit-conversions',
+          label: 'Conversoes Unid.',
+          route: '/tenant-unit-conversions',
+          accessKey: 'menu.tenant-unit-conversions',
+          icon: 'swap_horiz',
+          roles: ['MASTER', 'ADMIN'],
+          perms: ['CONFIG_EDITOR']
+        },        
         { id: 'entity-types', label: 'Tipos Ent.', route: '/entity-types', icon: 'category', roles: ['MASTER', 'ADMIN'], perms: ['ENTIDADE_EDIT'] }
+      ]
+    },
+    {
+      id: 'group-globals',
+      label: 'Globais',
+      icon: 'public',
+      children: [
+        {
+          id: 'global-official-units',
+          label: 'Unidades Oficiais',
+          route: '/global-settings/official-units',
+          accessKey: 'menu.global-official-units',
+          icon: 'public',
+          roles: ['MASTER']
+        }
       ]
     }
   ];

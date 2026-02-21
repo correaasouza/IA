@@ -8,9 +8,15 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import java.util.UUID;
 
 @Entity
-@Table(name = "movimento_estoque_item")
+@Table(
+  name = "movimento_estoque_item",
+  uniqueConstraints = {
+    @UniqueConstraint(name = "ux_movimento_estoque_item_codigo_scope", columnNames = {"tenant_id", "movimento_estoque_id", "codigo"})
+  })
 public class MovimentoEstoqueItem extends AuditableEntity {
 
   @Id
@@ -19,6 +25,9 @@ public class MovimentoEstoqueItem extends AuditableEntity {
 
   @Column(name = "tenant_id", nullable = false)
   private Long tenantId;
+
+  @Column(name = "codigo", nullable = false)
+  private Long codigo;
 
   @Column(name = "movimento_estoque_id", nullable = false)
   private Long movimentoEstoqueId;
@@ -47,6 +56,22 @@ public class MovimentoEstoqueItem extends AuditableEntity {
 
   @Column(name = "valor_total", nullable = false, precision = 19, scale = 6)
   private java.math.BigDecimal valorTotal = java.math.BigDecimal.ZERO;
+
+  @Column(name = "tenant_unit_id")
+  private UUID tenantUnitId;
+
+  @Column(name = "unidade_base_catalogo_tenant_unit_id")
+  private UUID unidadeBaseCatalogoTenantUnitId;
+
+  @Column(name = "quantidade_convertida_base", precision = 19, scale = 6)
+  private java.math.BigDecimal quantidadeConvertidaBase = java.math.BigDecimal.ZERO;
+
+  @Column(name = "fator_aplicado", precision = 24, scale = 12)
+  private java.math.BigDecimal fatorAplicado = java.math.BigDecimal.ONE;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "fator_fonte", length = 40)
+  private ConversionFactorSource fatorFonte = ConversionFactorSource.IDENTITY;
 
   @Column(name = "cobrar", nullable = false)
   private boolean cobrar = true;
@@ -85,6 +110,14 @@ public class MovimentoEstoqueItem extends AuditableEntity {
 
   public void setTenantId(Long tenantId) {
     this.tenantId = tenantId;
+  }
+
+  public Long getCodigo() {
+    return codigo;
+  }
+
+  public void setCodigo(Long codigo) {
+    this.codigo = codigo;
   }
 
   public Long getMovimentoEstoqueId() {
@@ -157,6 +190,46 @@ public class MovimentoEstoqueItem extends AuditableEntity {
 
   public void setValorTotal(java.math.BigDecimal valorTotal) {
     this.valorTotal = valorTotal;
+  }
+
+  public UUID getTenantUnitId() {
+    return tenantUnitId;
+  }
+
+  public void setTenantUnitId(UUID tenantUnitId) {
+    this.tenantUnitId = tenantUnitId;
+  }
+
+  public UUID getUnidadeBaseCatalogoTenantUnitId() {
+    return unidadeBaseCatalogoTenantUnitId;
+  }
+
+  public void setUnidadeBaseCatalogoTenantUnitId(UUID unidadeBaseCatalogoTenantUnitId) {
+    this.unidadeBaseCatalogoTenantUnitId = unidadeBaseCatalogoTenantUnitId;
+  }
+
+  public java.math.BigDecimal getQuantidadeConvertidaBase() {
+    return quantidadeConvertidaBase;
+  }
+
+  public void setQuantidadeConvertidaBase(java.math.BigDecimal quantidadeConvertidaBase) {
+    this.quantidadeConvertidaBase = quantidadeConvertidaBase;
+  }
+
+  public java.math.BigDecimal getFatorAplicado() {
+    return fatorAplicado;
+  }
+
+  public void setFatorAplicado(java.math.BigDecimal fatorAplicado) {
+    this.fatorAplicado = fatorAplicado;
+  }
+
+  public ConversionFactorSource getFatorFonte() {
+    return fatorFonte;
+  }
+
+  public void setFatorFonte(ConversionFactorSource fatorFonte) {
+    this.fatorFonte = fatorFonte;
   }
 
   public boolean isCobrar() {

@@ -1,5 +1,19 @@
 <section class="workflow-props" *ngIf="transition; else emptyTransitionTpl">
-  <div class="workflow-props-title">Propriedades da transicao</div>
+  <div class="workflow-props-header">
+    <div class="workflow-props-title">Propriedades da transicao</div>
+    <button
+      mat-stroked-button
+      type="button"
+      class="workflow-transition-access-btn"
+      [disabled]="!transitionControlKey"
+      [appAccessControl]="transitionControlKey"
+      [appAccessDescription]="transition.name || 'Transicao'"
+      [appAccessFallbackRoles]="['MASTER', 'ADMIN']"
+      [appAccessHide]="false">
+      <mat-icon>lock</mat-icon>
+      Acesso da transicao
+    </button>
+  </div>
 
   <mat-form-field appearance="outline">
     <mat-label>Nome</mat-label>
@@ -36,13 +50,21 @@
       <span>Acoes</span>
     </div>
 
-    <div class="workflow-action-toggle-row" *ngIf="isItemStockWorkflow()">
-      <mat-slide-toggle
-        [ngModel]="hasMoveStockAction()"
-        (ngModelChange)="setMoveStockAction($event)"
-        [disabled]="readOnly">
-        Movimenta estoque
-      </mat-slide-toggle>
+    <div class="workflow-grid-2" *ngIf="isItemStockWorkflow()">
+      <mat-form-field appearance="outline">
+        <mat-label>Acao da transicao do item</mat-label>
+        <mat-select
+          [ngModel]="itemActionType()"
+          (ngModelChange)="onItemActionTypeChange($event)"
+          [disabled]="readOnly">
+          <mat-option value="NONE">Nenhuma</mat-option>
+          <mat-option value="MOVE_STOCK">Movimenta estoque</mat-option>
+          <mat-option value="UNDO_STOCK">Desfaz estoque</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <div class="workflow-actions-help">
+        Configure a transicao para movimentar ou desfazer estoque conforme o estado de destino.
+      </div>
     </div>
 
     <div class="workflow-action-toggle-row" *ngIf="isMovementWorkflow()">

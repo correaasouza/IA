@@ -10,6 +10,9 @@ import com.ia.app.domain.CatalogConfigurationType;
 import com.ia.app.domain.CatalogNumberingMode;
 import com.ia.app.domain.CatalogStockType;
 import com.ia.app.domain.Empresa;
+import com.ia.app.domain.OfficialUnit;
+import com.ia.app.domain.OfficialUnitOrigin;
+import com.ia.app.domain.TenantUnit;
 import com.ia.app.dto.CatalogGroupRequest;
 import com.ia.app.dto.CatalogItemRequest;
 import com.ia.app.dto.CatalogItemResponse;
@@ -17,6 +20,8 @@ import com.ia.app.repository.AgrupadorEmpresaItemRepository;
 import com.ia.app.repository.AgrupadorEmpresaRepository;
 import com.ia.app.repository.CatalogStockTypeRepository;
 import com.ia.app.repository.EmpresaRepository;
+import com.ia.app.repository.OfficialUnitRepository;
+import com.ia.app.repository.TenantUnitRepository;
 import com.ia.app.tenant.EmpresaContext;
 import com.ia.app.tenant.TenantContext;
 import java.math.BigDecimal;
@@ -28,6 +33,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +54,7 @@ import org.springframework.transaction.annotation.Transactional;
   CatalogStockQueryService.class,
   CatalogItemCodeService.class,
   CatalogItemCrudSupportService.class,
+  CatalogUnitLockService.class,
   CatalogProductService.class,
   CatalogServiceCrudService.class,
   CatalogGroupService.class,
@@ -86,6 +93,12 @@ class CatalogCrudServiceTest {
   @Autowired
   private EmpresaRepository empresaRepository;
 
+  @Autowired
+  private OfficialUnitRepository officialUnitRepository;
+
+  @Autowired
+  private TenantUnitRepository tenantUnitRepository;
+
   @AfterEach
   void cleanContext() {
     EmpresaContext.clear();
@@ -110,13 +123,14 @@ class CatalogCrudServiceTest {
     Long tenantId = 102L;
     Long empresaId = createEmpresa(tenantId, "10200000000001");
     setupCatalogGroupLink(tenantId, empresaId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    UUID tenantUnitId = createTenantUnit(tenantId);
 
     ExecutorService pool = Executors.newFixedThreadPool(2);
     CountDownLatch ready = new CountDownLatch(2);
     CountDownLatch start = new CountDownLatch(1);
 
-    Callable<Long> c1 = () -> createProductWithSync(tenantId, empresaId, ready, start, "Item concorrente A");
-    Callable<Long> c2 = () -> createProductWithSync(tenantId, empresaId, ready, start, "Item concorrente B");
+    Callable<Long> c1 = () -> createProductWithSync(tenantId, empresaId, tenantUnitId, ready, start, "Item concorrente A");
+    Callable<Long> c2 = () -> createProductWithSync(tenantId, empresaId, tenantUnitId, ready, start, "Item concorrente B");
     Future<Long> f1 = pool.submit(c1);
     Future<Long> f2 = pool.submit(c2);
 
@@ -136,15 +150,16 @@ class CatalogCrudServiceTest {
     Long tenantId = 103L;
     Long empresaId = createEmpresa(tenantId, "10300000000001");
     var scope = setupCatalogGroupLink(tenantId, empresaId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    UUID tenantUnitId = createTenantUnit(tenantId);
 
     TenantContext.setTenantId(tenantId);
     configurationByGroupService.update(CatalogConfigurationType.PRODUCTS, scope.agrupadorId(), CatalogNumberingMode.MANUAL);
     EmpresaContext.setEmpresaId(empresaId);
 
-    CatalogItemRequest payload = new CatalogItemRequest(77L, "Item manual", "desc", null, true);
+    CatalogItemRequest payload = new CatalogItemRequest(77L, "Item manual", "desc", null, tenantUnitId, null, null, true);
     productService.create(payload);
 
-    assertThatThrownBy(() -> productService.create(new CatalogItemRequest(77L, "Item manual 2", null, null, true)))
+    assertThatThrownBy(() -> productService.create(new CatalogItemRequest(77L, "Item manual 2", null, null, tenantUnitId, null, null, true)))
       .isInstanceOf(IllegalArgumentException.class)
       .hasMessageContaining("catalog_item_codigo_duplicado");
   }
@@ -154,12 +169,13 @@ class CatalogCrudServiceTest {
     Long tenantId = 104L;
     Long empresaId = createEmpresa(tenantId, "10400000000001");
     var scope = setupCatalogGroupLink(tenantId, empresaId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    UUID tenantUnitId = createTenantUnit(tenantId);
     TenantContext.setTenantId(tenantId);
     EmpresaContext.setEmpresaId(empresaId);
 
     var group = groupService.create(CatalogConfigurationType.PRODUCTS, new CatalogGroupRequest("Lubrificantes", null));
-    productService.create(new CatalogItemRequest(null, "OLEO 5W30", "API SN", group.getId(), true));
-    productService.create(new CatalogItemRequest(null, "FILTRO AR", "Papel", null, true));
+    productService.create(new CatalogItemRequest(null, "OLEO 5W30", "API SN", group.getId(), tenantUnitId, null, null, true));
+    productService.create(new CatalogItemRequest(null, "FILTRO AR", "Papel", null, tenantUnitId, null, null, true));
 
     var byText = productService.list(null, "oleo", null, true, PageRequest.of(0, 20));
     var byGroup = productService.list(null, null, group.getId(), true, PageRequest.of(0, 20));
@@ -175,12 +191,13 @@ class CatalogCrudServiceTest {
     Long tenantId = 105L;
     Long empresaId = createEmpresa(tenantId, "10500000000001");
     setupCatalogGroupLink(tenantId, empresaId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    UUID tenantUnitId = createTenantUnit(tenantId);
     TenantContext.setTenantId(tenantId);
     EmpresaContext.setEmpresaId(empresaId);
 
     var root = groupService.create(CatalogConfigurationType.PRODUCTS, new CatalogGroupRequest("Raiz", null));
     var child = groupService.create(CatalogConfigurationType.PRODUCTS, new CatalogGroupRequest("Filho", root.getId()));
-    productService.create(new CatalogItemRequest(null, "ITEM VINCULADO", null, child.getId(), true));
+    productService.create(new CatalogItemRequest(null, "ITEM VINCULADO", null, child.getId(), tenantUnitId, null, null, true));
 
     assertThatThrownBy(() -> groupService.delete(CatalogConfigurationType.PRODUCTS, root.getId()))
       .isInstanceOf(IllegalArgumentException.class)
@@ -192,14 +209,15 @@ class CatalogCrudServiceTest {
     Long tenantId = 106L;
     Long empresaId = createEmpresa(tenantId, "10600000000001");
     setupCatalogGroupLink(tenantId, empresaId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    UUID tenantUnitId = createTenantUnit(tenantId);
     TenantContext.setTenantId(tenantId);
     EmpresaContext.setEmpresaId(empresaId);
 
-    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM INATIVO", null, null, true));
+    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM INATIVO", null, null, tenantUnitId, null, null, true));
 
     CatalogItemResponse inactive = productService.update(
       created.id(),
-      new CatalogItemRequest(null, created.nome(), created.descricao(), created.catalogGroupId(), false));
+      new CatalogItemRequest(null, created.nome(), created.descricao(), created.catalogGroupId(), created.tenantUnitId(), created.unidadeAlternativaTenantUnitId(), created.fatorConversaoAlternativa(), false));
     assertThat(inactive.ativo()).isFalse();
 
     CatalogItemResponse loadedInactive = productService.get(created.id());
@@ -207,7 +225,7 @@ class CatalogCrudServiceTest {
 
     CatalogItemResponse reactivated = productService.update(
       created.id(),
-      new CatalogItemRequest(null, created.nome(), created.descricao(), created.catalogGroupId(), true));
+      new CatalogItemRequest(null, created.nome(), created.descricao(), created.catalogGroupId(), created.tenantUnitId(), created.unidadeAlternativaTenantUnitId(), created.fatorConversaoAlternativa(), true));
     assertThat(reactivated.ativo()).isTrue();
   }
 
@@ -216,10 +234,11 @@ class CatalogCrudServiceTest {
     Long tenantId = 107L;
     Long empresaId = createEmpresa(tenantId, "10700000000001");
     setupCatalogGroupLink(tenantId, empresaId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    UUID tenantUnitId = createTenantUnit(tenantId);
     TenantContext.setTenantId(tenantId);
     EmpresaContext.setEmpresaId(empresaId);
 
-    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM SEM MOV", null, null, true));
+    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM SEM MOV", null, null, tenantUnitId, null, null, true));
 
     var page = stockQueryService.loadLedger(
       CatalogConfigurationType.PRODUCTS,
@@ -242,10 +261,11 @@ class CatalogCrudServiceTest {
     Long tenantId = 108L;
     Long empresaId = createEmpresa(tenantId, "10800000000001");
     var scope = setupCatalogGroupLink(tenantId, empresaId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    UUID tenantUnitId = createTenantUnit(tenantId);
     TenantContext.setTenantId(tenantId);
     EmpresaContext.setEmpresaId(empresaId);
 
-    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM ESTOQUE", null, null, true));
+    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM ESTOQUE", null, null, tenantUnitId, null, null, true));
 
     CatalogStockType secondaryStockType = new CatalogStockType();
     secondaryStockType.setTenantId(tenantId);
@@ -280,12 +300,13 @@ class CatalogCrudServiceTest {
     Long tenantId = 109L;
     Long empresaPrincipalId = createEmpresa(tenantId, "10900000000001");
     var scope = setupCatalogGroupLink(tenantId, empresaPrincipalId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    UUID tenantUnitId = createTenantUnit(tenantId);
     Long empresaSecundariaId = createEmpresa(tenantId, "10900000000002");
     linkEmpresaToCatalogGroup(tenantId, scope.catalogConfigurationId(), scope.agrupadorId(), empresaSecundariaId);
 
     TenantContext.setTenantId(tenantId);
     EmpresaContext.setEmpresaId(empresaPrincipalId);
-    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM DETALHAMENTO", null, null, true));
+    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM DETALHAMENTO", null, null, tenantUnitId, null, null, true));
 
     var view = stockQueryService.loadBalanceView(
       CatalogConfigurationType.PRODUCTS,
@@ -310,6 +331,7 @@ class CatalogCrudServiceTest {
   private Long createProductWithSync(
       Long tenantId,
       Long empresaId,
+      UUID tenantUnitId,
       CountDownLatch ready,
       CountDownLatch start,
       String nome) throws Exception {
@@ -318,7 +340,7 @@ class CatalogCrudServiceTest {
       EmpresaContext.setEmpresaId(empresaId);
       ready.countDown();
       start.await(2, TimeUnit.SECONDS);
-      CatalogItemResponse created = productService.create(new CatalogItemRequest(null, nome, null, null, true));
+      CatalogItemResponse created = productService.create(new CatalogItemRequest(null, nome, null, null, tenantUnitId, null, null, true));
       return created.codigo();
     } finally {
       EmpresaContext.clear();
@@ -373,5 +395,30 @@ class CatalogCrudServiceTest {
     empresa.setCnpj(cnpj);
     empresa.setAtivo(true);
     return empresaRepository.save(empresa).getId();
+  }
+
+  private UUID createTenantUnit(Long tenantId) {
+    OfficialUnit officialUnit = officialUnitRepository.findByCodigoOficialIgnoreCase("UN")
+      .orElseGet(() -> {
+        OfficialUnit unit = new OfficialUnit();
+        unit.setCodigoOficial("UN");
+        unit.setDescricao("UNIDADE");
+        unit.setAtivo(true);
+        unit.setOrigem(OfficialUnitOrigin.NFE_TABELA_UNIDADE_COMERCIAL);
+        return officialUnitRepository.saveAndFlush(unit);
+      });
+
+    return tenantUnitRepository.findByTenantIdAndUnidadeOficialIdAndSystemMirrorTrue(tenantId, officialUnit.getId())
+      .map(TenantUnit::getId)
+      .orElseGet(() -> {
+        TenantUnit unit = new TenantUnit();
+        unit.setTenantId(tenantId);
+        unit.setUnidadeOficialId(officialUnit.getId());
+        unit.setSigla("UN");
+        unit.setNome("Unidade");
+        unit.setFatorParaOficial(BigDecimal.ONE.setScale(UnitConversionService.FACTOR_SCALE, java.math.RoundingMode.HALF_UP));
+        unit.setSystemMirror(true);
+        return tenantUnitRepository.saveAndFlush(unit).getId();
+      });
   }
 }

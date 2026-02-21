@@ -58,7 +58,7 @@ export class CatalogItemsListComponent implements OnInit {
   context: CatalogItemContext | null = null;
 
   items: CatalogItem[] = [];
-  displayedColumns = ['codigo', 'nome', 'descricao', 'grupo', 'ativo', 'acoes'];
+  displayedColumns = ['codigo', 'nome', 'unidade', 'descricao', 'grupo', 'ativo', 'acoes'];
   totalElements = 0;
   pageIndex = 0;
   pageSize = 20;
@@ -538,6 +538,9 @@ export class CatalogItemsListComponent implements OnInit {
       nome: row.nome,
       descricao: row.descricao || null,
       catalogGroupId: row.catalogGroupId || null,
+      tenantUnitId: row.tenantUnitId,
+      unidadeAlternativaTenantUnitId: row.unidadeAlternativaTenantUnitId || null,
+      fatorConversaoAlternativa: row.fatorConversaoAlternativa ?? null,
       ativo
     };
   }

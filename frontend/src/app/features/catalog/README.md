@@ -45,6 +45,29 @@
 - Edicao: `/catalog/services/:id/edit`
 - Grupos: `/catalog/services/groups`
 
+## Unidades de medida e historico
+- Cada item de catalogo (produto/servico) deve ter `unidade base` obrigatoria.
+- O item pode ter `unidade alternativa` + `fator de conversao`, quando aplicavel.
+- Depois da primeira movimentacao de estoque do item, unidade base/alternativa/fator ficam bloqueados para alteracao.
+- Itens de movimento de estoque gravam:
+  - unidade informada no item;
+  - unidade base do catalogo;
+  - fator aplicado na conversao;
+  - quantidade informada e quantidade convertida para base.
+- O historico em `catalog_movement` congela snapshot de unidade e fator no momento do lancamento.
+- Regras de conversao retroativas nao recalculam movimentos ja lancados.
+
+## Ficha de item de catalogo
+- A ficha (`novo`, `consultar`, `editar`) exibe campo obrigatorio `Unidade` (unidade do locatario).
+- A ficha nao possui selecao manual de `Grupo`; o grupo atual fica apenas informativo na ficha.
+- Movimentacao entre grupos continua no fluxo de lista/arvore de grupos.
+
+## Endpoints de apoio para unidade em movimentos
+- `GET /api/movimentos/MOVIMENTO_ESTOQUE/catalogo-itens/{catalogType}/{catalogItemId}/allowed-units`
+- `POST /api/movimentos/MOVIMENTO_ESTOQUE/catalogo-itens/preview-conversion`
+- `GET /api/tenant/units`
+- `GET /api/tenant/unit-conversions`
+
 ## Observacoes
 - O CRUD resolve contexto por empresa selecionada no header global.
 - O modo de numeracao (`AUTOMATICA` ou `MANUAL`) vem da configuracao por agrupador da empresa.

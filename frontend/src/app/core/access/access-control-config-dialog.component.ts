@@ -12,6 +12,7 @@ import { RolesService } from '../../features/roles/roles.service';
 export interface AccessControlConfigDialogData {
   title: string;
   controlKey: string;
+  description?: string;
   selectedRoles: string[];
   fallbackRoles?: string[];
 }

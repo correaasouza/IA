@@ -40,7 +40,8 @@ import { MovimentoItensListComponent } from './components/movimento-itens-list.c
   styleUrls: ['./movimento-estoque-list.component.css']
 })
 export class MovimentoEstoqueListComponent implements OnInit {
-  displayedColumns = ['nome', 'movimentoConfig', 'tipoEntidadePadrao', 'status', 'acoes'];
+  displayedColumns = ['codigo', 'nome', 'movimentoConfig', 'tipoEntidadePadrao', 'status', 'acoes'];
+  contextWarning = '';
   rows: MovimentoEstoqueResponse[] = [];
   showTipoEntidadePadrao = false;
   selectedMovimentoId: number | null = null;
@@ -56,14 +57,14 @@ export class MovimentoEstoqueListComponent implements OnInit {
   isMobile = false;
   mobileFiltersOpen = false;
   workflowEnabled = true;
-  itemTransitionsByItemId: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
+  itemTransitionsByItemId: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null; controlKey?: string | null }>> = {};
   itemStateNamesByItemId: Record<number, string> = {};
   itemStateKeysByItemId: Record<number, string> = {};
   itemStateColorsByStateKey: Record<string, string> = {};
   movimentoStateNamesById: Record<number, string> = {};
   movimentoStateKeysById: Record<number, string> = {};
   movimentoStateColorsByStateKey: Record<string, string> = {};
-  movimentoTransitionsById: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
+  movimentoTransitionsById: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null; controlKey?: string | null }>> = {};
   private loadedItemColorConfigIds = new Set<number>();
   private loadedMovementColorConfigIds = new Set<number>();
 
@@ -85,7 +86,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
 
   ngOnInit(): void {
     this.updateViewportMode();
-    this.load(true);
+    this.refreshContextAndData();
   }
 
   @HostListener('window:resize')
@@ -95,7 +96,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
 
   @HostListener('window:empresa-context-updated')
   onEmpresaContextUpdated(): void {
-    this.load(true);
+    this.refreshContextAndData();
   }
 
   @HostListener('window:scroll')
@@ -112,6 +113,11 @@ export class MovimentoEstoqueListComponent implements OnInit {
   }
 
   load(reset = false, keepSelection = false): void {
+    if (!this.hasEmpresaContext()) {
+      this.applyMissingEmpresaContextState();
+      return;
+    }
+    this.contextWarning = '';
     if (this.loadingMoreRows) {
       return;
     }
@@ -169,17 +175,22 @@ export class MovimentoEstoqueListComponent implements OnInit {
         this.loadTransitionsForSelectedItems();
         this.showTipoEntidadePadrao = this.rows.some(item => item.tipoEntidadePadraoId != null);
         this.displayedColumns = this.showTipoEntidadePadrao
-          ? ['nome', 'movimentoConfig', 'tipoEntidadePadrao', 'status', 'acoes']
-          : ['nome', 'movimentoConfig', 'status', 'acoes'];
+          ? ['codigo', 'nome', 'movimentoConfig', 'tipoEntidadePadrao', 'status', 'acoes']
+          : ['codigo', 'nome', 'movimentoConfig', 'status', 'acoes'];
         this.ensureMovimentosFillViewport();
       },
       error: err => {
+        const detail = String(err?.error?.detail || '');
+        if (this.isMissingEmpresaContextError(detail)) {
+          this.applyMissingEmpresaContextState();
+          return;
+        }
         this.rows = [];
         this.totalElements = 0;
         this.pageIndex = 0;
         this.hasMoreRows = false;
         this.showTipoEntidadePadrao = false;
-        this.displayedColumns = ['nome', 'movimentoConfig', 'status', 'acoes'];
+        this.displayedColumns = ['codigo', 'nome', 'movimentoConfig', 'status', 'acoes'];
         this.notify.error(err?.error?.detail || 'Nao foi possivel carregar movimentos de estoque.');
       }
     });
@@ -279,6 +290,10 @@ export class MovimentoEstoqueListComponent implements OnInit {
   removeItem(item: MovimentoEstoqueItemResponse): void {
     const selected = this.selectedRow();
     if (!selected || this.itemSaving) return;
+    if (this.isMovementLocked(selected)) {
+      this.notify.error(this.lockedMovementReason());
+      return;
+    }
     const remaining = (selected.itens || []).filter(current => current.id !== item.id);
     const payload = {
       empresaId: selected.empresaId,
@@ -289,6 +304,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
       itens: remaining.map((current, idx) => ({
         movimentoItemTipoId: current.movimentoItemTipoId,
         catalogItemId: current.catalogItemId,
+        tenantUnitId: current.tenantUnitId || null,
         quantidade: current.quantidade,
         valorUnitario: current.valorUnitario,
         ordem: idx,
@@ -310,10 +326,18 @@ export class MovimentoEstoqueListComponent implements OnInit {
   }
 
   edit(row: MovimentoEstoqueResponse): void {
+    if (this.isMovementLocked(row)) {
+      this.notify.error(this.lockedMovementReason());
+      return;
+    }
     this.router.navigate(['/movimentos/estoque', row.id, 'edit'], { queryParams: { returnTo: '/movimentos/estoque' } });
   }
 
   remove(row: MovimentoEstoqueResponse): void {
+    if (this.isMovementLocked(row)) {
+      this.notify.error(this.lockedMovementReason());
+      return;
+    }
     const ref = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Excluir movimento',
@@ -337,6 +361,10 @@ export class MovimentoEstoqueListComponent implements OnInit {
   openItemOnMovimentoForm(item: MovimentoEstoqueItemResponse): void {
     const selected = this.selectedRow();
     if (!selected) {
+      return;
+    }
+    if (this.isMovementLocked(selected)) {
+      this.notify.error(this.lockedMovementReason());
       return;
     }
     this.router.navigate(['/movimentos/estoque', selected.id, 'edit'], {
@@ -380,6 +408,49 @@ export class MovimentoEstoqueListComponent implements OnInit {
     if (!this.isMobile) {
       this.mobileFiltersOpen = false;
     }
+  }
+
+  private refreshContextAndData(): void {
+    if (!this.hasEmpresaContext()) {
+      this.applyMissingEmpresaContextState();
+      return;
+    }
+    this.contextWarning = '';
+    this.load(true);
+  }
+
+  private hasEmpresaContext(): boolean {
+    return !!(localStorage.getItem('empresaContextId') || '').trim();
+  }
+
+  private applyMissingEmpresaContextState(): void {
+    this.contextWarning = 'Selecione uma empresa no topo do sistema para continuar.';
+    this.loading = false;
+    this.loadingMoreRows = false;
+    this.rows = [];
+    this.totalElements = 0;
+    this.pageIndex = 0;
+    this.hasMoreRows = false;
+    this.showTipoEntidadePadrao = false;
+    this.displayedColumns = ['codigo', 'nome', 'movimentoConfig', 'status', 'acoes'];
+    this.selectedMovimentoId = null;
+    this.visibleItemCount = this.itemChunkSize;
+    this.itemTransitionsByItemId = {};
+    this.itemStateNamesByItemId = {};
+    this.itemStateKeysByItemId = {};
+    this.itemStateColorsByStateKey = {};
+    this.movimentoStateNamesById = {};
+    this.movimentoStateKeysById = {};
+    this.movimentoStateColorsByStateKey = {};
+    this.movimentoTransitionsById = {};
+    this.loadedItemColorConfigIds.clear();
+    this.loadedMovementColorConfigIds.clear();
+  }
+
+  private isMissingEmpresaContextError(detail: string): boolean {
+    const normalized = (detail || '').trim().toLowerCase();
+    return normalized.includes('selecione uma empresa no topo do sistema')
+      || normalized.includes('movimento_empresa_context_required');
   }
 
   private syncSelectedRow(): void {
@@ -476,7 +547,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
     this.itemTransitionsByItemId = {};
     this.itemStateNamesByItemId = {};
     this.itemStateKeysByItemId = {};
-    const nextMap: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
+    const nextMap: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null; controlKey?: string | null }>> = {};
     const nextStateNames: Record<number, string> = {};
     const nextStateKeys: Record<number, string> = {};
     for (const item of items) {
@@ -544,7 +615,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
     return this.isValidHexColor(fallbackColor) ? fallbackColor : null;
   }
 
-  movementTransitions(row: MovimentoEstoqueResponse): Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }> {
+  movementTransitions(row: MovimentoEstoqueResponse): Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null; controlKey?: string | null }> {
     const rowId = Number(row?.id || 0);
     if (!rowId) {
       return [];
@@ -593,7 +664,7 @@ export class MovimentoEstoqueListComponent implements OnInit {
     this.movimentoTransitionsById = {};
     const nextStateNames: Record<number, string> = {};
     const nextStateKeys: Record<number, string> = {};
-    const nextTransitions: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
+    const nextTransitions: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null; controlKey?: string | null }>> = {};
     for (const row of this.rows) {
       const rowId = Number(row?.id || 0);
       if (!rowId) {
@@ -702,5 +773,13 @@ export class MovimentoEstoqueListComponent implements OnInit {
 
   private looksLikeUuid(value: string): boolean {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  }
+
+  isMovementLocked(row: MovimentoEstoqueResponse | null | undefined): boolean {
+    return !!row?.finalizado;
+  }
+
+  lockedMovementReason(): string {
+    return 'Movimento com situacao finalizada nao pode ser alterado nem excluido.';
   }
 }

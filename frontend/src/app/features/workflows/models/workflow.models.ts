@@ -1,6 +1,6 @@
 export type WorkflowOrigin = 'MOVIMENTO_ESTOQUE' | 'ITEM_MOVIMENTO_ESTOQUE';
 export type WorkflowDefinitionStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
-export type WorkflowActionType = 'MOVE_STOCK' | 'SET_ITEM_STATUS';
+export type WorkflowActionType = 'MOVE_STOCK' | 'UNDO_STOCK' | 'SET_ITEM_STATUS';
 export type WorkflowTriggerType = 'ON_TRANSITION' | 'ON_ENTER_STATE';
 export type WorkflowContextType = 'MOVIMENTO_CONFIG';
 
@@ -87,6 +87,7 @@ export interface WorkflowAvailableTransition {
   name: string;
   toStateKey: string;
   toStateName?: string | null;
+  controlKey?: string | null;
 }
 
 export interface WorkflowRuntimeState {

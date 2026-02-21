@@ -118,6 +118,9 @@ public class WorkflowValidationService {
         if (actionType == WorkflowActionType.MOVE_STOCK && origin != WorkflowOrigin.ITEM_MOVIMENTO_ESTOQUE) {
           errors.add("workflow_action_move_stock_origin_invalid");
         }
+        if (actionType == WorkflowActionType.UNDO_STOCK && origin != WorkflowOrigin.ITEM_MOVIMENTO_ESTOQUE) {
+          errors.add("workflow_action_undo_stock_origin_invalid");
+        }
         if (actionType == WorkflowActionType.SET_ITEM_STATUS && origin != WorkflowOrigin.MOVIMENTO_ESTOQUE) {
           errors.add("workflow_action_set_item_status_origin_invalid");
         }

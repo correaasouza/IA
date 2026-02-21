@@ -4,5 +4,6 @@ public record WorkflowAvailableTransitionResponse(
   String key,
   String name,
   String toStateKey,
-  String toStateName
+  String toStateName,
+  String controlKey
 ) {}

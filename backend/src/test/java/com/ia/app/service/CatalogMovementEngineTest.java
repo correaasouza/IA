@@ -9,6 +9,7 @@ import com.ia.app.domain.CatalogConfigurationType;
 import com.ia.app.domain.CatalogMovementMetricType;
 import com.ia.app.domain.CatalogMovementOriginType;
 import com.ia.app.domain.CatalogStockType;
+import com.ia.app.domain.ConversionFactorSource;
 import com.ia.app.domain.Empresa;
 import com.ia.app.domain.MovimentoConfig;
 import com.ia.app.domain.MovimentoTipo;
@@ -23,6 +24,7 @@ import com.ia.app.repository.MovimentoConfigRepository;
 import com.ia.app.repository.TipoEntidadeRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -87,6 +89,12 @@ class CatalogMovementEngineTest {
       "Carga inicial",
       "idem-engine-401",
       null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
       List.of(new CatalogMovementEngine.Impact(
         agrupador.getId(),
         CatalogMovementMetricType.QUANTIDADE,
@@ -113,6 +121,58 @@ class CatalogMovementEngineTest {
     assertThat(balances.get(0).getQuantidadeAtual()).isEqualByComparingTo("5.000000");
     assertThat(movementRepository.count()).isEqualTo(1);
     assertThat(lineRepository.count()).isEqualTo(1);
+  }
+
+  @Test
+  void shouldPersistUnitSnapshotFieldsInCatalogMovementHistory() {
+    Long tenantId = 402L;
+    CatalogConfiguration config = createCatalogConfig(tenantId, CatalogConfigurationType.PRODUCTS);
+    AgrupadorEmpresa agrupador = createCatalogGroup(tenantId, config.getId(), "Grupo Snapshot");
+    Empresa filial = createEmpresa(tenantId, "40200000000001");
+    CatalogStockType stockType = stockTypeSyncService.ensureDefaultForGroup(tenantId, config.getId(), agrupador.getId());
+    createMovimentoConfigEstoqueGlobal(tenantId, filial.getId());
+
+    UUID unidadeInformada = UUID.randomUUID();
+    UUID unidadeBase = UUID.randomUUID();
+    BigDecimal quantidadeInformada = new BigDecimal("2.500000");
+    BigDecimal quantidadeConvertidaBase = new BigDecimal("2500.000000");
+    BigDecimal fatorAplicado = new BigDecimal("1000.000000000000");
+
+    CatalogMovementEngine.Command command = new CatalogMovementEngine.Command(
+      tenantId,
+      CatalogConfigurationType.PRODUCTS,
+      2002L,
+      config.getId(),
+      agrupador.getId(),
+      CatalogMovementOriginType.SYSTEM,
+      "MOV-SNAPSHOT",
+      "ITEM-SNAPSHOT",
+      "Teste snapshot unidade",
+      "idem-engine-402",
+      null,
+      unidadeInformada,
+      unidadeBase,
+      quantidadeInformada,
+      quantidadeConvertidaBase,
+      fatorAplicado,
+      ConversionFactorSource.TENANT_CONVERSION,
+      List.of(new CatalogMovementEngine.Impact(
+        agrupador.getId(),
+        CatalogMovementMetricType.QUANTIDADE,
+        stockType.getId(),
+        filial.getId(),
+        quantidadeConvertidaBase)));
+
+    CatalogMovementEngine.Result result = engine.apply(command);
+
+    assertThat(result.reused()).isFalse();
+    var saved = movementRepository.findById(result.movementId()).orElseThrow();
+    assertThat(saved.getTenantUnitId()).isEqualTo(unidadeInformada);
+    assertThat(saved.getUnidadeBaseCatalogoTenantUnitId()).isEqualTo(unidadeBase);
+    assertThat(saved.getQuantidadeInformada()).isEqualByComparingTo(quantidadeInformada);
+    assertThat(saved.getQuantidadeConvertidaBase()).isEqualByComparingTo(quantidadeConvertidaBase);
+    assertThat(saved.getFatorAplicado()).isEqualByComparingTo(fatorAplicado);
+    assertThat(saved.getFatorFonte()).isEqualTo(ConversionFactorSource.TENANT_CONVERSION);
   }
 
   private CatalogConfiguration createCatalogConfig(Long tenantId, CatalogConfigurationType type) {

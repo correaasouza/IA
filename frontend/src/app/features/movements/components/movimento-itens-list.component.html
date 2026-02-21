@@ -1,5 +1,10 @@
 <div class="movimento-itens-table-wrap" *ngIf="!isMobile">
   <table mat-table [dataSource]="items" class="w-full movimento-itens-table">
+    <ng-container matColumnDef="codigo">
+      <th mat-header-cell *matHeaderCellDef class="text-right">Cod.</th>
+      <td mat-cell *matCellDef="let item" class="app-qty-value text-right">{{ item.codigo || '-' }}</td>
+    </ng-container>
+
     <ng-container matColumnDef="tipo">
       <th mat-header-cell *matHeaderCellDef>Tipo</th>
       <td mat-cell *matCellDef="let item">{{ item.movimentoItemTipoNome }}</td>
@@ -8,6 +13,11 @@
     <ng-container matColumnDef="catalogo">
       <th mat-header-cell *matHeaderCellDef>Item Catalogo</th>
       <td mat-cell *matCellDef="let item">{{ item.catalogCodigoSnapshot }} - {{ item.catalogNomeSnapshot }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="unidade">
+      <th mat-header-cell *matHeaderCellDef>Unidade</th>
+      <td mat-cell *matCellDef="let item">{{ itemUnidadeLabel(item) }}</td>
     </ng-container>
 
     <ng-container matColumnDef="status">
@@ -24,39 +34,39 @@
 
     <ng-container matColumnDef="quantidade">
       <th mat-header-cell *matHeaderCellDef class="text-right">Qtd</th>
-      <td mat-cell *matCellDef="let item" class="text-right">
+      <td mat-cell *matCellDef="let item" class="app-qty-value text-right">
         <ng-container *ngIf="inlineEditEnabled && isEditingItem(item); else qtdViewTpl">
           <input
             matInput
             type="number"
-            min="0.000001"
-            step="0.000001"
+            min="0.001"
+            step="0.001"
             [(ngModel)]="editingQuantidade"
-            class="w-24 text-right" />
+            class="app-qty-input w-24 text-right" />
         </ng-container>
-        <ng-template #qtdViewTpl>{{ item.quantidade | number : '1.2-6' }}</ng-template>
+        <ng-template #qtdViewTpl>{{ item.quantidade | number : '1.3-3' }}</ng-template>
       </td>
     </ng-container>
 
     <ng-container matColumnDef="valorUnitario">
       <th mat-header-cell *matHeaderCellDef class="text-right">Vlr Unit.</th>
-      <td mat-cell *matCellDef="let item" class="text-right">
+      <td mat-cell *matCellDef="let item" class="app-money-value text-right">
         <ng-container *ngIf="inlineEditEnabled && isEditingItem(item); else unitViewTpl">
           <input
             matInput
             type="number"
             min="0"
-            step="0.000001"
+            step="0.01"
             [(ngModel)]="editingValorUnitario"
-            class="w-24 text-right" />
+            class="app-money-input w-24 text-right" />
         </ng-container>
-        <ng-template #unitViewTpl>{{ item.valorUnitario | number : '1.2-6' }}</ng-template>
+        <ng-template #unitViewTpl>{{ item.valorUnitario | number : '1.2-2' }}</ng-template>
       </td>
     </ng-container>
 
     <ng-container matColumnDef="valorTotal">
       <th mat-header-cell *matHeaderCellDef class="text-right">Vlr Total</th>
-      <td mat-cell *matCellDef="let item" class="text-right">{{ item.valorTotal | number : '1.2-6' }}</td>
+      <td mat-cell *matCellDef="let item" class="app-money-value text-right">{{ item.valorTotal | number : '1.2-2' }}</td>
     </ng-container>
 
     <ng-container matColumnDef="cobrar">
@@ -92,7 +102,7 @@
             type="button"
             matTooltip="Alterar item"
             (click)="onEditClick($event, item)"
-            [disabled]="itemSaving || !actionButtonsEnabled">
+            [disabled]="isEditOrDeleteDisabled(item)">
             <mat-icon>edit</mat-icon>
           </button>
         </ng-template>
@@ -102,7 +112,7 @@
           type="button"
           color="warn"
           matTooltip="Excluir item"
-          [disabled]="itemSaving || !actionButtonsEnabled"
+          [disabled]="isEditOrDeleteDisabled(item)"
           (click)="onDeleteClick($event, item)">
           <mat-icon>delete</mat-icon>
         </button>
@@ -120,6 +130,7 @@
             <button
               mat-menu-item
               *ngFor="let transition of itemTransitions(item)"
+              [appAccessControl]="transition.controlKey || ''"
               (click)="onTransitionSelect($event, item, transition.key)">
               <span>{{ transition.name }}<ng-container *ngIf="transition.toStateName"> -> {{ transition.toStateName }}</ng-container></span>
             </button>
@@ -140,12 +151,20 @@
   <article class="movimento-item-card" *ngFor="let item of items">
     <div class="movimento-item-card-main">
       <div class="movimento-item-card-field">
+        <span class="movimento-item-card-label">Cod.</span>
+        <span class="movimento-item-card-value app-qty-value">{{ item.codigo || '-' }}</span>
+      </div>
+      <div class="movimento-item-card-field">
         <span class="movimento-item-card-label">Tipo</span>
         <span class="movimento-item-card-value">{{ item.movimentoItemTipoNome }}</span>
       </div>
       <div class="movimento-item-card-field">
         <span class="movimento-item-card-label">Item Catalogo</span>
         <span class="movimento-item-card-value">{{ item.catalogCodigoSnapshot }} - {{ item.catalogNomeSnapshot }}</span>
+      </div>
+      <div class="movimento-item-card-field">
+        <span class="movimento-item-card-label">Unidade</span>
+        <span class="movimento-item-card-value">{{ itemUnidadeLabel(item) }}</span>
       </div>
       <div class="movimento-item-card-field">
         <span class="movimento-item-card-label">Situacao</span>
@@ -159,15 +178,15 @@
       <div class="movimento-item-card-grid">
         <div class="movimento-item-card-field">
           <span class="movimento-item-card-label">Qtd</span>
-          <span class="movimento-item-card-value">{{ item.quantidade | number : '1.2-6' }}</span>
+          <span class="movimento-item-card-value app-qty-value">{{ item.quantidade | number : '1.3-3' }}</span>
         </div>
         <div class="movimento-item-card-field">
           <span class="movimento-item-card-label">Vlr Unit.</span>
-          <span class="movimento-item-card-value">{{ item.valorUnitario | number : '1.2-6' }}</span>
+          <span class="movimento-item-card-value app-money-value">{{ item.valorUnitario | number : '1.2-2' }}</span>
         </div>
         <div class="movimento-item-card-field">
           <span class="movimento-item-card-label">Vlr Total</span>
-          <span class="movimento-item-card-value">{{ item.valorTotal | number : '1.2-6' }}</span>
+          <span class="movimento-item-card-value app-money-value">{{ item.valorTotal | number : '1.2-2' }}</span>
         </div>
         <div class="movimento-item-card-field">
           <span class="movimento-item-card-label">Cobrar</span>
@@ -202,7 +221,7 @@
           type="button"
           matTooltip="Alterar item"
           (click)="onEditClick($event, item)"
-          [disabled]="itemSaving || !actionButtonsEnabled">
+          [disabled]="isEditOrDeleteDisabled(item)">
           <mat-icon>edit</mat-icon>
         </button>
       </ng-template>
@@ -212,7 +231,7 @@
         type="button"
         color="warn"
         matTooltip="Excluir item"
-        [disabled]="itemSaving || !actionButtonsEnabled"
+        [disabled]="isEditOrDeleteDisabled(item)"
         (click)="onDeleteClick($event, item)">
         <mat-icon>delete</mat-icon>
       </button>
@@ -230,6 +249,7 @@
           <button
             mat-menu-item
             *ngFor="let transition of itemTransitions(item)"
+            [appAccessControl]="transition.controlKey || ''"
             (click)="onTransitionSelect($event, item, transition.key)">
             <span>{{ transition.name }}<ng-container *ngIf="transition.toStateName"> -> {{ transition.toStateName }}</ng-container></span>
           </button>

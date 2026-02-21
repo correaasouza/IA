@@ -12,12 +12,16 @@ import jakarta.persistence.Version;
 @Table(
   name = "movimento_estoque",
   uniqueConstraints = {
-    @UniqueConstraint(name = "ux_movimento_estoque_id_tenant", columnNames = {"id", "tenant_id"})
+    @UniqueConstraint(name = "ux_movimento_estoque_id_tenant", columnNames = {"id", "tenant_id"}),
+    @UniqueConstraint(name = "ux_movimento_estoque_codigo_scope", columnNames = {"tenant_id", "movimento_config_id", "codigo"})
   })
 public class MovimentoEstoque extends MovimentoBase {
 
   @Column(name = "nome", nullable = false, length = 120)
   private String nome;
+
+  @Column(name = "codigo", nullable = false)
+  private Long codigo;
 
   @Column(name = "movimento_config_id", nullable = false)
   private Long movimentoConfigId;
@@ -56,6 +60,14 @@ public class MovimentoEstoque extends MovimentoBase {
 
   public void setMovimentoConfigId(Long movimentoConfigId) {
     this.movimentoConfigId = movimentoConfigId;
+  }
+
+  public Long getCodigo() {
+    return codigo;
+  }
+
+  public void setCodigo(Long codigo) {
+    this.codigo = codigo;
   }
 
   public Long getTipoEntidadePadraoId() {

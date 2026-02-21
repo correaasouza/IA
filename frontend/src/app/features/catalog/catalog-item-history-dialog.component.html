@@ -146,17 +146,17 @@
 
         <ng-container matColumnDef="antes">
           <th mat-header-cell *matHeaderCellDef class="text-right">Antes</th>
-          <td mat-cell *matCellDef="let row" class="text-right">{{ formatMetricValue(row.beforeValue) }}</td>
+          <td mat-cell *matCellDef="let row" class="text-right" [ngClass]="metricValueClass(row.metricType)">{{ formatMetricValue(row.beforeValue, row.metricType) }}</td>
         </ng-container>
 
         <ng-container matColumnDef="delta">
           <th mat-header-cell *matHeaderCellDef class="text-right">Delta</th>
-          <td mat-cell *matCellDef="let row" class="text-right">{{ formatMetricValue(row.delta) }}</td>
+          <td mat-cell *matCellDef="let row" class="text-right" [ngClass]="metricValueClass(row.metricType)">{{ formatMetricValue(row.delta, row.metricType) }}</td>
         </ng-container>
 
         <ng-container matColumnDef="depois">
           <th mat-header-cell *matHeaderCellDef class="text-right">Depois</th>
-          <td mat-cell *matCellDef="let row" class="text-right">{{ formatMetricValue(row.afterValue) }}</td>
+          <td mat-cell *matCellDef="let row" class="text-right" [ngClass]="metricValueClass(row.metricType)">{{ formatMetricValue(row.afterValue, row.metricType) }}</td>
         </ng-container>
 
         <ng-container matColumnDef="obs">
@@ -190,7 +190,7 @@
           </div>
           <div class="flex flex-col gap-0.5">
             <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Antes / Delta / Depois</span>
-            <span class="text-xs">{{ formatMetricValue(row.beforeValue) }} / {{ formatMetricValue(row.delta) }} / {{ formatMetricValue(row.afterValue) }}</span>
+            <span class="text-xs" [ngClass]="metricValueClass(row.metricType)">{{ formatMetricValue(row.beforeValue, row.metricType) }} / {{ formatMetricValue(row.delta, row.metricType) }} / {{ formatMetricValue(row.afterValue, row.metricType) }}</span>
           </div>
           <div class="col-span-2 flex flex-col gap-0.5">
             <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Observacao</span>

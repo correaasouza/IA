@@ -3,9 +3,11 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { AccessControlDirective } from '../../shared/access-control.directive';
 import { WorkflowActionConfig, WorkflowOrigin, WorkflowTransitionDefinition } from './models/workflow.models';
 
 @Component({
@@ -16,15 +18,18 @@ import { WorkflowActionConfig, WorkflowOrigin, WorkflowTransitionDefinition } fr
     FormsModule,
     MatButtonModule,
     MatFormFieldModule,
+    MatIconModule,
     MatInputModule,
     MatSelectModule,
-    MatSlideToggleModule
+    MatSlideToggleModule,
+    AccessControlDirective
   ],
   templateUrl: './workflow-transition-properties-panel.component.html',
   styleUrls: ['./workflow-transition-properties-panel.component.css']
 })
 export class WorkflowTransitionPropertiesPanelComponent {
   @Input() transition: WorkflowTransitionDefinition | null = null;
+  @Input() transitionControlKey = '';
   @Input() stateOptions: Array<{ key: string; name: string }> = [];
   @Input() itemStatusOptions: Array<{ key: string; name: string }> = [];
   @Input() origin: WorkflowOrigin = 'ITEM_MOVIMENTO_ESTOQUE';
@@ -48,26 +53,34 @@ export class WorkflowTransitionPropertiesPanelComponent {
     });
   }
 
-  hasMoveStockAction(): boolean {
-    return (this.transition?.actions || []).some(action => action?.type === 'MOVE_STOCK');
+  itemActionType(): 'NONE' | 'MOVE_STOCK' | 'UNDO_STOCK' {
+    const action = (this.transition?.actions || [])[0];
+    const normalized = (action?.type || '').trim().toUpperCase();
+    if (normalized === 'UNDO_STOCK') {
+      return 'UNDO_STOCK';
+    }
+    if (normalized === 'MOVE_STOCK') {
+      return 'MOVE_STOCK';
+    }
+    return 'NONE';
   }
 
-  setMoveStockAction(enabled: boolean): void {
+  onItemActionTypeChange(value: 'NONE' | 'MOVE_STOCK' | 'UNDO_STOCK'): void {
     if (!this.transition || this.readOnly) {
       return;
     }
-    this.transition.actions = enabled ? [this.normalizeItemAction(null)] : [];
+    if (value === 'NONE') {
+      this.transition.actions = [];
+      this.emitTransition();
+      return;
+    }
+    this.transition.actions = [this.normalizeItemAction({
+      type: value,
+      trigger: 'ON_TRANSITION',
+      requiresSuccess: true,
+      params: {}
+    })];
     this.emitTransition();
-  }
-
-  toggleMoveStockAction(): void {
-    if (!this.transition) {
-      return;
-    }
-    if (this.readOnly) {
-      return;
-    }
-    this.setMoveStockAction(!this.hasMoveStockAction());
   }
 
   hasSetItemStatusAction(): boolean {
@@ -130,8 +143,11 @@ export class WorkflowTransitionPropertiesPanelComponent {
   }
 
   private normalizeItemAction(action: WorkflowActionConfig | null | undefined): WorkflowActionConfig {
+    const actionType = (action?.type || '').trim().toUpperCase() === 'UNDO_STOCK'
+      ? 'UNDO_STOCK'
+      : 'MOVE_STOCK';
     return {
-      type: 'MOVE_STOCK',
+      type: actionType,
       trigger: 'ON_TRANSITION',
       requiresSuccess: true,
       params: action?.params || {}

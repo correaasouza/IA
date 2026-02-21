@@ -1,10 +1,22 @@
+:host {
+  display: block;
+  height: 100%;
+  min-height: 0;
+}
+
 .workflow-canvas {
   position: relative;
-  min-height: 360px;
+  min-height: clamp(460px, 58vh, 880px);
   border: 1px solid var(--border);
   border-radius: 12px;
-  overflow: hidden;
+  overflow: auto;
   background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+}
+
+.workflow-canvas-stage {
+  position: relative;
+  min-width: 100%;
+  min-height: 100%;
 }
 
 .workflow-canvas-grid {
@@ -20,6 +32,7 @@
   width: 100%;
   height: 100%;
   z-index: 1;
+  overflow: visible;
   pointer-events: none;
 }
 
@@ -199,4 +212,10 @@
   background: #2347a7;
   color: #ffffff;
   border-color: #2347a7;
+}
+
+@media (max-width: 900px) {
+  .workflow-canvas {
+    min-height: 360px;
+  }
 }

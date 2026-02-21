@@ -92,6 +92,10 @@
 - `Nome: <valor atual>` deve aparecer logo abaixo do subtitulo e atualizar em tempo real durante digitacao (fallback para dado carregado da API).
 - Em telas com padding superior no container, aplicar compensacao no sticky para evitar salto visual.
 - Toda ficha deve ter rotas dedicadas para `novo`, `consultar` e `editar` quando aplicavel.
+- Toda ficha deve usar layout compacto para alta densidade de campos, com wrapper `.page-form-shell`.
+- Campos de formulario em ficha devem priorizar altura reduzida e espacamento curto entre linhas/colunas (evitar blocos muito altos e gaps amplos).
+- Em desktop, formularios de ficha devem priorizar grade com 2 a 4 colunas quando o contexto permitir, preservando legibilidade.
+- Formularios de busca/filtro (`role='search'`) nao entram na regra de densidade da ficha.
 
 ### Padrao de ficha em dialog/modal
 
@@ -115,6 +119,15 @@
 - Com `appDateMask`, ao sair do campo:
   - `DD` completa para `DD/MM/AAAA` com mes/ano atuais.
   - `DDMM` completa para `DD/MM/AAAA` com ano atual.
+
+### Padrao global para campos numericos (quantidade e monetario)
+
+- Campos de quantidade devem usar 3 casas decimais fixas na exibicao (`number:'1.3-3'`).
+- Campos monetarios devem usar 2 casas decimais fixas na exibicao (`number:'1.2-2'`).
+- Inputs de quantidade devem usar `step="0.001"` e alinhamento a direita com classe `.app-qty-input`.
+- Inputs monetarios devem usar `step="0.01"` e alinhamento a direita com classe `.app-money-input`.
+- Valores renderizados em tabela/card devem usar alinhamento a direita com classes `.app-qty-value` e `.app-money-value`.
+- Ao montar payload de salvamento, normalizar quantidade para 3 casas e monetario para 2 casas para manter consistencia entre UI e API.
 
 ### Padrao global de controle de acesso por controle
 

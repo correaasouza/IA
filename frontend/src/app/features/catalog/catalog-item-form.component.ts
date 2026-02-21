@@ -19,7 +19,7 @@ import {
   CatalogItemPayload,
   CatalogItemService
 } from './catalog-item.service';
-import { CatalogGroupNode, CatalogGroupService } from './catalog-group.service';
+import { TenantUnit, UnitsService } from '../units/units.service';
 import {
   CatalogMovementMetricType,
   CatalogMovementOriginType,
@@ -58,7 +58,11 @@ export class CatalogItemFormComponent implements OnInit {
   context: CatalogItemContext | null = null;
   contextWarning = '';
 
-  groups: Array<{ id: number; nome: string }> = [];
+  unitOptions: TenantUnit[] = [];
+  catalogGroupIdLocked: number | null = null;
+  catalogGroupNomeLocked = '-';
+  unidadeAlternativaTenantUnitIdLocked: string | null = null;
+  fatorConversaoAlternativaLocked: number | null = null;
 
   loading = false;
   saving = false;
@@ -90,7 +94,7 @@ export class CatalogItemFormComponent implements OnInit {
     codigo: [null as number | null],
     nome: ['', [Validators.required, Validators.maxLength(200)]],
     descricao: ['', [Validators.maxLength(255)]],
-    catalogGroupId: [null as number | null],
+    tenantUnitId: ['', [Validators.required]],
     ativo: [true, Validators.required]
   });
 
@@ -108,7 +112,7 @@ export class CatalogItemFormComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private itemService: CatalogItemService,
-    private groupService: CatalogGroupService,
+    private unitsService: UnitsService,
     private stockService: CatalogStockService,
     private notify: NotificationService,
     private dialog: MatDialog
@@ -222,6 +226,10 @@ export class CatalogItemFormComponent implements OnInit {
       this.itemId = null;
       this.codigoInfo = 'Gerado ao salvar';
       this.activeTab = 'GERAL';
+      this.catalogGroupIdLocked = null;
+      this.catalogGroupNomeLocked = '-';
+      this.unidadeAlternativaTenantUnitIdLocked = null;
+      this.fatorConversaoAlternativaLocked = null;
       return;
     }
 
@@ -252,15 +260,15 @@ export class CatalogItemFormComponent implements OnInit {
           }
 
           this.contextWarning = '';
-          this.loadGroups();
-          this.applyNumberingMode();
-
-          if (this.itemId) {
-            this.loadItem(this.itemId);
-          } else {
-            this.clearStockData();
-            this.applyModeState();
-          }
+          this.loadUnitOptions(() => {
+            this.applyNumberingMode();
+            if (this.itemId) {
+              this.loadItem(this.itemId);
+            } else {
+              this.clearStockData();
+              this.applyModeState();
+            }
+          });
         },
         error: err => {
           this.context = null;
@@ -295,9 +303,14 @@ export class CatalogItemFormComponent implements OnInit {
       codigo: item.codigo,
       nome: item.nome,
       descricao: item.descricao || '',
-      catalogGroupId: item.catalogGroupId || null,
+      tenantUnitId: item.tenantUnitId || '',
       ativo: !!item.ativo
     });
+    this.catalogGroupIdLocked = item.catalogGroupId || null;
+    this.catalogGroupNomeLocked = item.catalogGroupNome || '-';
+    this.unidadeAlternativaTenantUnitIdLocked = item.unidadeAlternativaTenantUnitId || null;
+    this.fatorConversaoAlternativaLocked = item.fatorConversaoAlternativa ?? null;
+    this.ensureUnitOption(item.tenantUnitId, item.tenantUnitSigla, item.tenantUnitNome);
   }
 
   private applyModeState(): void {
@@ -332,43 +345,76 @@ export class CatalogItemFormComponent implements OnInit {
     codigoControl.updateValueAndValidity({ emitEvent: false });
   }
 
-  private loadGroups(): void {
-    this.groupService.tree(this.type).subscribe({
-      next: tree => {
-        this.groups = this.flatten(tree || []);
-      },
-      error: () => {
-        this.groups = [];
-      }
-    });
-  }
-
-  private flatten(
-    nodes: CatalogGroupNode[],
-    acc: Array<{ id: number; nome: string }> = [],
-    prefix = ''
-  ): Array<{ id: number; nome: string }> {
-    for (const node of nodes || []) {
-      const label = prefix ? `${prefix} / ${node.nome}` : node.nome;
-      acc.push({ id: node.id, nome: label });
-      this.flatten(node.children || [], acc, label);
-    }
-    return acc;
-  }
-
   private buildPayload(): CatalogItemPayload {
     const codigoValue = Number(this.form.value.codigo || 0);
     const codigo = this.context?.numberingMode === 'MANUAL' && Number.isFinite(codigoValue) && codigoValue > 0
       ? codigoValue
       : null;
+    const tenantUnitId = `${this.form.value.tenantUnitId || ''}`.trim();
 
     return {
       codigo,
       nome: (this.form.value.nome || '').trim(),
       descricao: (this.form.value.descricao || '').trim() || null,
-      catalogGroupId: this.toPositive(this.form.value.catalogGroupId),
+      catalogGroupId: this.catalogGroupIdLocked,
+      tenantUnitId,
+      unidadeAlternativaTenantUnitId: this.unidadeAlternativaTenantUnitIdLocked,
+      fatorConversaoAlternativa: this.fatorConversaoAlternativaLocked,
       ativo: !!this.form.value.ativo
     };
+  }
+
+  private loadUnitOptions(onLoaded: () => void): void {
+    this.unitsService.listTenantUnits().subscribe({
+      next: rows => {
+        this.unitOptions = [...(rows || [])].sort((a, b) => {
+          const aLabel = `${a.sigla || ''} ${a.nome || ''}`.trim();
+          const bLabel = `${b.sigla || ''} ${b.nome || ''}`.trim();
+          return aLabel.localeCompare(bLabel, 'pt-BR', { sensitivity: 'base' });
+        });
+        if (this.unitOptions.length === 0) {
+          this.contextWarning = 'Cadastre ao menos uma unidade em Configuracoes > Unidades Medida para usar o catalogo.';
+          this.form.disable();
+          this.clearStockData();
+          return;
+        }
+        if (this.mode === 'new' && !(this.form.value.tenantUnitId || '').trim()) {
+          const firstUnit = this.unitOptions[0];
+          if (firstUnit?.id) {
+            this.form.controls.tenantUnitId.setValue(firstUnit.id, { emitEvent: false });
+          }
+        }
+        onLoaded();
+      },
+      error: err => {
+        this.unitOptions = [];
+        this.contextWarning = err?.error?.detail || 'Nao foi possivel carregar unidades do locatario.';
+        this.form.disable();
+        this.clearStockData();
+      }
+    });
+  }
+
+  private ensureUnitOption(id: string | undefined | null, sigla?: string | null, nome?: string | null): void {
+    const unitId = `${id || ''}`.trim();
+    if (!unitId || this.unitOptions.some(unit => unit.id === unitId)) {
+      return;
+    }
+    this.unitOptions = [
+      ...this.unitOptions,
+      {
+        id: unitId,
+        tenantId: 0,
+        unidadeOficialId: '',
+        unidadeOficialCodigo: '',
+        unidadeOficialDescricao: '',
+        unidadeOficialAtiva: true,
+        sigla: (sigla || '').trim() || '-',
+        nome: (nome || '').trim() || 'Unidade sem descricao',
+        fatorParaOficial: 1,
+        systemMirror: false
+      }
+    ];
   }
 
   private toPositive(value: unknown): number | null {

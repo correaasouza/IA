@@ -37,6 +37,7 @@ export interface MovimentoTipoItemTemplate {
 export interface MovimentoEstoqueItemRequest {
   movimentoItemTipoId: number;
   catalogItemId: number;
+  tenantUnitId?: string | null;
   quantidade: number;
   valorUnitario: number;
   ordem?: number | null;
@@ -45,16 +46,27 @@ export interface MovimentoEstoqueItemRequest {
 
 export interface MovimentoEstoqueItemResponse {
   id: number;
+  codigo: number;
   movimentoItemTipoId: number;
   movimentoItemTipoNome: string;
   catalogType: 'PRODUCTS' | 'SERVICES';
   catalogItemId: number;
   catalogCodigoSnapshot: number;
   catalogNomeSnapshot: string;
+  tenantUnitId?: string | null;
+  tenantUnitSigla?: string | null;
+  unidadeBaseCatalogoTenantUnitId?: string | null;
+  unidadeBaseCatalogoSigla?: string | null;
   quantidade: number;
+  quantidadeConvertidaBase?: number | null;
+  fatorAplicado?: number | null;
+  fatorFonte?: 'IDENTITY' | 'ITEM_SPECIFIC' | 'TENANT_CONVERSION' | string | null;
   valorUnitario: number;
   valorTotal: number;
   cobrar: boolean;
+  estoqueMovimentado: boolean;
+  estoqueMovimentacaoId?: number | null;
+  finalizado: boolean;
   status?: string | null;
   ordem: number;
   observacao?: string | null;
@@ -97,6 +109,14 @@ export interface CatalogSearchPage {
   totalPages: number;
   number: number;
   size: number;
+}
+
+export interface MovimentoItemAllowedUnit {
+  tenantUnitId: string;
+  sigla: string;
+  nome: string;
+  fatorBaseParaUnidade: number;
+  fatorFonte?: 'IDENTITY' | 'ITEM_SPECIFIC' | 'TENANT_CONVERSION' | string | null;
 }
 
 export interface CatalogGroupTreeNode {
@@ -167,12 +187,14 @@ export interface MovimentoEstoqueUpdateRequest {
 
 export interface MovimentoEstoqueResponse {
   id: number;
+  codigo: number;
   tipoMovimento: string;
   empresaId: number;
   nome: string;
   movimentoConfigId: number;
   tipoEntidadePadraoId: number | null;
   stockAdjustmentId: number | null;
+  finalizado: boolean;
   status?: string | null;
   itens: MovimentoEstoqueItemResponse[];
   totalItens: number;
@@ -279,6 +301,12 @@ export class MovementOperationService {
       queryParams = queryParams.set('parentId', String(params.parentId));
     }
     return this.http.get<CatalogGroupTreeNode[]>(`${environment.apiBaseUrl}/api/catalog-groups/tree`, { params: queryParams });
+  }
+
+  listAllowedUnits(catalogType: 'PRODUCTS' | 'SERVICES', catalogItemId: number): Observable<MovimentoItemAllowedUnit[]> {
+    return this.http.get<MovimentoItemAllowedUnit[]>(
+      `${this.baseUrl}/${this.tipoEstoque}/catalogo-itens/${catalogType}/${catalogItemId}/allowed-units`
+    );
   }
 
   appendMovementItems(movementId: number, payload: MovementItemsBatchAddRequest): Observable<MovementItemsBatchAddResponse> {

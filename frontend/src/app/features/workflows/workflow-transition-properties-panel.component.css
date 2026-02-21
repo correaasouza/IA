@@ -12,6 +12,18 @@
   font-weight: 700;
 }
 
+.workflow-props-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.workflow-transition-access-btn {
+  min-height: 32px;
+}
+
 .workflow-grid-2 {
   display: grid;
   gap: 10px;

@@ -24,6 +24,9 @@ export interface CatalogItemPayload {
   nome: string;
   descricao?: string | null;
   catalogGroupId?: number | null;
+  tenantUnitId: string;
+  unidadeAlternativaTenantUnitId?: string | null;
+  fatorConversaoAlternativa?: number | null;
   ativo: boolean;
 }
 
@@ -38,6 +41,14 @@ export interface CatalogItem {
   codigo: number;
   nome: string;
   descricao?: string | null;
+  tenantUnitId: string;
+  tenantUnitSigla?: string | null;
+  tenantUnitNome?: string | null;
+  unidadeAlternativaTenantUnitId?: string | null;
+  unidadeAlternativaSigla?: string | null;
+  unidadeAlternativaNome?: string | null;
+  fatorConversaoAlternativa?: number | null;
+  hasStockMovements?: boolean;
   ativo: boolean;
 }
 

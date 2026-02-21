@@ -32,6 +32,8 @@ import org.springframework.data.domain.PageRequest;
 @Import({
   AuditingConfig.class,
   AuditService.class,
+  MovimentoEstoqueCodigoService.class,
+  MovimentoEstoqueLockService.class,
   MovimentoConfigService.class,
   MovimentoEstoqueOperacaoHandler.class,
   MovimentoOperacaoService.class,
@@ -84,13 +86,22 @@ class MovimentoOperacaoServiceTest {
     MovimentoEstoqueResponse created = estoqueHandler.create(objectMapper.valueToTree(request));
 
     assertThat(created.id()).isNotNull();
+    assertThat(created.codigo()).isEqualTo(1L);
     assertThat(created.empresaId()).isEqualTo(empresa.getId());
     assertThat(created.nome()).isEqualTo("Movimento de ajuste 31/12/2025");
     assertThat(created.movimentoConfigId()).isEqualTo(config.getId());
 
+    MovimentoEstoqueResponse created2 = estoqueHandler.create(objectMapper.valueToTree(
+      new MovimentoEstoqueCreateRequest(
+        empresa.getId(),
+        "Movimento de ajuste 01/01/2026",
+        null,
+        null,
+        List.of())));
+    assertThat(created2.codigo()).isEqualTo(2L);
+
     Page<MovimentoEstoqueResponse> page = estoqueHandler.list(PageRequest.of(0, 20), null);
-    assertThat(page.getTotalElements()).isEqualTo(1);
-    assertThat(page.getContent().get(0).id()).isEqualTo(created.id());
+    assertThat(page.getTotalElements()).isEqualTo(2);
   }
 
   @Test

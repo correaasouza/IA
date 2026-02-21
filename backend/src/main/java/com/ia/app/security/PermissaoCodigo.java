@@ -9,6 +9,7 @@ public enum PermissaoCodigo {
   MOVIMENTO_ESTOQUE_OPERAR("Operar movimento de estoque"),
   MOVIMENTO_ITEM_CONFIGURAR("Configurar tipos de itens de movimento"),
   MOVIMENTO_ESTOQUE_ITEM_OPERAR("Operar itens no movimento de estoque"),
+  MOVIMENTO_ESTOQUE_DESFAZER("Desfazer movimentacao de estoque do item"),
   WORKFLOW_CONFIGURAR("Configurar workflows"),
   WORKFLOW_TRANSICIONAR("Executar transicoes de workflow");
 

@@ -415,6 +415,9 @@ export class AppComponent {
       if (this.menuMode === 'operacao') {
         return item.id === 'group-cadastros';
       }
+      if (item.id === 'group-globals') {
+        return this.isMasterTenantContext();
+      }
       return item.id === 'group-access' || item.id === 'group-config';
     });
   }
@@ -623,6 +626,10 @@ export class AppComponent {
     return (localStorage.getItem('tenantId') || '').trim();
   }
 
+  private isMasterTenantContext(): boolean {
+    return this.getTenantId() === '1';
+  }
+
   private isStaleTenantRequest(requestTenantId: string): boolean {
     const activeTenantId = this.getTenantId();
     return !requestTenantId || !activeTenantId || requestTenantId !== activeTenantId || this.currentTenantId !== requestTenantId;
@@ -710,7 +717,8 @@ export class AppComponent {
       width: '460px',
       maxWidth: '92vw',
       data: {
-        title: `Configurar acesso do menu "${this.getMenuLabel(item)}"`,
+        title: `Configurar acesso para ${this.getMenuLabel(item)}`,
+        description: this.getMenuLabel(item),
         controlKey: key,
         selectedRoles: current,
         fallbackRoles: item.roles || []

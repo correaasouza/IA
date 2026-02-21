@@ -136,6 +136,12 @@ public class CatalogGroupTransferService {
         "Transferencia automatica ao mover empresa entre agrupadores de catalogo.",
         idempotencyKey,
         null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
         impacts);
 
       CatalogMovementEngine.Result result = movementEngine.apply(command);

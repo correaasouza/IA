@@ -80,7 +80,7 @@
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="isTabActive('GERAL')">
     <div class="mb-2 text-sm font-semibold">Dados do catálogo</div>
 
-    <form [formGroup]="form" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
+    <form [formGroup]="form" class="grid grid-cols-1 gap-2 md:grid-cols-3">
       <mat-form-field appearance="outline">
         <mat-label>Codigo</mat-label>
         <input matInput type="number" formControlName="codigo" />
@@ -89,20 +89,26 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Grupo</mat-label>
-        <mat-select formControlName="catalogGroupId">
-          <mat-option [value]="null">Sem grupo</mat-option>
-          <mat-option *ngFor="let group of groups" [value]="group.id">{{ group.nome }}</mat-option>
+        <mat-label>Unidade</mat-label>
+        <mat-select formControlName="tenantUnitId">
+          <mat-option *ngFor="let unit of unitOptions" [value]="unit.id">
+            {{ unit.sigla }} - {{ unit.nome }}
+          </mat-option>
         </mat-select>
+        <mat-error *ngIf="form.get('tenantUnitId')?.hasError('required')">Informe a unidade.</mat-error>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="md:col-span-2">
+      <div class="catalog-group-readonly md:col-span-3">
+        Grupo atual: <strong>{{ catalogGroupNomeLocked || '-' }}</strong>
+      </div>
+
+      <mat-form-field appearance="outline" class="md:col-span-3">
         <mat-label>Nome</mat-label>
         <input matInput formControlName="nome" />
         <mat-error *ngIf="form.get('nome')?.hasError('required')">Informe o nome.</mat-error>
       </mat-form-field>
 
-      <mat-form-field appearance="outline" class="md:col-span-2">
+      <mat-form-field appearance="outline" class="md:col-span-3">
         <mat-label>Descricao</mat-label>
         <textarea matInput rows="3" formControlName="descricao"></textarea>
       </mat-form-field>
@@ -161,8 +167,8 @@
                     (keydown.enter)="selectConsolidatedStockType(row.estoqueTipoId)"
                     (keydown.space)="selectConsolidatedStockType(row.estoqueTipoId); $event.preventDefault()">
                     <td>{{ row.estoqueTipoNome || row.estoqueTipoCodigo || ('#' + row.estoqueTipoId) }}</td>
-                    <td class="text-right">{{ row.quantidadeTotal | number:'1.0-6' }}</td>
-                    <td class="text-right">{{ row.precoTotal | number:'1.0-6' }}</td>
+                    <td class="app-qty-value text-right">{{ row.quantidadeTotal | number:'1.3-3' }}</td>
+                    <td class="app-money-value text-right">{{ row.precoTotal | number:'1.2-2' }}</td>
                   </tr>
                 </tbody>
               </table>
@@ -192,8 +198,8 @@
                   <tr *ngFor="let row of stockDetailRows">
                     <td>{{ row.estoqueTipoNome || row.estoqueTipoCodigo || ('#' + row.estoqueTipoId) }}</td>
                     <td>{{ row.filialNome || ('Empresa #' + row.filialId) }}</td>
-                    <td class="text-right">{{ row.quantidadeAtual | number:'1.0-6' }}</td>
-                    <td class="text-right">{{ row.precoAtual | number:'1.0-6' }}</td>
+                    <td class="app-qty-value text-right">{{ row.quantidadeAtual | number:'1.3-3' }}</td>
+                    <td class="app-money-value text-right">{{ row.precoAtual | number:'1.2-2' }}</td>
                   </tr>
                 </tbody>
               </table>

@@ -39,12 +39,17 @@ import {
 
 interface MovimentoEstoqueItemDraft {
   uid: number;
+  codigo: number | null;
   movimentoItemTipoId: number | null;
   catalogType: 'PRODUCTS' | 'SERVICES' | null;
   catalogItemId: number | null;
+  tenantUnitId: string | null;
+  tenantUnitSigla: string | null;
   quantidade: number;
   valorUnitario: number;
   cobrar: boolean;
+  estoqueMovimentado: boolean;
+  finalizado: boolean;
   ordem: number;
   observacao: string;
   status?: string | null;
@@ -97,7 +102,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   tipoEntidadeNomeById = new Map<number, string>();
   itemTypeNameById = new Map<number, string>();
   workflowEnabled = true;
-  itemTransitionsByItemId: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
+  itemTransitionsByItemId: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null; controlKey?: string | null }>> = {};
   itemStateNamesByItemId: Record<number, string> = {};
   itemStateKeysByItemId: Record<number, string> = {};
   itemStateColorsByStateKey: Record<string, string> = {};
@@ -175,6 +180,10 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     if (this.mode === 'view') {
       return;
     }
+    if (this.mode !== 'new' && this.isMovimentoFinalizado()) {
+      this.notify.error('Movimento finalizado. Nao e permitido alterar ou excluir.');
+      return;
+    }
     if (this.form.invalid) {
       this.form.markAllAsTouched();
       return;
@@ -231,6 +240,10 @@ export class MovimentoEstoqueFormComponent implements OnInit {
 
   remove(): void {
     if (!this.movimento?.id) return;
+    if (this.isMovimentoFinalizado()) {
+      this.notify.error('Movimento com situacao finalizada nao pode ser alterado nem excluido.');
+      return;
+    }
     const ref = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Excluir movimento',
@@ -256,6 +269,10 @@ export class MovimentoEstoqueFormComponent implements OnInit {
 
   toEdit(): void {
     if (!this.movimento?.id) return;
+    if (this.isMovimentoFinalizado()) {
+      this.notify.error('Movimento com situacao finalizada nao pode ser alterado nem excluido.');
+      return;
+    }
     this.router.navigate(['/movimentos/estoque', this.movimento.id, 'edit'], { queryParams: { returnTo: this.returnTo } });
   }
 
@@ -265,6 +282,11 @@ export class MovimentoEstoqueFormComponent implements OnInit {
 
   nomeAtual(): string {
     return (this.form.get('nome')?.value || this.movimento?.nome || '-').trim() || '-';
+  }
+
+  codigoAtual(): string {
+    const codigo = Number(this.movimento?.codigo || 0);
+    return codigo > 0 ? String(codigo) : '-';
   }
 
   empresaAtual(): string {
@@ -321,6 +343,9 @@ export class MovimentoEstoqueFormComponent implements OnInit {
 
   canRenderCatalogSelector(): boolean {
     if (this.mode === 'view') {
+      return false;
+    }
+    if (this.isMovimentoFinalizado()) {
       return false;
     }
     if (!this.itemTypesPermitidosView.length) {
@@ -421,21 +446,26 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     for (const item of items) {
       const movementItemTypeId = Number(item.movementItemTypeId || 0);
       const catalogItemId = Number(item.catalogItemId || 0);
-      const quantidade = Number(item.quantidade || 0);
+      const quantidade = this.toScaledNumber(item.quantidade, 3, 0) ?? 0;
       if (movementItemTypeId <= 0 || catalogItemId <= 0 || quantidade <= 0) {
         continue;
       }
       const itemType = this.itemTypesPermitidosView.find(current => current.tipoItemId === movementItemTypeId);
       const cobrar = itemType?.cobrar ?? true;
-      const valorUnitario = cobrar ? Number(item.valorUnitario || 0) : 0;
+      const valorUnitario = cobrar ? (this.toScaledNumber(item.valorUnitario, 2, 0) ?? 0) : 0;
       rowsToAppend.push({
         uid: this.nextRowUid++,
+        codigo: null,
         movimentoItemTipoId: movementItemTypeId,
         catalogType: item.catalogType,
         catalogItemId,
+        tenantUnitId: item.tenantUnitId || null,
+        tenantUnitSigla: item.unidade || null,
         quantidade,
         valorUnitario,
         cobrar,
+        estoqueMovimentado: false,
+        finalizado: false,
         ordem: this.itemRows.length + rowsToAppend.length,
         observacao: item.observacao || '',
         status: null,
@@ -485,9 +515,14 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     row.movimentoItemTipoId = movementItemTypeId > 0 ? movementItemTypeId : null;
     row.catalogType = itemType?.catalogType || selectedItem.catalogType || row.catalogType || 'PRODUCTS';
     row.catalogItemId = Number(selectedItem.catalogItemId || 0) || null;
-    row.quantidade = Number(selectedItem.quantidade || 0);
+    row.tenantUnitId = selectedItem.tenantUnitId || null;
+    row.tenantUnitSigla = selectedItem.unidade || null;
+    row.codigo = row.codigo && row.codigo > 0 ? row.codigo : null;
+    row.quantidade = this.toScaledNumber(selectedItem.quantidade, 3, 0) ?? 0;
     row.cobrar = itemType?.cobrar ?? row.cobrar;
-    row.valorUnitario = row.cobrar ? Number(selectedItem.valorUnitario || 0) : 0;
+    row.valorUnitario = row.cobrar ? (this.toScaledNumber(selectedItem.valorUnitario, 2, 0) ?? 0) : 0;
+    row.estoqueMovimentado = false;
+    row.finalizado = false;
     row.observacao = (selectedItem.observacao || '').trim();
     row.catalogSearchText = `${selectedItem.codigo} - ${selectedItem.nome}`;
     row.catalogOptions = [{
@@ -516,9 +551,9 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     if (!row.cobrar) {
       return 0;
     }
-    const quantidade = Number(row.quantidade || 0);
-    const valorUnitario = Number(row.valorUnitario || 0);
-    return quantidade * valorUnitario;
+    const quantidade = this.toScaledNumber(row.quantidade, 3, 0) ?? 0;
+    const valorUnitario = this.toScaledNumber(row.valorUnitario, 2, 0) ?? 0;
+    return this.toScaledNumber(quantidade * valorUnitario, 2, 0) ?? 0;
   }
 
   itensTotalCobrado(): number {
@@ -549,6 +584,10 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   }
 
   onSavedItemEdit(item: MovimentoEstoqueItemResponse): void {
+    if (this.isItemLockedForEdit(item)) {
+      this.notify.error(this.lockReason(item));
+      return;
+    }
     if (this.mode === 'view' && this.movimento?.id) {
       this.router.navigate(['/movimentos/estoque', this.movimento.id, 'edit'], {
         queryParams: {
@@ -574,6 +613,10 @@ export class MovimentoEstoqueFormComponent implements OnInit {
   }
 
   onSavedItemDelete(item: MovimentoEstoqueItemResponse): void {
+    if (this.isItemLockedForEdit(item)) {
+      this.notify.error(this.lockReason(item));
+      return;
+    }
     if (this.mode === 'view') {
       this.notify.info('Abra a ficha em modo de edicao para excluir itens.');
       return;
@@ -581,6 +624,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     const index = this.findRowIndexForItem(item);
     if (index >= 0) {
       this.removeItemRow(index);
+      this.persistMovementAfterItemSave();
     }
   }
 
@@ -629,11 +673,12 @@ export class MovimentoEstoqueFormComponent implements OnInit {
         this.notify.error(error);
         return null;
       }
-      const quantidade = Number(row.quantidade || 0);
-      const valorUnitario = row.cobrar ? Number(row.valorUnitario || 0) : 0;
+      const quantidade = this.toScaledNumber(row.quantidade, 3, 0) ?? 0;
+      const valorUnitario = row.cobrar ? (this.toScaledNumber(row.valorUnitario, 2, 0) ?? 0) : 0;
       requests.push({
         movimentoItemTipoId: row.movimentoItemTipoId!,
         catalogItemId: row.catalogItemId!,
+        tenantUnitId: row.tenantUnitId || null,
         quantidade,
         valorUnitario,
         ordem: current.idx,
@@ -709,6 +754,10 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       .subscribe({
         next: movimento => {
           this.movimento = movimento;
+          if (this.mode === 'edit' && !!movimento.finalizado) {
+            this.mode = 'view';
+            this.title = 'Consultar movimento de estoque';
+          }
           this.refreshAllowedViews();
           this.loadItemWorkflowStateColorsForCurrentConfig();
           this.ensureTipoEntidadeLabels([movimento.tipoEntidadePadraoId || 0]);
@@ -724,12 +773,17 @@ export class MovimentoEstoqueFormComponent implements OnInit {
           const loadedRows = (movimento.itens || []).map((item, idx) => ({
             // Preserve backend id so list-driven edit can target the exact row.
             uid: Number(item.id || 0) > 0 ? Number(item.id) : this.nextRowUid++,
+            codigo: Number(item.codigo || 0) > 0 ? Number(item.codigo) : (idx + 1),
             movimentoItemTipoId: item.movimentoItemTipoId,
             catalogType: item.catalogType,
             catalogItemId: item.catalogItemId,
-            quantidade: Number(item.quantidade || 0),
-            valorUnitario: Number(item.valorUnitario || 0),
+            tenantUnitId: item.tenantUnitId || null,
+            tenantUnitSigla: item.tenantUnitSigla || item.unidadeBaseCatalogoSigla || null,
+            quantidade: this.toScaledNumber(item.quantidade, 3, 0) ?? 0,
+            valorUnitario: this.toScaledNumber(item.valorUnitario, 2, 0) ?? 0,
             cobrar: item.cobrar,
+            estoqueMovimentado: !!item.estoqueMovimentado,
+            finalizado: !!item.finalizado,
             status: item.status || null,
             ordem: idx,
             observacao: item.observacao || '',
@@ -773,6 +827,15 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       return contextName;
     }
     return empresaId > 0 ? `Empresa #${empresaId}` : '-';
+  }
+
+  private toScaledNumber(value: unknown, scale: number, fallback: number | null): number | null {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+      return fallback;
+    }
+    const factor = Math.pow(10, scale);
+    return Math.round(parsed * factor) / factor;
   }
 
   private normalizeTipoEntidadeId(value: unknown): number | null {
@@ -831,7 +894,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     if (!row.catalogItemId) {
       return `Informe o item de catalogo na linha ${idx + 1}.`;
     }
-    const quantidade = Number(row.quantidade || 0);
+    const quantidade = this.toScaledNumber(row.quantidade, 3, 0) ?? 0;
     if (quantidade <= 0) {
       return `Quantidade deve ser maior que zero na linha ${idx + 1}.`;
     }
@@ -878,10 +941,11 @@ export class MovimentoEstoqueFormComponent implements OnInit {
         continue;
       }
       if (row.saved) {
-        const catalogSummary = this.parseCatalogSummary(row.catalogSearchText);
-        saved.push({
-          id: row.uid,
-          movimentoItemTipoId: row.movimentoItemTipoId || 0,
+          const catalogSummary = this.parseCatalogSummary(row.catalogSearchText);
+          saved.push({
+            id: row.uid,
+            codigo: Number(row.codigo || 0) > 0 ? Number(row.codigo) : (row.ordem + 1),
+            movimentoItemTipoId: row.movimentoItemTipoId || 0,
           movimentoItemTipoNome: row.movimentoItemTipoId
             ? (tipoNomeById.get(row.movimentoItemTipoId) || `Tipo #${row.movimentoItemTipoId}`)
             : '-',
@@ -889,10 +953,15 @@ export class MovimentoEstoqueFormComponent implements OnInit {
           catalogItemId: row.catalogItemId || 0,
           catalogCodigoSnapshot: catalogSummary.codigo,
           catalogNomeSnapshot: catalogSummary.nome,
-          quantidade: Number(row.quantidade || 0),
-          valorUnitario: Number(row.cobrar ? row.valorUnitario : 0),
+          tenantUnitId: row.tenantUnitId || null,
+          tenantUnitSigla: row.tenantUnitSigla || null,
+          quantidade: this.toScaledNumber(row.quantidade, 3, 0) ?? 0,
+          valorUnitario: this.toScaledNumber(row.cobrar ? row.valorUnitario : 0, 2, 0) ?? 0,
           valorTotal: this.lineTotal(row),
           cobrar: row.cobrar,
+          estoqueMovimentado: !!row.estoqueMovimentado,
+          estoqueMovimentacaoId: null,
+          finalizado: !!row.finalizado,
           status: row.status || null,
           ordem: row.ordem,
           observacao: row.observacao || null
@@ -995,8 +1064,10 @@ export class MovimentoEstoqueFormComponent implements OnInit {
       selectedItems: [{
         movementItemTypeId,
         catalogItemId,
-        quantidade: Number(row.quantidade || 0),
-        valorUnitario: row.cobrar ? Number(row.valorUnitario || 0) : 0,
+        tenantUnitId: row.tenantUnitId || null,
+        unidade: row.tenantUnitSigla || null,
+        quantidade: this.toScaledNumber(row.quantidade, 3, 0) ?? 0,
+        valorUnitario: row.cobrar ? (this.toScaledNumber(row.valorUnitario, 2, 0) ?? 0) : 0,
         observacao: (row.observacao || '').trim() || null,
         catalogType,
         codigo: Number(summary.codigo || 0),
@@ -1044,7 +1115,7 @@ export class MovimentoEstoqueFormComponent implements OnInit {
     this.itemTransitionsByItemId = {};
     this.itemStateNamesByItemId = {};
     this.itemStateKeysByItemId = {};
-    const nextMap: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null }>> = {};
+    const nextMap: Record<number, Array<{ key: string; name: string; toStateKey: string; toStateName?: string | null; controlKey?: string | null }>> = {};
     const nextStateNames: Record<number, string> = {};
     const nextStateKeys: Record<number, string> = {};
     for (const item of savedItems) {
@@ -1125,6 +1196,30 @@ export class MovimentoEstoqueFormComponent implements OnInit {
 
   private isValidHexColor(value: string): boolean {
     return /^#[\da-fA-F]{6}$/.test((value || '').trim());
+  }
+
+  private isMovimentoFinalizado(): boolean {
+    return this.mode !== 'new' && !!this.movimento?.finalizado;
+  }
+
+  private isItemLockedForEdit(item: MovimentoEstoqueItemResponse): boolean {
+    if (this.isMovimentoFinalizado()) {
+      return true;
+    }
+    return !!item?.estoqueMovimentado || !!item?.finalizado;
+  }
+
+  private lockReason(item: MovimentoEstoqueItemResponse): string {
+    if (this.isMovimentoFinalizado()) {
+      return 'Movimento finalizado. Nao e permitido alterar ou excluir itens.';
+    }
+    if (item?.finalizado) {
+      return 'Item finalizado. Nao e permitido alterar ou excluir.';
+    }
+    if (item?.estoqueMovimentado) {
+      return 'Item com movimentacao de estoque. Nao e permitido alterar ou excluir sem desfazer.';
+    }
+    return 'Item bloqueado para alteracao.';
   }
 }
 

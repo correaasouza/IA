@@ -23,6 +23,7 @@ import com.ia.app.dto.MovimentoTipoItemTemplateResponse;
 import com.ia.app.repository.CatalogStockAdjustmentRepository;
 import com.ia.app.repository.MovimentoEstoqueItemRepository;
 import com.ia.app.repository.MovimentoEstoqueRepository;
+import com.ia.app.repository.TenantUnitRepository;
 import com.ia.app.tenant.EmpresaContext;
 import com.ia.app.tenant.TenantContext;
 import com.ia.app.workflow.domain.WorkflowOrigin;
@@ -31,10 +32,13 @@ import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Stream;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -51,6 +55,7 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
 
   private final MovimentoEstoqueRepository repository;
   private final MovimentoEstoqueItemRepository itemRepository;
+  private final MovimentoEstoqueCodigoService codigoService;
   private final MovimentoConfigService movimentoConfigService;
   private final ObjectProvider<MovimentoConfigItemTipoService> movimentoConfigItemTipoServiceProvider;
   private final ObjectProvider<MovimentoEstoqueItemCatalogService> movimentoEstoqueItemCatalogServiceProvider;
@@ -58,12 +63,15 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
   private final ObjectProvider<CatalogStockAdjustmentConfigurationService> stockAdjustmentConfigurationServiceProvider;
   private final CatalogStockAdjustmentRepository stockAdjustmentRepository;
   private final ObjectProvider<WorkflowRuntimeService> workflowRuntimeServiceProvider;
+  private final TenantUnitRepository tenantUnitRepository;
+  private final MovimentoEstoqueLockService lockService;
   private final AuditService auditService;
   private final ObjectMapper objectMapper;
 
   public MovimentoEstoqueOperacaoHandler(
       MovimentoEstoqueRepository repository,
       MovimentoEstoqueItemRepository itemRepository,
+      MovimentoEstoqueCodigoService codigoService,
       MovimentoConfigService movimentoConfigService,
       ObjectProvider<MovimentoConfigItemTipoService> movimentoConfigItemTipoServiceProvider,
       ObjectProvider<MovimentoEstoqueItemCatalogService> movimentoEstoqueItemCatalogServiceProvider,
@@ -71,10 +79,13 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
       ObjectProvider<CatalogStockAdjustmentConfigurationService> stockAdjustmentConfigurationServiceProvider,
       CatalogStockAdjustmentRepository stockAdjustmentRepository,
       ObjectProvider<WorkflowRuntimeService> workflowRuntimeServiceProvider,
+      TenantUnitRepository tenantUnitRepository,
+      MovimentoEstoqueLockService lockService,
       AuditService auditService,
       ObjectMapper objectMapper) {
     this.repository = repository;
     this.itemRepository = itemRepository;
+    this.codigoService = codigoService;
     this.movimentoConfigService = movimentoConfigService;
     this.movimentoConfigItemTipoServiceProvider = movimentoConfigItemTipoServiceProvider;
     this.movimentoEstoqueItemCatalogServiceProvider = movimentoEstoqueItemCatalogServiceProvider;
@@ -82,6 +93,8 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
     this.stockAdjustmentConfigurationServiceProvider = stockAdjustmentConfigurationServiceProvider;
     this.stockAdjustmentRepository = stockAdjustmentRepository;
     this.workflowRuntimeServiceProvider = workflowRuntimeServiceProvider;
+    this.tenantUnitRepository = tenantUnitRepository;
+    this.lockService = lockService;
     this.auditService = auditService;
     this.objectMapper = objectMapper;
   }
@@ -146,6 +159,7 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
     entity.setTenantId(tenantId);
     entity.setEmpresaId(empresaId);
     entity.setNome(nome);
+    entity.setCodigo(codigoService.proximoCodigo(tenantId, resolver.configuracaoId()));
     entity.setMovimentoConfigId(resolver.configuracaoId());
     entity.setTipoEntidadePadraoId(tipoEntidadeId);
     entity.setStockAdjustmentId(stockAdjustmentId);
@@ -159,7 +173,7 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
       "MOVIMENTO_ESTOQUE_CRIADO",
       "movimento_estoque",
       String.valueOf(saved.getId()),
-      "empresaId=" + saved.getEmpresaId() + ";nome=" + saved.getNome());
+      "codigo=" + saved.getCodigo() + ";empresaId=" + saved.getEmpresaId() + ";nome=" + saved.getNome());
     return toResponse(saved);
   }
 
@@ -203,6 +217,9 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
     if (!Objects.equals(request.version(), entity.getVersion())) {
       throw new ObjectOptimisticLockingFailureException(MovimentoEstoque.class, id);
     }
+    List<MovimentoEstoqueItem> existingItems = itemRepository
+      .findAllByTenantIdAndMovimentoEstoqueIdOrderByOrdemAscIdAsc(tenantId, entity.getId());
+    lockService.assertMovimentoPermiteAlterarItens(tenantId, entity, existingItems);
 
     MovimentoConfigResolverResponse resolver = movimentoConfigService.resolve(
       MovimentoTipo.MOVIMENTO_ESTOQUE,
@@ -210,9 +227,13 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
       null);
     Long tipoEntidadeId = resolveTipoEntidadeId(resolver, request.tipoEntidadeId());
     Long stockAdjustmentId = resolveStockAdjustmentId(tenantId, request.stockAdjustmentId());
+    Long previousMovimentoConfigId = entity.getMovimentoConfigId();
 
     entity.setNome(nome);
     entity.setMovimentoConfigId(resolver.configuracaoId());
+    if (entity.getCodigo() == null || !Objects.equals(previousMovimentoConfigId, resolver.configuracaoId())) {
+      entity.setCodigo(codigoService.proximoCodigo(tenantId, resolver.configuracaoId()));
+    }
     entity.setTipoEntidadePadraoId(tipoEntidadeId);
     entity.setStockAdjustmentId(stockAdjustmentId);
 
@@ -225,7 +246,7 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
       "MOVIMENTO_ESTOQUE_ATUALIZADO",
       "movimento_estoque",
       String.valueOf(saved.getId()),
-      "empresaId=" + saved.getEmpresaId() + ";nome=" + saved.getNome());
+      "codigo=" + saved.getCodigo() + ";empresaId=" + saved.getEmpresaId() + ";nome=" + saved.getNome());
     return toResponse(saved);
   }
 
@@ -236,6 +257,9 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
     Long empresaId = requireEmpresaContext();
     MovimentoEstoque entity = findByIdForTenant(id, tenantId);
     assertEmpresaOwnership(entity, empresaId);
+    List<MovimentoEstoqueItem> existingItems = itemRepository
+      .findAllByTenantIdAndMovimentoEstoqueIdOrderByOrdemAscIdAsc(tenantId, entity.getId());
+    lockService.assertMovimentoPermiteAlterarItens(tenantId, entity, existingItems);
     itemRepository.deleteAllByTenantIdAndMovimentoEstoqueId(tenantId, entity.getId());
     repository.delete(entity);
     auditService.log(
@@ -249,6 +273,9 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
   private void replaceItens(MovimentoEstoque movimento, List<MovimentoEstoqueItemRequest> itens) {
     Long tenantId = movimento.getTenantId();
     itemRepository.deleteAllByTenantIdAndMovimentoEstoqueId(tenantId, movimento.getId());
+    // Evita colisao de codigo no mesmo movimento ao recriar itens no mesmo update.
+    // Sem flush explicito, o provider pode postergar DELETE e executar INSERT antes.
+    itemRepository.flush();
     if (itens == null || itens.isEmpty()) {
       return;
     }
@@ -261,13 +288,19 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
 
       MovimentoEstoqueItem entity = new MovimentoEstoqueItem();
       entity.setTenantId(tenantId);
+      entity.setCodigo((long) (pos + 1));
       entity.setMovimentoEstoqueId(movimento.getId());
       entity.setMovimentoItemTipoId(resolved.movimentoItemTipoId());
       entity.setCatalogType(resolved.catalogType());
       entity.setCatalogItemId(resolved.catalogItemId());
       entity.setCatalogCodigoSnapshot(resolved.catalogCodigoSnapshot());
       entity.setCatalogNomeSnapshot(resolved.catalogNomeSnapshot());
+      entity.setTenantUnitId(resolved.tenantUnitId());
+      entity.setUnidadeBaseCatalogoTenantUnitId(resolved.unidadeBaseCatalogoTenantUnitId());
       entity.setQuantidade(resolved.quantidade());
+      entity.setQuantidadeConvertidaBase(resolved.quantidadeConvertidaBase());
+      entity.setFatorAplicado(resolved.fatorAplicado());
+      entity.setFatorFonte(resolved.fatorFonte());
       entity.setValorUnitario(resolved.valorUnitario());
       entity.setValorTotal(resolved.valorTotal());
       entity.setCobrar(resolved.cobrar());
@@ -372,24 +405,48 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
   }
 
   private MovimentoEstoqueResponse toResponse(MovimentoEstoque entity) {
-    List<MovimentoEstoqueItemResponse> itens = itemRepository
-      .findAllByTenantIdAndMovimentoEstoqueIdOrderByOrdemAscIdAsc(entity.getTenantId(), entity.getId())
+    List<MovimentoEstoqueItem> itemEntities = itemRepository
+      .findAllByTenantIdAndMovimentoEstoqueIdOrderByOrdemAscIdAsc(entity.getTenantId(), entity.getId());
+    boolean movimentoFinalizado = lockService.isMovimentoFinalizado(entity.getTenantId(), entity.getId(), entity.getStatus());
+    Map<Long, Boolean> itemFinalizadoById = lockService.mapItensFinalizados(
+      entity.getTenantId(),
+      itemEntities.stream()
+        .map(MovimentoEstoqueItem::getId)
+        .filter(id -> id != null && id > 0)
+        .toList());
+    Map<UUID, String> unitSiglaById = loadUnitSiglas(entity.getTenantId(), itemEntities);
+
+    List<MovimentoEstoqueItemResponse> itens = itemEntities
       .stream()
-      .map(item -> new MovimentoEstoqueItemResponse(
-        item.getId(),
-        item.getMovimentoItemTipoId(),
-        resolveTipoItemNome(item.getMovimentoItemTipoId()),
-        item.getCatalogType(),
-        item.getCatalogItemId(),
-        item.getCatalogCodigoSnapshot(),
-        item.getCatalogNomeSnapshot(),
-        item.getQuantidade(),
-        item.getValorUnitario(),
-        item.getValorTotal(),
-        item.isCobrar(),
-        item.getStatus(),
-        item.getOrdem(),
-        item.getObservacao()))
+      .map(item -> {
+        boolean itemFinalizado = lockService.isItemFinalizado(item, itemFinalizadoById);
+        return new MovimentoEstoqueItemResponse(
+          item.getId(),
+          item.getCodigo(),
+          item.getMovimentoItemTipoId(),
+          resolveTipoItemNome(item.getMovimentoItemTipoId()),
+          item.getCatalogType(),
+          item.getCatalogItemId(),
+          item.getCatalogCodigoSnapshot(),
+          item.getCatalogNomeSnapshot(),
+          item.getTenantUnitId(),
+          unitSiglaById.get(item.getTenantUnitId()),
+          item.getUnidadeBaseCatalogoTenantUnitId(),
+          unitSiglaById.get(item.getUnidadeBaseCatalogoTenantUnitId()),
+          item.getQuantidade(),
+          item.getQuantidadeConvertidaBase(),
+          item.getFatorAplicado(),
+          item.getFatorFonte(),
+          item.getValorUnitario(),
+          item.getValorTotal(),
+          item.isCobrar(),
+          item.isEstoqueMovimentado(),
+          item.getEstoqueMovimentacaoId(),
+          itemFinalizado,
+          item.getStatus(),
+          item.getOrdem(),
+          item.getObservacao());
+      })
       .toList();
 
     BigDecimal totalCobrado = itens.stream()
@@ -399,12 +456,14 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
 
     return new MovimentoEstoqueResponse(
       entity.getId(),
+      entity.getCodigo(),
       entity.getTipoMovimento(),
       entity.getEmpresaId(),
       entity.getNome(),
       entity.getMovimentoConfigId(),
       entity.getTipoEntidadePadraoId(),
       entity.getStockAdjustmentId(),
+      movimentoFinalizado,
       entity.getStatus(),
       itens,
       itens.size(),
@@ -518,5 +577,27 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
     } catch (Exception ex) {
       return "-";
     }
+  }
+
+  private Map<UUID, String> loadUnitSiglas(Long tenantId, List<MovimentoEstoqueItem> itemEntities) {
+    Set<UUID> unitIds = new LinkedHashSet<>();
+    for (MovimentoEstoqueItem item : itemEntities) {
+      if (item == null) {
+        continue;
+      }
+      if (item.getTenantUnitId() != null) {
+        unitIds.add(item.getTenantUnitId());
+      }
+      if (item.getUnidadeBaseCatalogoTenantUnitId() != null) {
+        unitIds.add(item.getUnidadeBaseCatalogoTenantUnitId());
+      }
+    }
+    if (unitIds.isEmpty()) {
+      return java.util.Collections.emptyMap();
+    }
+    Map<UUID, String> map = new java.util.HashMap<>();
+    tenantUnitRepository.findAllByTenantIdAndIdIn(tenantId, unitIds)
+      .forEach(unit -> map.put(unit.getId(), unit.getSigla()));
+    return map;
   }
 }

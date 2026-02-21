@@ -12,6 +12,7 @@ import com.ia.app.repository.CatalogStockAdjustmentRepository;
 import com.ia.app.repository.MovimentoEstoqueItemRepository;
 import com.ia.app.repository.MovimentoEstoqueRepository;
 import com.ia.app.service.CatalogMovementEngine;
+import com.ia.app.service.CatalogUnitLockService;
 import com.ia.app.workflow.domain.WorkflowActionType;
 import com.ia.app.workflow.domain.WorkflowExecutionStatus;
 import com.ia.app.workflow.domain.WorkflowOrigin;
@@ -34,6 +35,7 @@ public class MoveStockAction implements WorkflowAction {
   private final MovimentoEstoqueRepository movimentoRepository;
   private final CatalogStockAdjustmentRepository stockAdjustmentRepository;
   private final CatalogMovementEngine catalogMovementEngine;
+  private final CatalogUnitLockService catalogUnitLockService;
   private final ObjectMapper objectMapper;
 
   public MoveStockAction(
@@ -41,11 +43,13 @@ public class MoveStockAction implements WorkflowAction {
       MovimentoEstoqueRepository movimentoRepository,
       CatalogStockAdjustmentRepository stockAdjustmentRepository,
       CatalogMovementEngine catalogMovementEngine,
+      CatalogUnitLockService catalogUnitLockService,
       ObjectMapper objectMapper) {
     this.itemRepository = itemRepository;
     this.movimentoRepository = movimentoRepository;
     this.stockAdjustmentRepository = stockAdjustmentRepository;
     this.catalogMovementEngine = catalogMovementEngine;
+    this.catalogUnitLockService = catalogUnitLockService;
     this.objectMapper = objectMapper;
   }
 
@@ -88,7 +92,7 @@ public class MoveStockAction implements WorkflowAction {
     }
 
     CatalogStockAdjustmentType adjustmentType = CatalogStockAdjustmentType.from(adjustment.getTipo());
-    BigDecimal quantidade = normalize(item.getQuantidade());
+    BigDecimal quantidade = normalize(item.getQuantidadeConvertidaBase() == null ? item.getQuantidade() : item.getQuantidadeConvertidaBase());
     BigDecimal valorTotal = normalize(item.getValorTotal());
 
     List<CatalogMovementEngine.Impact> impacts = new ArrayList<>();
@@ -144,6 +148,12 @@ public class MoveStockAction implements WorkflowAction {
       context.transitionNotes(),
       idempotencyKey,
       Instant.now(),
+      item.getTenantUnitId(),
+      item.getUnidadeBaseCatalogoTenantUnitId(),
+      normalize(item.getQuantidade()),
+      normalize(item.getQuantidadeConvertidaBase() == null ? item.getQuantidade() : item.getQuantidadeConvertidaBase()),
+      item.getFatorAplicado(),
+      item.getFatorFonte(),
       impacts);
 
     CatalogMovementEngine.Result result = catalogMovementEngine.apply(command);
@@ -154,6 +164,7 @@ public class MoveStockAction implements WorkflowAction {
     item.setEstoqueMovimentadoEm(Instant.now());
     item.setEstoqueMovimentadoPor(context.username());
     itemRepository.save(item);
+    catalogUnitLockService.markHasStockMovements(item.getTenantId(), item.getCatalogType(), item.getCatalogItemId());
 
     Map<String, Object> resultData = new LinkedHashMap<>();
     resultData.put("catalogMovementId", result.movementId());

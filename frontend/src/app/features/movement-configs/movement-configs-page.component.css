@@ -243,6 +243,18 @@
   padding: 0 !important;
 }
 
+:host ::ng-deep .workflow-config-dialog-panel .workflow-config-modal-content .page-header-sticky,
+:host ::ng-deep .workflow-config-dialog-panel .workflow-config-modal-content .page-list-sticky {
+  position: static !important;
+  top: auto !important;
+}
+
+:host ::ng-deep .workflow-config-dialog-panel .mov-config-dialog-title {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
 .mov-config-dialog-title {
   display: block;
   margin: 0;
@@ -261,6 +273,22 @@
   background: var(--surface);
   box-shadow: var(--shadow-xs);
   padding: 10px 12px;
+}
+
+.mov-config-dialog-header-card--workflow {
+  margin: 4px 10px 4px;
+  padding: 8px 10px;
+  align-items: center;
+}
+
+.mov-config-dialog-header-card--workflow .mov-config-dialog-title-label {
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.mov-config-dialog-header-card--workflow .mov-config-dialog-title-origin {
+  font-size: 11px;
+  line-height: 1.2;
 }
 
 .mov-config-dialog-title-main {
@@ -462,8 +490,8 @@
 }
 
 .workflow-config-modal-content {
-  padding: 12px 14px 10px;
-  max-height: min(76vh, 840px);
+  padding: 4px 10px 8px;
+  max-height: min(88vh, 1080px);
   overflow-y: auto;
   overflow-x: hidden;
 }

@@ -14,7 +14,11 @@ import org.springframework.data.repository.query.Param;
 
 public interface CatalogMovementRepository extends JpaRepository<CatalogMovement, Long> {
 
+  Optional<CatalogMovement> findByIdAndTenantId(Long id, Long tenantId);
+
   Optional<CatalogMovement> findByTenantIdAndIdempotencyKey(Long tenantId, String idempotencyKey);
+
+  boolean existsByTenantIdAndCatalogTypeAndCatalogoId(Long tenantId, CatalogConfigurationType catalogType, Long catalogoId);
 
   @Query(
     value = """

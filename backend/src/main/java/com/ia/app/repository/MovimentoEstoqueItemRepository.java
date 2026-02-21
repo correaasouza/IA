@@ -1,6 +1,7 @@
 package com.ia.app.repository;
 
 import com.ia.app.domain.MovimentoEstoqueItem;
+import com.ia.app.domain.CatalogConfigurationType;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
@@ -17,4 +18,13 @@ public interface MovimentoEstoqueItemRepository extends JpaRepository<MovimentoE
 
   @Lock(LockModeType.PESSIMISTIC_WRITE)
   Optional<MovimentoEstoqueItem> findWithLockByIdAndTenantId(Long id, Long tenantId);
+
+  Optional<MovimentoEstoqueItem> findTopByTenantIdAndMovimentoEstoqueIdOrderByCodigoDescIdDesc(
+    Long tenantId,
+    Long movimentoEstoqueId);
+
+  boolean existsByTenantIdAndCatalogTypeAndCatalogItemIdAndEstoqueMovimentadoTrue(
+    Long tenantId,
+    CatalogConfigurationType catalogType,
+    Long catalogItemId);
 }

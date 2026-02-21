@@ -612,17 +612,17 @@ export class MovementConfigsPageComponent implements OnInit {
     }
     this.workflowDialogOrigin = origin;
     if (this.workflowDialogRef) {
-      this.workflowDialogRef.updateSize('1200px');
+      this.workflowDialogRef.updateSize('1400px');
       return;
     }
     this.workflowDialogRef = this.dialog.open(this.workflowConfigDialog, {
-      width: '1200px',
-      maxWidth: '96vw',
-      maxHeight: 'calc(100dvh - 120px)',
+      width: '1400px',
+      maxWidth: '98vw',
+      maxHeight: 'calc(100dvh - 84px)',
       panelClass: 'workflow-config-dialog-panel',
       autoFocus: false,
       restoreFocus: true,
-      position: { top: '96px' }
+      position: { top: '64px' }
     });
     this.workflowDialogRef.afterClosed().subscribe(() => {
       this.workflowDialogRef = null;

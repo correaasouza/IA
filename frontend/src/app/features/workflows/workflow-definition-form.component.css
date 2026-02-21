@@ -13,8 +13,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .workflow-context-grid {
@@ -23,12 +23,25 @@
   margin-bottom: 10px;
 }
 
-.workflow-embedded-header {
+.workflow-builder-toolbar-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.workflow-builder-toolbar-meta {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-strong);
+}
+
+.workflow-builder-toolbar-actions {
+  margin-left: auto;
   display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
 }
 
 .workflow-context-field {
@@ -44,11 +57,39 @@
   display: grid;
   gap: 12px;
   grid-template-columns: 1fr;
+  align-items: start;
 }
 
 .workflow-builder-side {
   display: grid;
   gap: 10px;
+  align-content: start;
+  align-self: start;
+}
+
+.workflow-builder-grid > app-workflow-builder-canvas {
+  display: block;
+  min-width: 0;
+  height: 100%;
+}
+
+.workflow-definition-surface {
+  min-height: min(82vh, 980px);
+}
+
+.workflow-definition-surface--embedded {
+  min-height: 0;
+  padding-top: 8px;
+}
+
+.workflow-definition-surface--embedded .workflow-builder-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 12;
+  background: var(--surface);
+  margin: 0 -2px 10px;
+  padding: 4px 2px 8px;
+  border-bottom: 1px solid var(--border-light);
 }
 
 .workflow-transition-list {
@@ -70,8 +111,6 @@
 }
 
 .workflow-transition-list-body {
-  max-height: 180px;
-  overflow: auto;
   display: grid;
 }
 
@@ -109,12 +148,23 @@
   color: var(--muted);
 }
 
-@media (min-width: 1200px) {
+@media (min-width: 1024px) {
   .workflow-form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .workflow-builder-grid {
-    grid-template-columns: minmax(0, 2fr) minmax(340px, 1fr);
+    grid-template-columns: minmax(0, 3.2fr) minmax(320px, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .workflow-definition-surface {
+    min-height: auto;
+  }
+
+  .workflow-builder-toolbar-actions {
+    margin-left: 0;
+    width: 100%;
   }
 }

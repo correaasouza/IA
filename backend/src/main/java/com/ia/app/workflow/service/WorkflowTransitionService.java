@@ -22,6 +22,7 @@ import jakarta.persistence.EntityNotFoundException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -37,6 +38,7 @@ public class WorkflowTransitionService {
   private final WorkflowHistoryRepository historyRepository;
   private final WorkflowActionExecutor actionExecutor;
   private final WorkflowOriginResolverRegistry originResolverRegistry;
+  private final WorkflowTransitionAccessService transitionAccessService;
   private final AuditService auditService;
   private final ObjectMapper objectMapper;
 
@@ -48,6 +50,7 @@ public class WorkflowTransitionService {
       WorkflowHistoryRepository historyRepository,
       WorkflowActionExecutor actionExecutor,
       WorkflowOriginResolverRegistry originResolverRegistry,
+      WorkflowTransitionAccessService transitionAccessService,
       AuditService auditService,
       ObjectMapper objectMapper) {
     this.featureToggle = featureToggle;
@@ -57,6 +60,7 @@ public class WorkflowTransitionService {
     this.historyRepository = historyRepository;
     this.actionExecutor = actionExecutor;
     this.originResolverRegistry = originResolverRegistry;
+    this.transitionAccessService = transitionAccessService;
     this.auditService = auditService;
     this.objectMapper = objectMapper;
   }
@@ -83,6 +87,14 @@ public class WorkflowTransitionService {
     WorkflowTransition transition = transitionRepository
       .findByDefinitionIdAndTransitionKey(instance.getDefinition().getId(), transitionKey)
       .orElseThrow(() -> new IllegalArgumentException("workflow_transition_not_found"));
+
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    String transitionControlKey = transitionAccessService.buildControlKey(
+      instance.getDefinition(),
+      transition.getTransitionKey());
+    if (!transitionAccessService.canExecute(tenantId, transitionControlKey, authentication)) {
+      throw new AccessDeniedException("workflow_transition_access_denied");
+    }
 
     if (!transition.isEnabled()) {
       throw new IllegalArgumentException("workflow_transition_disabled");

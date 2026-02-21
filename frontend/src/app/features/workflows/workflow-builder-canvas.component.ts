@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, ElementRef, EventEmitter, HostListener, Input, OnChanges, Output, SimpleChanges, ViewChild } from '@angular/core';
-import { DragDropModule, CdkDragEnd } from '@angular/cdk/drag-drop';
+import { DragDropModule, CdkDragEnd, CdkDragMove } from '@angular/cdk/drag-drop';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { WorkflowStateDefinition, WorkflowTransitionDefinition } from './models/workflow.models';
@@ -24,12 +24,19 @@ interface TransitionViewModel {
 export class WorkflowBuilderCanvasComponent implements OnChanges {
   private readonly stateWidth = 180;
   private readonly stateHeight = 74;
+  private readonly stateHorizontalPadding = 80;
+  private readonly stateVerticalPadding = 120;
+  private readonly arrowGap = 8;
+  private readonly minCanvasWidth = 1200;
+  private readonly maxCanvasWidth = 8000;
+  private readonly maxCanvasHeight = 8000;
 
   @ViewChild('canvasRoot') canvasRoot?: ElementRef<HTMLElement>;
   @Input() states: WorkflowStateDefinition[] = [];
   @Input() transitions: WorkflowTransitionDefinition[] = [];
   @Input() selectedStateKey: string | null = null;
   @Input() selectedTransitionKey: string | null = null;
+  @Input() minHeightPx: number | null = null;
   @Input() readOnly = false;
   @Output() addState = new EventEmitter<void>();
   @Output() selectState = new EventEmitter<string>();
@@ -39,17 +46,28 @@ export class WorkflowBuilderCanvasComponent implements OnChanges {
   @Output() updateStateColor = new EventEmitter<{ key: string; color: string }>();
 
   transitionViews: TransitionViewModel[] = [];
+  canvasWidthPx = this.minCanvasWidth;
+  canvasHeightPx = 460;
   linkSourceStateKey: string | null = null;
   linkHoverStateKey: string | null = null;
   dragLinkActive = false;
+  private dragStateKey: string | null = null;
+  private dragStateX = 0;
+  private dragStateY = 0;
   private pointerX = 0;
   private pointerY = 0;
 
   ngOnChanges(_changes: SimpleChanges): void {
+    this.rebuildCanvasBounds();
     this.rebuildTransitionViews();
     if (this.linkSourceStateKey && !this.states.some(item => item.key === this.linkSourceStateKey)) {
       this.resetLinkMode();
     }
+  }
+
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.rebuildCanvasBounds();
   }
 
   onDragEnd(state: WorkflowStateDefinition, event: CdkDragEnd): void {
@@ -57,7 +75,22 @@ export class WorkflowBuilderCanvasComponent implements OnChanges {
       return;
     }
     const point = event.source.getFreeDragPosition();
-    this.moveState.emit({ key: state.key, x: Math.round(point.x), y: Math.round(point.y) });
+    const x = this.clampPosition(Math.round(point.x), this.maxCanvasWidth);
+    const y = this.clampPosition(Math.round(point.y), this.maxCanvasHeight);
+    event.source.setFreeDragPosition({ x, y });
+    this.dragStateKey = null;
+    this.rebuildCanvasBounds(state.key, x, y);
+    this.moveState.emit({ key: state.key, x, y });
+  }
+
+  onDragMove(state: WorkflowStateDefinition, event: CdkDragMove): void {
+    const point = event.source.getFreeDragPosition();
+    const x = this.clampPosition(Math.round(point.x), this.maxCanvasWidth);
+    const y = this.clampPosition(Math.round(point.y), this.maxCanvasHeight);
+    this.dragStateKey = state.key;
+    this.dragStateX = x;
+    this.dragStateY = y;
+    this.rebuildCanvasBounds(state.key, x, y);
   }
 
   onStateClick(stateKey: string): void {
@@ -186,18 +219,21 @@ export class WorkflowBuilderCanvasComponent implements OnChanges {
     }
     const sourceX = Number(source.uiX || 0);
     const sourceY = Number(source.uiY || 0);
-    const sourceCenterX = sourceX + this.stateWidth / 2;
-    const sourceCenterY = sourceY + this.stateHeight / 2;
-    const startX = this.pointerX >= sourceCenterX ? sourceX + this.stateWidth : sourceX;
-    const startY = sourceCenterY;
+    const sourceAnchor = this.resolveAnchorForPoint(sourceX, sourceY, this.pointerX, this.pointerY);
+    const dx = this.pointerX - sourceAnchor.x;
+    const dy = this.pointerY - sourceAnchor.y;
+    const len = Math.max(1, Math.hypot(dx, dy));
+    const startX = sourceAnchor.x + (dx / len) * this.arrowGap;
+    const startY = sourceAnchor.y + (dy / len) * this.arrowGap;
     const endX = this.pointerX;
     const endY = this.pointerY;
-    return this.buildPath(startX, startY, endX, endY, 0).path;
+    return this.buildPath(startX, startY, endX, endY, 0, 0).path;
   }
 
   private rebuildTransitionViews(): void {
     const stateByKey = new Map(this.states.map(item => [item.key, item]));
     const laneOffsetByTransitionKey = this.resolveLaneOffsets();
+    const labelOffsetByTransitionKey = this.resolveLabelOffsets();
     this.transitionViews = this.transitions
       .map(item => {
         const fromState = stateByKey.get(item.fromStateKey);
@@ -209,14 +245,17 @@ export class WorkflowBuilderCanvasComponent implements OnChanges {
         const fromY = Number(fromState.uiY || 0);
         const toX = Number(toState.uiX || 0);
         const toY = Number(toState.uiY || 0);
-
-        const leftToRight = toX >= fromX;
-        const startX = leftToRight ? fromX + this.stateWidth : fromX;
-        const endX = leftToRight ? toX : toX + this.stateWidth;
-        const startY = fromY + this.stateHeight / 2;
-        const endY = toY + this.stateHeight / 2;
+        const anchors = this.resolveAnchors(fromX, fromY, toX, toY);
         const laneOffset = laneOffsetByTransitionKey.get(item.key) || 0;
-        const geometry = this.buildPath(startX, startY, endX, endY, laneOffset);
+        const labelOffset = labelOffsetByTransitionKey.get(item.key) ?? laneOffset;
+        const geometry = this.buildPath(
+          anchors.startX,
+          anchors.startY,
+          anchors.endX,
+          anchors.endY,
+          laneOffset,
+          labelOffset
+        );
 
         return {
           key: item.key,
@@ -264,7 +303,43 @@ export class WorkflowBuilderCanvasComponent implements OnChanges {
     return offsets;
   }
 
-  private buildPath(startX: number, startY: number, endX: number, endY: number, laneOffset: number): {
+  private resolveLabelOffsets(): Map<string, number> {
+    const pairMap = new Map<string, WorkflowTransitionDefinition[]>();
+    for (const transition of this.transitions) {
+      const keys = [transition.fromStateKey, transition.toStateKey].sort();
+      const pairKey = `${keys[0]}|${keys[1]}`;
+      const list = pairMap.get(pairKey) || [];
+      list.push(transition);
+      pairMap.set(pairKey, list);
+    }
+
+    const offsets = new Map<string, number>();
+    for (const [pairKey, items] of pairMap) {
+      const [leftKey, rightKey] = pairKey.split('|');
+      if (items.length === 2) {
+        for (const item of items) {
+          const forward = item.fromStateKey === leftKey && item.toStateKey === rightKey;
+          offsets.set(item.key, forward ? -28 : 28);
+        }
+        continue;
+      }
+      const sorted = [...items].sort((a, b) => a.key.localeCompare(b.key));
+      const center = (sorted.length - 1) / 2;
+      sorted.forEach((item, index) => {
+        offsets.set(item.key, (index - center) * 20);
+      });
+    }
+    return offsets;
+  }
+
+  private buildPath(
+    startX: number,
+    startY: number,
+    endX: number,
+    endY: number,
+    laneOffset: number,
+    labelOffset: number
+  ): {
     path: string;
     labelX: number;
     labelY: number;
@@ -272,33 +347,51 @@ export class WorkflowBuilderCanvasComponent implements OnChanges {
     const dx = endX - startX;
     const dy = endY - startY;
     const length = Math.max(1, Math.hypot(dx, dy));
-    const perpX = -dy / length;
-    const perpY = dx / length;
-    const shiftedStartX = startX + perpX * laneOffset;
-    const shiftedStartY = startY + perpY * laneOffset;
-    const shiftedEndX = endX + perpX * laneOffset;
-    const shiftedEndY = endY + perpY * laneOffset;
-    const curvatureBase = Math.max(40, Math.min(140, Math.abs(dx) * 0.35));
+    let canonicalDx = dx;
+    let canonicalDy = dy;
+    if (canonicalDx < 0 || (canonicalDx === 0 && canonicalDy < 0)) {
+      canonicalDx *= -1;
+      canonicalDy *= -1;
+    }
+    const canonicalLen = Math.max(1, Math.hypot(canonicalDx, canonicalDy));
+    const lanePerpX = -canonicalDy / canonicalLen;
+    const lanePerpY = canonicalDx / canonicalLen;
+    const shiftedStartX = startX + lanePerpX * laneOffset;
+    const shiftedStartY = startY + lanePerpY * laneOffset;
+    const shiftedEndX = endX + lanePerpX * laneOffset;
+    const shiftedEndY = endY + lanePerpY * laneOffset;
+    const isHorizontal = Math.abs(dx) >= Math.abs(dy);
+    const curvatureBase = Math.max(40, Math.min(140, (isHorizontal ? Math.abs(dx) : Math.abs(dy)) * 0.35));
     const curvature = curvatureBase + Math.min(24, Math.abs(laneOffset) * 0.5);
-    const direction = dx >= 0 ? 1 : -1;
-    const control1X = shiftedStartX + direction * curvature;
-    const control1Y = shiftedStartY;
-    const control2X = shiftedEndX - direction * curvature;
-    const control2Y = shiftedEndY;
+    let control1X = shiftedStartX;
+    let control1Y = shiftedStartY;
+    let control2X = shiftedEndX;
+    let control2Y = shiftedEndY;
+    if (isHorizontal) {
+      const direction = dx >= 0 ? 1 : -1;
+      control1X = shiftedStartX + direction * curvature;
+      control2X = shiftedEndX - direction * curvature;
+    } else {
+      const direction = dy >= 0 ? 1 : -1;
+      control1Y = shiftedStartY + direction * curvature;
+      control2Y = shiftedEndY - direction * curvature;
+    }
     const path = `M ${shiftedStartX} ${shiftedStartY} C ${control1X} ${control1Y}, ${control2X} ${control2Y}, ${shiftedEndX} ${shiftedEndY}`;
-    const labelX = (shiftedStartX + shiftedEndX) / 2;
-    const labelY = (shiftedStartY + shiftedEndY) / 2 - 8;
+
+    const labelX = (startX + endX) / 2 + lanePerpX * labelOffset;
+    const labelY = (startY + endY) / 2 + lanePerpY * labelOffset - 8;
     return { path, labelX, labelY };
   }
 
   private toCanvasPoint(clientX: number, clientY: number): { x: number; y: number } | null {
-    const rect = this.canvasRoot?.nativeElement.getBoundingClientRect();
+    const root = this.canvasRoot?.nativeElement;
+    const rect = root?.getBoundingClientRect();
     if (!rect) {
       return null;
     }
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top
+      x: (root?.scrollLeft || 0) + clientX - rect.left,
+      y: (root?.scrollTop || 0) + clientY - rect.top
     };
   }
 
@@ -306,5 +399,85 @@ export class WorkflowBuilderCanvasComponent implements OnChanges {
     this.dragLinkActive = false;
     this.linkSourceStateKey = null;
     this.linkHoverStateKey = null;
+  }
+
+  private rebuildCanvasBounds(overrideStateKey?: string, overrideX?: number, overrideY?: number): void {
+    const root = this.canvasRoot?.nativeElement;
+    const baseWidth = Math.max(this.minCanvasWidth, root?.clientWidth || 0);
+    const baseHeight = Math.max(360, Number(this.minHeightPx || 0));
+    let maxWidth = baseWidth;
+    let maxHeight = baseHeight;
+    for (const state of this.states) {
+      const hasExplicitOverride = !!overrideStateKey && state?.key === overrideStateKey;
+      const hasDragOverride = !hasExplicitOverride && !!this.dragStateKey && state?.key === this.dragStateKey;
+      const x = hasExplicitOverride
+        ? Number(overrideX || 0)
+        : hasDragOverride
+          ? Number(this.dragStateX || 0)
+          : Number(state?.uiX || 0);
+      const y = hasExplicitOverride
+        ? Number(overrideY || 0)
+        : hasDragOverride
+          ? Number(this.dragStateY || 0)
+          : Number(state?.uiY || 0);
+      maxWidth = Math.max(maxWidth, x + this.stateWidth + this.stateHorizontalPadding);
+      maxHeight = Math.max(maxHeight, y + this.stateHeight + this.stateVerticalPadding);
+    }
+    this.canvasWidthPx = Math.min(this.maxCanvasWidth, Math.max(baseWidth, Math.ceil(maxWidth)));
+    this.canvasHeightPx = Math.min(this.maxCanvasHeight, Math.max(baseHeight, Math.ceil(maxHeight)));
+  }
+
+  private clampPosition(value: number, limit: number): number {
+    if (!Number.isFinite(value)) {
+      return 16;
+    }
+    return Math.min(limit, Math.max(16, value));
+  }
+
+  private resolveAnchors(fromX: number, fromY: number, toX: number, toY: number): {
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+  } {
+    const toCenterX = toX + this.stateWidth / 2;
+    const toCenterY = toY + this.stateHeight / 2;
+    const fromCenterX = fromX + this.stateWidth / 2;
+    const fromCenterY = fromY + this.stateHeight / 2;
+    const fromAnchor = this.resolveAnchorForPoint(fromX, fromY, toCenterX, toCenterY);
+    const toAnchor = this.resolveAnchorForPoint(toX, toY, fromCenterX, fromCenterY);
+    const dx = toAnchor.x - fromAnchor.x;
+    const dy = toAnchor.y - fromAnchor.y;
+    const len = Math.max(1, Math.hypot(dx, dy));
+    const ux = dx / len;
+    const uy = dy / len;
+    return {
+      startX: fromAnchor.x + ux * this.arrowGap,
+      startY: fromAnchor.y + uy * this.arrowGap,
+      endX: toAnchor.x - ux * this.arrowGap,
+      endY: toAnchor.y - uy * this.arrowGap
+    };
+  }
+
+  private resolveAnchorForPoint(
+    stateX: number,
+    stateY: number,
+    targetX: number,
+    targetY: number
+  ): { x: number; y: number } {
+    const centerX = stateX + this.stateWidth / 2;
+    const centerY = stateY + this.stateHeight / 2;
+    const dx = targetX - centerX;
+    const dy = targetY - centerY;
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      return {
+        x: dx >= 0 ? stateX + this.stateWidth : stateX,
+        y: centerY
+      };
+    }
+    return {
+      x: centerX,
+      y: dy >= 0 ? stateY + this.stateHeight : stateY
+    };
   }
 }

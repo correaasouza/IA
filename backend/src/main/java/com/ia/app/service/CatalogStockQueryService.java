@@ -231,6 +231,12 @@ public class CatalogStockQueryService {
         movement.getOrigemMovimentoItemCodigo(),
         movement.getDataHoraMovimentacao(),
         movement.getObservacao(),
+        movement.getTenantUnitId(),
+        movement.getUnidadeBaseCatalogoTenantUnitId(),
+        movement.getQuantidadeInformada(),
+        movement.getQuantidadeConvertidaBase(),
+        movement.getFatorAplicado(),
+        movement.getFatorFonte(),
         lineResponses);
     });
   }

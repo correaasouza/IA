@@ -5,6 +5,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -20,12 +21,20 @@ public class ApiExceptionHandler {
       pd.setDetail("Item de catalogo nao encontrado no contexto atual (empresa/grupo).");
     } else if (message.startsWith("catalog_group_not_found")) {
       pd.setDetail("Grupo de catalogo nao encontrado no contexto atual.");
+    } else if (message.startsWith("official_unit_not_found")) {
+      pd.setDetail("Unidade oficial nao encontrada.");
+    } else if (message.startsWith("tenant_unit_not_found")) {
+      pd.setDetail("Unidade do locatario nao encontrada.");
+    } else if (message.startsWith("tenant_unit_conversion_not_found")) {
+      pd.setDetail("Conversao de unidade nao encontrada.");
     } else if (message.startsWith("registro_entidade_not_found")) {
       pd.setDetail("Entidade nao encontrada no contexto atual (empresa/grupo).");
     } else if (message.startsWith("movimento_config_not_found")) {
       pd.setDetail("Configuracao de movimento nao encontrada no locatario atual.");
     } else if (message.startsWith("movimento_estoque_not_found")) {
       pd.setDetail("Movimento de estoque nao encontrado no contexto atual.");
+    } else if (message.startsWith("movimento_estoque_item_not_found")) {
+      pd.setDetail("Item do movimento de estoque nao encontrado no contexto atual.");
     } else if (message.startsWith("workflow_definition_not_found")) {
       pd.setDetail("Definicao de workflow nao encontrada.");
     } else if (message.startsWith("workflow_instance_not_found")) {
@@ -55,6 +64,21 @@ public class ApiExceptionHandler {
       pd.setDetail("Modulo de Workflow desabilitado por feature flag.");
     } else {
       pd.setDetail(ex.getMessage());
+    }
+    return pd;
+  }
+
+  @ExceptionHandler(AccessDeniedException.class)
+  public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+    String message = ex.getMessage() == null ? "" : ex.getMessage();
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+    pd.setTitle("Acesso negado");
+    if (message.startsWith("workflow_action_undo_stock_permission_denied")) {
+      pd.setDetail("Sem permissao para desfazer movimentacao de estoque nesta transicao.");
+    } else if (message.startsWith("workflow_transition_access_denied")) {
+      pd.setDetail("Sem permissao para executar esta transicao de workflow.");
+    } else {
+      pd.setDetail("Usuario sem permissao para executar esta operacao.");
     }
     return pd;
   }
@@ -115,6 +139,52 @@ public class ApiExceptionHandler {
       pd.setDetail("Nome do item excede o tamanho maximo permitido.");
     } else if (message.startsWith("catalog_item_descricao_too_long")) {
       pd.setDetail("Descricao do item excede o tamanho maximo permitido.");
+    } else if (message.startsWith("catalog_item_unit_required")) {
+      pd.setDetail("Informe a unidade padrao do item de catalogo.");
+    } else if (message.startsWith("catalog_item_alt_unit_required")) {
+      pd.setDetail("Informe a unidade alternativa ao informar fator de conversao.");
+    } else if (message.startsWith("catalog_item_alt_unit_must_differ")) {
+      pd.setDetail("A unidade alternativa deve ser diferente da unidade padrao.");
+    } else if (message.startsWith("catalog_item_alt_unit_invalid")) {
+      pd.setDetail("Unidade alternativa invalida para o locatario.");
+    } else if (message.startsWith("catalog_item_alt_factor_invalid")) {
+      pd.setDetail("Fator de conversao da unidade alternativa deve ser maior que zero.");
+    } else if (message.startsWith("catalog_item_unit_locked_by_stock_movements")) {
+      pd.setDetail("Unidades do item bloqueadas por movimentacoes de estoque.");
+    } else if (message.startsWith("official_unit_codigo_required")) {
+      pd.setDetail("Informe o codigo oficial da unidade.");
+    } else if (message.startsWith("official_unit_descricao_required")) {
+      pd.setDetail("Informe a descricao da unidade oficial.");
+    } else if (message.startsWith("official_unit_codigo_duplicado")) {
+      pd.setDetail("Ja existe unidade oficial com este codigo.");
+    } else if (message.startsWith("official_unit_codigo_immutable")) {
+      pd.setDetail("Nao e permitido alterar o codigo de uma unidade oficial existente.");
+    } else if (message.startsWith("official_unit_in_use")) {
+      pd.setDetail("Nao e possivel excluir unidade oficial em uso por unidades de locatario.");
+    } else if (message.startsWith("tenant_unit_sigla_required")) {
+      pd.setDetail("Informe a sigla da unidade do locatario.");
+    } else if (message.startsWith("tenant_unit_nome_required")) {
+      pd.setDetail("Informe o nome da unidade do locatario.");
+    } else if (message.startsWith("tenant_unit_factor_invalid")) {
+      pd.setDetail("Fator para unidade oficial invalido. Use valor maior ou igual a zero.");
+    } else if (message.startsWith("tenant_unit_sigla_duplicada")) {
+      pd.setDetail("Ja existe unidade com esta sigla no locatario.");
+    } else if (message.startsWith("tenant_unit_mirror_delete_not_allowed")) {
+      pd.setDetail("Unidades espelho oficiais nao podem ser excluidas.");
+    } else if (message.startsWith("tenant_unit_in_use")) {
+      pd.setDetail("Nao e possivel excluir unidade em uso por catalogo ou movimentos.");
+    } else if (message.startsWith("tenant_unit_conversion_origem_invalid")) {
+      pd.setDetail("Unidade de origem invalida para o locatario.");
+    } else if (message.startsWith("tenant_unit_conversion_destino_invalid")) {
+      pd.setDetail("Unidade de destino invalida para o locatario.");
+    } else if (message.startsWith("tenant_unit_conversion_pair_invalid")) {
+      pd.setDetail("Origem e destino da conversao devem ser diferentes.");
+    } else if (message.startsWith("tenant_unit_conversion_factor_invalid")) {
+      pd.setDetail("Fator da conversao deve ser maior que zero.");
+    } else if (message.startsWith("tenant_unit_conversion_duplicada")) {
+      pd.setDetail("Ja existe conversao cadastrada para origem e destino informados.");
+    } else if (message.startsWith("tenant_unit_conversion_not_supported")) {
+      pd.setDetail("Conversao de unidade nao suportada para este item.");
     } else if (message.startsWith("catalog_group_nome_duplicado_mesmo_pai")) {
       pd.setDetail("Ja existe grupo com este nome no mesmo nivel.");
     } else if (message.startsWith("catalog_group_possui_itens")) {
@@ -195,8 +265,18 @@ public class ApiExceptionHandler {
       pd.setDetail("A empresa do movimento deve ser igual a empresa selecionada no contexto.");
     } else if (message.startsWith("movimento_estoque_id_invalid")) {
       pd.setDetail("Identificador do movimento de estoque invalido.");
+    } else if (message.startsWith("movimento_estoque_item_id_invalid")) {
+      pd.setDetail("Identificador do item do movimento invalido.");
     } else if (message.startsWith("movimento_estoque_items_required")) {
       pd.setDetail("Informe ao menos um item para adicionar ao movimento.");
+    } else if (message.startsWith("movimento_estoque_finalizado")) {
+      pd.setDetail("Movimento finalizado. Nao e permitido alterar ou excluir.");
+    } else if (message.startsWith("movimento_estoque_item_finalizado")) {
+      pd.setDetail("Item finalizado. Nao e permitido alterar ou excluir.");
+    } else if (message.startsWith("movimento_estoque_item_locked_by_stock_movement")) {
+      pd.setDetail("Item com movimentacao de estoque. Nao e permitido alterar ou excluir.");
+    } else if (message.startsWith("movimento_estoque_item_stock_movement_not_found")) {
+      pd.setDetail("Nao ha movimentacao de estoque ativa para desfazer neste item.");
     } else if (message.startsWith("movimento_tipo_nao_implementado")) {
       pd.setDetail("Tipo de movimento ainda nao implementado para operacao.");
     } else if (message.startsWith("movimento_tipo_invalid")) {
@@ -225,6 +305,8 @@ public class ApiExceptionHandler {
       pd.setDetail("Tipo de item nao habilitado para a configuracao do movimento.");
     } else if (message.startsWith("movimento_estoque_item_catalogo_invalido")) {
       pd.setDetail("Item de catalogo invalido para o contexto da empresa e tipo de item.");
+    } else if (message.startsWith("movimento_estoque_item_unidade_invalid")) {
+      pd.setDetail("Unidade informada invalida para o item do movimento.");
     } else if (message.startsWith("movimento_item_tipo_id_invalid")) {
       pd.setDetail("Identificador do tipo de item invalido.");
     } else if (message.startsWith("movimento_item_tipo_not_found")) {
@@ -302,6 +384,8 @@ public class ApiExceptionHandler {
       pd.setDetail("O estado atual mudou. Atualize a tela e tente novamente.");
     } else if (message.startsWith("workflow_action_move_stock_origin_invalid")) {
       pd.setDetail("A acao de movimentar estoque so pode ser usada no workflow de item de movimento.");
+    } else if (message.startsWith("workflow_action_undo_stock_origin_invalid")) {
+      pd.setDetail("A acao de desfazer estoque so pode ser usada no workflow de item de movimento.");
     } else if (message.startsWith("workflow_action_set_item_status_origin_invalid")) {
       pd.setDetail("A acao de trocar situacao do item so pode ser usada no workflow de movimento de estoque.");
     } else if (message.startsWith("workflow_action_item_status_target_invalid")) {
@@ -364,6 +448,12 @@ public class ApiExceptionHandler {
       pd.setDetail("Ja existe ajuste de estoque com este codigo na configuracao.");
     } else if (normalized.contains("ux_catalog_stock_adjustment_tenant_codigo")) {
       pd.setDetail("Ja existe ajuste de estoque com este codigo na configuracao.");
+    } else if (normalized.contains("ux_official_unit_codigo")) {
+      pd.setDetail("Ja existe unidade oficial com este codigo.");
+    } else if (normalized.contains("ux_tenant_unit_tenant_sigla")) {
+      pd.setDetail("Ja existe unidade com esta sigla no locatario.");
+    } else if (normalized.contains("ux_tenant_unit_conversion_scope")) {
+      pd.setDetail("Ja existe conversao cadastrada para origem e destino informados.");
     } else if (normalized.contains("ux_movimento_config_empresa_scope")) {
       pd.setDetail("A empresa ja esta vinculada a esta configuracao de movimento.");
     } else if (normalized.contains("ux_movimento_config_tipo_entidade_scope")) {
@@ -372,6 +462,10 @@ public class ApiExceptionHandler {
       pd.setDetail("Ja existe tipo de item com este nome no locatario.");
     } else if (normalized.contains("ux_mov_config_item_tipo_scope")) {
       pd.setDetail("Tipo de item ja vinculado a configuracao de movimento.");
+    } else if (normalized.contains("ux_movimento_estoque_item_codigo_scope")) {
+      pd.setDetail("Conflito de codigo sequencial de item no movimento. Recarregue a ficha e tente novamente.");
+    } else if (normalized.contains("ux_movimento_estoque_codigo_scope")) {
+      pd.setDetail("Conflito de codigo sequencial do movimento. Recarregue a lista e tente novamente.");
     } else if (normalized.contains("ux_workflow_def_tenant_origin_ctx_version")
       || normalized.contains("ux_workflow_def_tenant_origin_version")) {
       pd.setDetail("Ja existe versao de workflow com este numero para a origem.");
@@ -405,6 +499,9 @@ public class ApiExceptionHandler {
     }
     if (root instanceof IllegalStateException ise) {
       return handleIllegalState(ise);
+    }
+    if (root instanceof AccessDeniedException ade) {
+      return handleAccessDenied(ade);
     }
     if (root instanceof ObjectOptimisticLockingFailureException oole) {
       return handleOptimisticLock(oole);
@@ -440,15 +537,26 @@ public class ApiExceptionHandler {
       || message.startsWith("catalog_context_required")
       || message.startsWith("catalog_context_sem_grupo")
       || message.startsWith("catalog_item_codigo_duplicado")
+      || message.startsWith("catalog_item_unit_locked_by_stock_movements")
       || message.startsWith("catalog_group_nome_duplicado_mesmo_pai")
       || message.startsWith("catalog_group_possui_itens")
       || message.startsWith("catalog_group_ciclo_invalido")
+      || message.startsWith("official_unit_codigo_duplicado")
+      || message.startsWith("official_unit_codigo_immutable")
+      || message.startsWith("official_unit_in_use")
+      || message.startsWith("tenant_unit_sigla_duplicada")
+      || message.startsWith("tenant_unit_mirror_delete_not_allowed")
+      || message.startsWith("tenant_unit_in_use")
+      || message.startsWith("tenant_unit_conversion_duplicada")
       || message.startsWith("catalog_stock_type_codigo_duplicado")
       || message.startsWith("catalog_stock_type_last_active")
       || message.startsWith("catalog_stock_adjustment_codigo_duplicado")
       || message.startsWith("movimento_item_tipo_nome_duplicado")
       || message.startsWith("movimento_config_conflito_prioridade_contexto_empresa")
       || message.startsWith("movimento_config_conflito_resolucao")
+      || message.startsWith("movimento_estoque_finalizado")
+      || message.startsWith("movimento_estoque_item_finalizado")
+      || message.startsWith("movimento_estoque_item_locked_by_stock_movement")
       || message.startsWith("workflow_current_state_mismatch");
   }
 

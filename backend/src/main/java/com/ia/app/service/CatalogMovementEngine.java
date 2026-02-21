@@ -6,6 +6,7 @@ import com.ia.app.domain.CatalogMovementLine;
 import com.ia.app.domain.CatalogMovementMetricType;
 import com.ia.app.domain.CatalogMovementOriginType;
 import com.ia.app.domain.CatalogStockBalance;
+import com.ia.app.domain.ConversionFactorSource;
 import com.ia.app.domain.MovimentoTipo;
 import com.ia.app.repository.CatalogMovementLineRepository;
 import com.ia.app.repository.CatalogMovementRepository;
@@ -23,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -51,6 +53,12 @@ public class CatalogMovementEngine {
     String observacao,
     String idempotencyKey,
     Instant dataHoraMovimentacao,
+    UUID tenantUnitId,
+    UUID unidadeBaseCatalogoTenantUnitId,
+    BigDecimal quantidadeInformada,
+    BigDecimal quantidadeConvertidaBase,
+    BigDecimal fatorAplicado,
+    ConversionFactorSource fatorFonte,
     List<Impact> impacts
   ) {}
 
@@ -212,6 +220,12 @@ public class CatalogMovementEngine {
       normalizeOptional(raw.observacao(), 255),
       idempotencyKey,
       raw.dataHoraMovimentacao() == null ? Instant.now() : raw.dataHoraMovimentacao(),
+      raw.tenantUnitId(),
+      raw.unidadeBaseCatalogoTenantUnitId(),
+      normalizeOptionalNonNegative(raw.quantidadeInformada()),
+      normalizeOptionalNonNegative(raw.quantidadeConvertidaBase()),
+      normalizeOptionalPositive(raw.fatorAplicado()),
+      raw.fatorFonte(),
       impacts);
   }
 
@@ -262,6 +276,26 @@ public class CatalogMovementEngine {
     return normalized;
   }
 
+  private BigDecimal normalizeOptionalNonNegative(BigDecimal value) {
+    if (value == null) {
+      return null;
+    }
+    if (value.compareTo(BigDecimal.ZERO) < 0) {
+      throw new IllegalArgumentException("catalog_stock_delta_required");
+    }
+    return value.setScale(6, java.math.RoundingMode.HALF_UP);
+  }
+
+  private BigDecimal normalizeOptionalPositive(BigDecimal value) {
+    if (value == null) {
+      return null;
+    }
+    if (value.compareTo(BigDecimal.ZERO) <= 0) {
+      throw new IllegalArgumentException("catalog_stock_delta_required");
+    }
+    return value.setScale(UnitConversionService.FACTOR_SCALE, java.math.RoundingMode.HALF_UP);
+  }
+
   private String normalizeOptional(String value, int maxLen) {
     if (value == null) {
       return null;
@@ -286,6 +320,12 @@ public class CatalogMovementEngine {
     movement.setDataHoraMovimentacao(command.dataHoraMovimentacao());
     movement.setObservacao(command.observacao());
     movement.setIdempotencyKey(command.idempotencyKey());
+    movement.setTenantUnitId(command.tenantUnitId());
+    movement.setUnidadeBaseCatalogoTenantUnitId(command.unidadeBaseCatalogoTenantUnitId());
+    movement.setQuantidadeInformada(command.quantidadeInformada());
+    movement.setQuantidadeConvertidaBase(command.quantidadeConvertidaBase());
+    movement.setFatorAplicado(command.fatorAplicado());
+    movement.setFatorFonte(command.fatorFonte());
     return movement;
   }
 

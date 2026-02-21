@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, Input, OnInit } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, Input, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
@@ -43,7 +43,7 @@ import {
   templateUrl: './workflow-definition-form.component.html',
   styleUrls: ['./workflow-definition-form.component.css']
 })
-export class WorkflowDefinitionFormComponent implements OnInit {
+export class WorkflowDefinitionFormComponent implements OnInit, AfterViewInit, OnDestroy {
   @Input() embedded = false;
   @Input() embeddedOrigin: WorkflowOrigin | null = null;
   @Input() embeddedContextType: 'MOVIMENTO_CONFIG' = 'MOVIMENTO_CONFIG';
@@ -65,6 +65,10 @@ export class WorkflowDefinitionFormComponent implements OnInit {
   stateOptionsList: Array<{ key: string; name: string }> = [];
   itemStatusOptionsList: Array<{ key: string; name: string }> = [];
   private stateNameLookup = new Map<string, string>();
+  builderCanvasMinHeight = 0;
+  @ViewChild('builderSide') builderSideRef?: ElementRef<HTMLElement>;
+  private builderResizeObserver?: ResizeObserver;
+  private pendingResizeTimer: number | null = null;
   selectedOrigin: WorkflowOrigin = 'ITEM_MOVIMENTO_ESTOQUE';
   loadingContexts = false;
   movimentoConfigs: MovimentoConfig[] = [];
@@ -112,6 +116,22 @@ export class WorkflowDefinitionFormComponent implements OnInit {
     this.loadMovimentoConfigs();
     this.bootstrapDefaultDefinition();
     this.loadItemStatusOptions();
+  }
+
+  ngAfterViewInit(): void {
+    this.setupBuilderResizeObserver();
+    this.scheduleBuilderResize();
+  }
+
+  ngOnDestroy(): void {
+    if (this.pendingResizeTimer != null && typeof window !== 'undefined') {
+      window.clearTimeout(this.pendingResizeTimer);
+    }
+    this.pendingResizeTimer = null;
+    if (this.builderResizeObserver) {
+      this.builderResizeObserver.disconnect();
+    }
+    this.builderResizeObserver = undefined;
   }
 
   back(): void {
@@ -375,6 +395,22 @@ export class WorkflowDefinitionFormComponent implements OnInit {
     return this.stateNameLookup.get(key) || 'Estado';
   }
 
+  transitionControlKey(transition: WorkflowTransitionDefinition | null): string {
+    const transitionToken = this.normalizeControlToken(transition?.key || '');
+    if (!transitionToken) {
+      return '';
+    }
+    const originToken = this.normalizeControlToken((this.definition?.origin || this.selectedOrigin || 'unknown'));
+    const contextType = this.definition?.contextType || (this.selectedContextId ? this.selectedContextType : null);
+    const contextId = Number(this.definition?.contextId || this.selectedContextId || 0);
+    let scopeToken = 'global';
+    if (contextType && contextId > 0) {
+      scopeToken = `${this.normalizeControlToken(contextType)}.${contextId}`;
+    }
+    const transitionKey = transitionToken.length > 80 ? transitionToken.slice(0, 80) : transitionToken;
+    return `workflow.transition.${originToken}.${scopeToken}.${transitionKey}`;
+  }
+
   private loadDefinition(id: number): void {
     this.loading = true;
     this.workflowService.getDefinition(id).subscribe({
@@ -445,8 +481,11 @@ export class WorkflowDefinitionFormComponent implements OnInit {
 
   private normalizeAction(action: WorkflowActionConfig, origin: WorkflowOrigin = this.selectedOrigin): WorkflowActionConfig {
     if (origin === 'ITEM_MOVIMENTO_ESTOQUE') {
+      const normalizedType = (action?.type || '').trim().toUpperCase() === 'UNDO_STOCK'
+        ? 'UNDO_STOCK'
+        : 'MOVE_STOCK';
       return {
-        type: 'MOVE_STOCK',
+        type: normalizedType,
         trigger: 'ON_TRANSITION',
         requiresSuccess: true,
         params: action?.params || {}
@@ -585,6 +624,7 @@ export class WorkflowDefinitionFormComponent implements OnInit {
     this.selectedTransitionModel = this.selectedTransitionKey
       ? this.transitions.find(item => item.key === this.selectedTransitionKey) || null
       : null;
+    this.scheduleBuilderResize();
   }
 
   private addTransitionBetweenStates(fromStateKey: string, toStateKey: string): void {
@@ -671,6 +711,53 @@ export class WorkflowDefinitionFormComponent implements OnInit {
       return null;
     }
     return normalized.length > 80 ? normalized.slice(0, 80) : normalized;
+  }
+
+  private normalizeControlToken(value: string): string {
+    return (value || '').trim().toLowerCase().replace(/[^a-z0-9._-]/g, '_');
+  }
+
+  private setupBuilderResizeObserver(): void {
+    if (typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const builderSide = this.builderSideRef?.nativeElement;
+    if (!builderSide) {
+      return;
+    }
+    this.builderResizeObserver = new ResizeObserver(() => this.scheduleBuilderResize());
+    this.builderResizeObserver.observe(builderSide);
+  }
+
+  private scheduleBuilderResize(): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    if (!this.builderResizeObserver) {
+      this.setupBuilderResizeObserver();
+    }
+    if (this.pendingResizeTimer != null) {
+      window.clearTimeout(this.pendingResizeTimer);
+    }
+    this.pendingResizeTimer = window.setTimeout(() => {
+      this.pendingResizeTimer = null;
+      this.updateBuilderCanvasMinHeight();
+    }, 0);
+  }
+
+  private updateBuilderCanvasMinHeight(): void {
+    const baseMinHeight = this.embedded ? 360 : 460;
+    const side = this.builderSideRef?.nativeElement;
+    let sideContentHeight = 0;
+    if (side) {
+      const children = Array.from(side.children) as HTMLElement[];
+      sideContentHeight = children.reduce((max, element) => {
+        const bottom = element.offsetTop + element.offsetHeight;
+        return Math.max(max, bottom);
+      }, 0);
+    }
+    const computed = Math.max(baseMinHeight, sideContentHeight);
+    this.builderCanvasMinHeight = Number.isFinite(computed) ? computed : baseMinHeight;
   }
 
   private initializeEmbedded(): void {

@@ -28,6 +28,7 @@ public class LocatarioService {
   private final TenantAdminSeedService tenantAdminSeedService;
   private final TipoEntidadeSeedService tipoEntidadeSeedService;
   private final MovimentoConfigSeedService movimentoConfigSeedService;
+  private final TenantUnitService tenantUnitService;
 
   public LocatarioService(LocatarioRepository repository,
       PermissaoCatalogService permissaoCatalogService,
@@ -35,6 +36,7 @@ public class LocatarioService {
       TenantAdminSeedService tenantAdminSeedService,
       TipoEntidadeSeedService tipoEntidadeSeedService,
       MovimentoConfigSeedService movimentoConfigSeedService,
+      TenantUnitService tenantUnitService,
       UsuarioRepository usuarioRepository,
       UsuarioLocatarioAcessoRepository usuarioLocatarioAcessoRepository) {
     this.repository = repository;
@@ -43,6 +45,7 @@ public class LocatarioService {
     this.tenantAdminSeedService = tenantAdminSeedService;
     this.tipoEntidadeSeedService = tipoEntidadeSeedService;
     this.movimentoConfigSeedService = movimentoConfigSeedService;
+    this.tenantUnitService = tenantUnitService;
     this.usuarioRepository = usuarioRepository;
     this.usuarioLocatarioAcessoRepository = usuarioLocatarioAcessoRepository;
   }
@@ -65,6 +68,7 @@ public class LocatarioService {
     papelSeedService.seedDefaults(saved.getId());
     tipoEntidadeSeedService.seedDefaults(saved.getId());
     movimentoConfigSeedService.seedDefaults(saved.getId());
+    tenantUnitService.seedMissingMirrorsForTenant(saved.getId());
     tenantAdminSeedService.seedDefaultAdmin(saved);
     return saved;
   }

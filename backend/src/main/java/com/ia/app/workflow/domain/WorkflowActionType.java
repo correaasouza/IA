@@ -4,6 +4,7 @@ import java.util.Locale;
 
 public enum WorkflowActionType {
   MOVE_STOCK,
+  UNDO_STOCK,
   SET_ITEM_STATUS;
 
   public static WorkflowActionType from(String raw) {

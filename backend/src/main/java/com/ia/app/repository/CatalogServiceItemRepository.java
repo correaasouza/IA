@@ -7,6 +7,7 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -95,4 +96,16 @@ public interface CatalogServiceItemRepository extends JpaRepository<CatalogServi
     @Param("catalogGroupId") Long catalogGroupId,
     @Param("ativo") Boolean ativo,
     Pageable pageable);
+
+  @Modifying
+  @Query("""
+    update CatalogServiceItem item
+    set item.hasStockMovements = true
+    where item.tenantId = :tenantId
+      and item.id = :itemId
+      and item.hasStockMovements = false
+    """)
+  int markHasStockMovements(
+    @Param("tenantId") Long tenantId,
+    @Param("itemId") Long itemId);
 }

@@ -10,6 +10,7 @@ import { AccessControlConfigDialogComponent } from '../core/access/access-contro
 })
 export class AccessControlDirective implements OnInit, OnChanges, OnDestroy {
   @Input('appAccessControl') controlKey = '';
+  @Input() appAccessDescription = '';
   @Input() appAccessFallbackRoles: string[] = [];
   @Input() appAccessHide = true;
   @Input() appAccessConfigurable = true;
@@ -63,9 +64,10 @@ export class AccessControlDirective implements OnInit, OnChanges, OnDestroy {
     if (!parent) return;
 
     const button = this.renderer.createElement('button') as HTMLButtonElement;
+    const description = this.resolveDescription();
     this.renderer.setAttribute(button, 'type', 'button');
     this.renderer.setAttribute(button, 'title', 'Configurar acesso');
-    this.renderer.setAttribute(button, 'aria-label', `Configurar acesso de ${this.controlKey}`);
+    this.renderer.setAttribute(button, 'aria-label', `Configurar acesso para ${description}`);
     this.renderer.addClass(button, 'acl-config-trigger');
     const icon = this.renderer.createElement('span');
     this.renderer.addClass(icon, 'icon-shield');
@@ -95,11 +97,13 @@ export class AccessControlDirective implements OnInit, OnChanges, OnDestroy {
 
   private openDialog(): void {
     const current = this.access.getRoles(this.controlKey, this.appAccessFallbackRoles);
+    const description = this.resolveDescription();
     this.dialog.open(AccessControlConfigDialogComponent, {
       width: '460px',
       maxWidth: '92vw',
       data: {
-        title: `Configurar acesso de "${this.controlKey}"`,
+        title: `Configurar acesso para ${description}`,
+        description,
         controlKey: this.controlKey,
         selectedRoles: current,
         fallbackRoles: this.appAccessFallbackRoles || []
@@ -108,5 +112,17 @@ export class AccessControlDirective implements OnInit, OnChanges, OnDestroy {
       if (!roles) return;
       this.access.setRoles(this.controlKey, roles);
     });
+  }
+
+  private resolveDescription(): string {
+    const explicit = (this.appAccessDescription || '').trim();
+    if (explicit) {
+      return explicit;
+    }
+    const text = (this.el.nativeElement.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text) {
+      return text;
+    }
+    return this.controlKey;
   }
 }

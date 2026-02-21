@@ -32,9 +32,7 @@
         type="button"
         *ngIf="mode !== 'view'"
         [disabled]="saving"
-        (click)="save()"
-        appAccessControl="workflow.configurar"
-        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+        (click)="save()">
         <mat-icon>save</mat-icon>
         Salvar workflow
       </button>
@@ -73,25 +71,10 @@
     </div>
   </header>
 
-  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="!loading">
-    <div class="workflow-embedded-header" *ngIf="embedded">
-      <div>
-        <div class="text-sm font-semibold">Workflow {{ originLabel(definition?.origin || selectedOrigin) }}</div>
-        <div class="text-xs text-[var(--muted-strong)]">Configuracao de movimento: {{ contextLabel() }}</div>
-      </div>
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        *ngIf="canEditDefinition()"
-        [disabled]="saving || !selectedContextId"
-        (click)="save()"
-        appAccessControl="workflow.configurar"
-        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-        <mat-icon>save</mat-icon>
-        Salvar workflow
-      </button>
-    </div>
+  <section
+    class="workflow-definition-surface rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]"
+    [class.workflow-definition-surface--embedded]="embedded"
+    *ngIf="!loading">
 
     <div class="workflow-context-grid" *ngIf="!embedded">
       <mat-form-field appearance="outline" class="workflow-context-field">
@@ -115,8 +98,21 @@
     </div>
 
     <div class="workflow-builder-toolbar">
-      <div class="text-sm font-semibold">Builder visual</div>
-      <div class="flex flex-wrap items-center gap-2">
+      <div class="workflow-builder-toolbar-title">
+        Builder visual
+        <span class="workflow-builder-toolbar-meta" *ngIf="embedded">| Configuracao de movimento: {{ contextLabel() }}</span>
+      </div>
+      <div class="workflow-builder-toolbar-actions">
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          *ngIf="embedded && canEditDefinition()"
+          [disabled]="saving || !selectedContextId"
+          (click)="save()">
+          <mat-icon>save</mat-icon>
+          Salvar workflow
+        </button>
         <button mat-stroked-button type="button" (click)="addState()" [disabled]="!canEditDefinition()">
           <mat-icon>add_circle</mat-icon>
           Adicionar estado
@@ -130,6 +126,7 @@
 
     <div class="workflow-builder-grid">
       <app-workflow-builder-canvas
+        [minHeightPx]="builderCanvasMinHeight"
         [states]="states"
         [transitions]="transitions"
         [selectedStateKey]="selectedStateKey"
@@ -143,7 +140,7 @@
         (moveState)="onMoveState($event)">
       </app-workflow-builder-canvas>
 
-      <div class="workflow-builder-side">
+      <div class="workflow-builder-side" #builderSide>
         <app-workflow-state-properties-panel
           [state]="selectedStateModel"
           [readOnly]="!canEditDefinition()"
@@ -172,6 +169,7 @@
 
         <app-workflow-transition-properties-panel
           [transition]="selectedTransitionModel"
+          [transitionControlKey]="transitionControlKey(selectedTransitionModel)"
           [stateOptions]="stateOptionsList"
           [itemStatusOptions]="itemStatusOptionsList"
           [origin]="definition?.origin || selectedOrigin"

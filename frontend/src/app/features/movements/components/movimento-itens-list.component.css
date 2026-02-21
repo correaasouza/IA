@@ -110,6 +110,12 @@
   word-break: break-word;
 }
 
+.movimento-item-card-value.app-qty-value,
+.movimento-item-card-value.app-money-value {
+  display: block;
+  text-align: right;
+}
+
 .movimento-item-card-actions {
   display: flex;
   justify-content: flex-end;

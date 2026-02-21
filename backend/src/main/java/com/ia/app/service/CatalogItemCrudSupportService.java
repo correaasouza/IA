@@ -6,15 +6,20 @@ import com.ia.app.domain.CatalogItemBase;
 import com.ia.app.domain.CatalogNumberingMode;
 import com.ia.app.domain.CatalogProduct;
 import com.ia.app.domain.CatalogServiceItem;
+import com.ia.app.domain.TenantUnit;
 import com.ia.app.dto.CatalogItemRequest;
 import com.ia.app.dto.CatalogItemResponse;
 import com.ia.app.repository.CatalogGroupRepository;
 import com.ia.app.repository.CatalogProductRepository;
 import com.ia.app.repository.CatalogServiceItemRepository;
+import com.ia.app.repository.TenantUnitRepository;
 import jakarta.persistence.EntityNotFoundException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -30,6 +35,8 @@ public class CatalogItemCrudSupportService {
   private final CatalogGroupRepository groupRepository;
   private final CatalogProductRepository productRepository;
   private final CatalogServiceItemRepository serviceItemRepository;
+  private final TenantUnitRepository tenantUnitRepository;
+  private final CatalogUnitLockService catalogUnitLockService;
   private final AuditService auditService;
 
   public CatalogItemCrudSupportService(
@@ -38,12 +45,16 @@ public class CatalogItemCrudSupportService {
       CatalogGroupRepository groupRepository,
       CatalogProductRepository productRepository,
       CatalogServiceItemRepository serviceItemRepository,
+      TenantUnitRepository tenantUnitRepository,
+      CatalogUnitLockService catalogUnitLockService,
       AuditService auditService) {
     this.contextService = contextService;
     this.codeService = codeService;
     this.groupRepository = groupRepository;
     this.productRepository = productRepository;
     this.serviceItemRepository = serviceItemRepository;
+    this.tenantUnitRepository = tenantUnitRepository;
+    this.catalogUnitLockService = catalogUnitLockService;
     this.auditService = auditService;
   }
 
@@ -85,8 +96,9 @@ public class CatalogItemCrudSupportService {
       .filter(id -> id != null && id > 0)
       .collect(Collectors.toSet());
     Map<Long, String> groupNameById = loadGroupNameById(scope.tenantId(), scope.catalogConfigurationId(), groupIds);
+    Map<UUID, TenantUnit> tenantUnitById = loadTenantUnitById(scope.tenantId(), page.getContent());
 
-    return page.map(item -> toResponse(type, scope.agrupadorNome(), item, groupNameById));
+    return page.map(item -> toResponse(type, scope.agrupadorNome(), item, groupNameById, tenantUnitById));
   }
 
   @Transactional(readOnly = true)
@@ -94,13 +106,15 @@ public class CatalogItemCrudSupportService {
     var scope = contextService.resolveObrigatorio(type);
     CatalogItemBase entity = findByScope(type, id, scope);
     String groupName = resolveGroupName(scope.tenantId(), scope.catalogConfigurationId(), entity.getCatalogGroupId());
-    return toResponse(type, scope.agrupadorNome(), entity, singleGroupNameMap(entity.getCatalogGroupId(), groupName));
+    Map<UUID, TenantUnit> tenantUnitById = loadTenantUnitById(scope.tenantId(), java.util.List.of(entity));
+    return toResponse(type, scope.agrupadorNome(), entity, singleGroupNameMap(entity.getCatalogGroupId(), groupName), tenantUnitById);
   }
 
   @Transactional
   public CatalogItemResponse create(CatalogConfigurationType type, CatalogItemRequest request) {
     var scope = contextService.resolveObrigatorio(type);
     Long catalogGroupId = validateGroup(scope.tenantId(), scope.catalogConfigurationId(), request.catalogGroupId());
+    UnitSpec unitSpec = validateUnits(scope.tenantId(), request.tenantUnitId(), request.unidadeAlternativaTenantUnitId(), request.fatorConversaoAlternativa());
     CatalogItemBase entity = newEntity(type);
     entity.setTenantId(scope.tenantId());
     entity.setCatalogConfigurationId(scope.catalogConfigurationId());
@@ -110,6 +124,10 @@ public class CatalogItemCrudSupportService {
     entity.setDescricao(normalizeDescricao(request.descricao()));
     entity.setAtivo(Boolean.TRUE.equals(request.ativo()));
     entity.setCodigo(resolveCodigoForCreate(scope, request.codigo()));
+    entity.setTenantUnitId(unitSpec.tenantUnitId());
+    entity.setUnidadeAlternativaTenantUnitId(unitSpec.unidadeAlternativaTenantUnitId());
+    entity.setFatorConversaoAlternativa(unitSpec.fatorConversaoAlternativa());
+    entity.setHasStockMovements(false);
 
     CatalogItemBase saved = save(type, entity);
     auditService.log(
@@ -123,7 +141,8 @@ public class CatalogItemCrudSupportService {
         + ";codigo=" + saved.getCodigo());
 
     String groupName = resolveGroupName(scope.tenantId(), scope.catalogConfigurationId(), saved.getCatalogGroupId());
-    return toResponse(type, scope.agrupadorNome(), saved, singleGroupNameMap(saved.getCatalogGroupId(), groupName));
+    Map<UUID, TenantUnit> tenantUnitById = loadTenantUnitById(scope.tenantId(), java.util.List.of(saved));
+    return toResponse(type, scope.agrupadorNome(), saved, singleGroupNameMap(saved.getCatalogGroupId(), groupName), tenantUnitById);
   }
 
   @Transactional
@@ -131,11 +150,21 @@ public class CatalogItemCrudSupportService {
     var scope = contextService.resolveObrigatorio(type);
     CatalogItemBase entity = findByScope(type, id, scope);
     Long catalogGroupId = validateGroup(scope.tenantId(), scope.catalogConfigurationId(), request.catalogGroupId());
+    UnitSpec unitSpec = validateUnits(scope.tenantId(), request.tenantUnitId(), request.unidadeAlternativaTenantUnitId(), request.fatorConversaoAlternativa());
+    catalogUnitLockService.enforceUpdateRules(
+      type,
+      entity,
+      unitSpec.tenantUnitId(),
+      unitSpec.unidadeAlternativaTenantUnitId(),
+      unitSpec.fatorConversaoAlternativa());
 
     entity.setCatalogGroupId(catalogGroupId);
     entity.setNome(normalizeNome(request.nome()));
     entity.setDescricao(normalizeDescricao(request.descricao()));
     entity.setAtivo(Boolean.TRUE.equals(request.ativo()));
+    entity.setTenantUnitId(unitSpec.tenantUnitId());
+    entity.setUnidadeAlternativaTenantUnitId(unitSpec.unidadeAlternativaTenantUnitId());
+    entity.setFatorConversaoAlternativa(unitSpec.fatorConversaoAlternativa());
 
     if (scope.numberingMode() == CatalogNumberingMode.MANUAL) {
       Long codigo = normalizeCodigo(request.codigo());
@@ -157,7 +186,8 @@ public class CatalogItemCrudSupportService {
         + ";codigo=" + saved.getCodigo());
 
     String groupName = resolveGroupName(scope.tenantId(), scope.catalogConfigurationId(), saved.getCatalogGroupId());
-    return toResponse(type, scope.agrupadorNome(), saved, singleGroupNameMap(saved.getCatalogGroupId(), groupName));
+    Map<UUID, TenantUnit> tenantUnitById = loadTenantUnitById(scope.tenantId(), java.util.List.of(saved));
+    return toResponse(type, scope.agrupadorNome(), saved, singleGroupNameMap(saved.getCatalogGroupId(), groupName), tenantUnitById);
   }
 
   @Transactional
@@ -250,10 +280,13 @@ public class CatalogItemCrudSupportService {
       CatalogConfigurationType type,
       String agrupadorNome,
       CatalogItemBase entity,
-      Map<Long, String> groupNameById) {
+      Map<Long, String> groupNameById,
+      Map<UUID, TenantUnit> tenantUnitById) {
     String groupName = entity.getCatalogGroupId() == null
       ? null
       : groupNameById.get(entity.getCatalogGroupId());
+    TenantUnit baseUnit = tenantUnitById.get(entity.getTenantUnitId());
+    TenantUnit altUnit = tenantUnitById.get(entity.getUnidadeAlternativaTenantUnitId());
     return new CatalogItemResponse(
       entity.getId(),
       type,
@@ -265,6 +298,14 @@ public class CatalogItemCrudSupportService {
       entity.getCodigo(),
       entity.getNome(),
       entity.getDescricao(),
+      entity.getTenantUnitId(),
+      baseUnit == null ? null : baseUnit.getSigla(),
+      baseUnit == null ? null : baseUnit.getNome(),
+      entity.getUnidadeAlternativaTenantUnitId(),
+      altUnit == null ? null : altUnit.getSigla(),
+      altUnit == null ? null : altUnit.getNome(),
+      entity.getFatorConversaoAlternativa(),
+      catalogUnitLockService.hasStockMovements(type, entity),
       entity.isAtivo());
   }
 
@@ -273,6 +314,45 @@ public class CatalogItemCrudSupportService {
     Map<Long, String> map = new HashMap<>();
     map.put(groupId, groupName);
     return map;
+  }
+
+  private Map<UUID, TenantUnit> loadTenantUnitById(Long tenantId, java.util.Collection<? extends CatalogItemBase> items) {
+    Set<UUID> ids = items == null ? Set.of() : items.stream()
+      .flatMap(item -> java.util.stream.Stream.of(item.getTenantUnitId(), item.getUnidadeAlternativaTenantUnitId()))
+      .filter(id -> id != null)
+      .collect(Collectors.toSet());
+    if (ids.isEmpty()) {
+      return java.util.Collections.emptyMap();
+    }
+    return tenantUnitRepository.findAllByTenantIdAndIdIn(tenantId, ids).stream()
+      .collect(Collectors.toMap(TenantUnit::getId, item -> item, (a, b) -> a, HashMap::new));
+  }
+
+  private UnitSpec validateUnits(Long tenantId, UUID tenantUnitId, UUID unidadeAlternativaTenantUnitId, BigDecimal fatorConversaoAlternativa) {
+    if (tenantUnitId == null || !tenantUnitRepository.existsByTenantIdAndId(tenantId, tenantUnitId)) {
+      throw new IllegalArgumentException("catalog_item_unit_required");
+    }
+
+    UUID altUnitId = unidadeAlternativaTenantUnitId;
+    BigDecimal altFactor = fatorConversaoAlternativa;
+
+    if (altUnitId == null && altFactor == null) {
+      return new UnitSpec(tenantUnitId, null, null);
+    }
+    if (altUnitId == null) {
+      throw new IllegalArgumentException("catalog_item_alt_unit_required");
+    }
+    if (altUnitId.equals(tenantUnitId)) {
+      throw new IllegalArgumentException("catalog_item_alt_unit_must_differ");
+    }
+    if (!tenantUnitRepository.existsByTenantIdAndId(tenantId, altUnitId)) {
+      throw new IllegalArgumentException("catalog_item_alt_unit_invalid");
+    }
+    if (altFactor == null || altFactor.compareTo(BigDecimal.ZERO) <= 0) {
+      throw new IllegalArgumentException("catalog_item_alt_factor_invalid");
+    }
+    altFactor = altFactor.setScale(UnitConversionService.FACTOR_SCALE, RoundingMode.HALF_UP);
+    return new UnitSpec(tenantUnitId, altUnitId, altFactor);
   }
 
   private RuntimeException mapIntegrityViolation(DataIntegrityViolationException ex) {
@@ -315,4 +395,10 @@ public class CatalogItemCrudSupportService {
     }
     return normalized;
   }
+
+  private record UnitSpec(
+    UUID tenantUnitId,
+    UUID unidadeAlternativaTenantUnitId,
+    BigDecimal fatorConversaoAlternativa
+  ) {}
 }

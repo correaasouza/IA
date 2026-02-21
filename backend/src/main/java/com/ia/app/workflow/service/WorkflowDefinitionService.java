@@ -404,8 +404,15 @@ public class WorkflowDefinitionService {
     }
     WorkflowActionConfigRequest first = actions.get(0);
     if (origin == WorkflowOrigin.ITEM_MOVIMENTO_ESTOQUE) {
+      String actionType = "MOVE_STOCK";
+      if (first != null && first.type() != null) {
+        String normalized = first.type().trim().toUpperCase(Locale.ROOT);
+        if ("UNDO_STOCK".equals(normalized)) {
+          actionType = "UNDO_STOCK";
+        }
+      }
       return List.of(new WorkflowActionConfigRequest(
-        "MOVE_STOCK",
+        actionType,
         "ON_TRANSITION",
         true,
         first != null && first.params() != null ? first.params() : Map.of()));

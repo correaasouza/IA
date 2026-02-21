@@ -4,7 +4,7 @@
       <div>
         <h1 class="m-0 text-lg font-bold">{{ title }}</h1>
         <p class="mt-1 text-xs text-[var(--muted-strong)] movimento-header-summary">
-          Empresa: {{ empresaAtual() }} | Nome: {{ nomeAtual() }} | Ajuste estoque: {{ stockAdjustmentAtual() }}
+          Codigo: {{ codigoAtual() }} | Empresa: {{ empresaAtual() }} | Nome: {{ nomeAtual() }} | Ajuste estoque: {{ stockAdjustmentAtual() }}
           <ng-container *ngIf="hasTiposEntidadeConfigurados()"> | Destinatario: {{ tipoEntidadeAtual() }}</ng-container>
         </p>
       </div>
@@ -17,7 +17,7 @@
         <button
           mat-stroked-button
           type="button"
-          *ngIf="mode === 'view' && movimento"
+          *ngIf="mode === 'view' && movimento && !movimento.finalizado"
           (click)="toEdit()"
           appAccessControl="movimentos.estoque.update"
           [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
@@ -31,7 +31,7 @@
           type="button"
           *ngIf="mode !== 'view'"
           (click)="save()"
-          [disabled]="saving || form.invalid || !!errorMessage"
+          [disabled]="saving || form.invalid || !!errorMessage || (mode !== 'new' && !!movimento?.finalizado)"
           [appAccessControl]="mode === 'edit' ? 'movimentos.estoque.update' : 'movimentos.estoque.create'"
           [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
           <mat-icon>save</mat-icon>
@@ -44,7 +44,7 @@
           type="button"
           *ngIf="mode !== 'new' && movimento"
           (click)="remove()"
-          [disabled]="deleting"
+          [disabled]="deleting || !!movimento?.finalizado"
           appAccessControl="movimentos.estoque.delete"
           [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
           <mat-icon>delete</mat-icon>
@@ -157,6 +157,7 @@
         [stateKeysByItemId]="itemStateKeysByItemId"
         [stateColorsByStateKey]="itemStateColorsByStateKey"
         [itemSaving]="saving"
+        [movementFinalized]="!!movimento?.finalizado"
         [emptyMessage]="'Nenhum item salvo.'"
         [actionButtonsEnabled]="true"
         (consultItem)="onSavedItemConsult($event)"
@@ -165,8 +166,8 @@
         (deleteItem)="onSavedItemDelete($event)">
       </app-movimento-itens-list>
 
-      <div class="mt-2 text-right text-sm font-semibold">
-        Total cobrado: {{ itensTotalCobrado() | number : '1.2-6' }}
+      <div class="mt-2 text-right text-sm font-semibold app-money-value">
+        Total cobrado: {{ itensTotalCobrado() | number : '1.2-2' }}
       </div>
     </section>
   </div>

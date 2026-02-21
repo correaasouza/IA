@@ -27,6 +27,12 @@ import { CatalogGroupsPageComponent } from './features/catalog/catalog-groups-pa
 import { MovementConfigsPageComponent } from './features/movement-configs/movement-configs-page.component';
 import { MovimentoEstoqueListComponent } from './features/movements/movimento-estoque-list.component';
 import { MovimentoEstoqueFormComponent } from './features/movements/movimento-estoque-form.component';
+import { OfficialUnitsListComponent } from './features/units/official-units-list.component';
+import { OfficialUnitFormComponent } from './features/units/official-unit-form.component';
+import { TenantUnitsListComponent } from './features/units/tenant-units-list.component';
+import { TenantUnitFormComponent } from './features/units/tenant-unit-form.component';
+import { TenantUnitConversionsListComponent } from './features/units/tenant-unit-conversions-list.component';
+import { TenantUnitConversionFormComponent } from './features/units/tenant-unit-conversion-form.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent, canActivate: [AuthGuard] },
@@ -53,6 +59,18 @@ export const routes: Routes = [
   { path: 'access-controls/:key/edit', component: AccessControlFormComponent, canActivate: [AuthGuard] },
   { path: 'configs', component: ConfigsComponent, canActivate: [AuthGuard] },
   { path: 'configs/movimentos', component: MovementConfigsPageComponent, canActivate: [AuthGuard] },
+  { path: 'global-settings/official-units', component: OfficialUnitsListComponent, canActivate: [AuthGuard] },
+  { path: 'global-settings/official-units/new', component: OfficialUnitFormComponent, canActivate: [AuthGuard] },
+  { path: 'global-settings/official-units/:id', component: OfficialUnitFormComponent, canActivate: [AuthGuard] },
+  { path: 'global-settings/official-units/:id/edit', component: OfficialUnitFormComponent, canActivate: [AuthGuard] },
+  { path: 'tenant-units', component: TenantUnitsListComponent, canActivate: [AuthGuard] },
+  { path: 'tenant-units/new', component: TenantUnitFormComponent, canActivate: [AuthGuard] },
+  { path: 'tenant-units/:id', component: TenantUnitFormComponent, canActivate: [AuthGuard] },
+  { path: 'tenant-units/:id/edit', component: TenantUnitFormComponent, canActivate: [AuthGuard] },
+  { path: 'tenant-unit-conversions', component: TenantUnitConversionsListComponent, canActivate: [AuthGuard] },
+  { path: 'tenant-unit-conversions/new', component: TenantUnitConversionFormComponent, canActivate: [AuthGuard] },
+  { path: 'tenant-unit-conversions/:id', component: TenantUnitConversionFormComponent, canActivate: [AuthGuard] },
+  { path: 'tenant-unit-conversions/:id/edit', component: TenantUnitConversionFormComponent, canActivate: [AuthGuard] },
   { path: 'configs/workflows', redirectTo: 'configs/movimentos', pathMatch: 'full' },
   { path: 'configs/workflows/:any', redirectTo: 'configs/movimentos' },
   { path: 'configs/workflows/:any/:any2', redirectTo: 'configs/movimentos' },
