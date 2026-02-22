@@ -102,11 +102,11 @@ public class MovimentoEstoqueItemCatalogService {
 
     if (vinculo.catalogType() == CatalogConfigurationType.PRODUCTS) {
       return catalogProductRepository
-        .search(scope.tenantId(), scope.catalogConfigurationId(), scope.agrupadorId(), null, normalizedText, null, true, pageable)
+        .search(scope.tenantId(), scope.catalogConfigurationId(), scope.agrupadorId(), null, normalizedText, null, null, true, pageable)
         .map(this::toProductOption);
     }
     return catalogServiceItemRepository
-      .search(scope.tenantId(), scope.catalogConfigurationId(), scope.agrupadorId(), null, normalizedText, null, true, pageable)
+      .search(scope.tenantId(), scope.catalogConfigurationId(), scope.agrupadorId(), null, normalizedText, null, null, true, pageable)
       .map(this::toServiceOption);
   }
 

@@ -64,6 +64,7 @@ export class CatalogItemsListComponent implements OnInit {
   loadingMoreRows = false;
 
   selectedGroupId: number | null = null;
+  includeChildrenFilter = true;
   groupOptions: Array<{ id: number; nome: string }> = [];
 
   isMobile = false;
@@ -105,6 +106,7 @@ export class CatalogItemsListComponent implements OnInit {
       this.singular = data['singular'] || (this.type === 'PRODUCTS' ? 'produto' : 'servico');
       this.pageIndex = 0;
       this.selectedGroupId = null;
+      this.includeChildrenFilter = true;
       this.refreshContextAndData();
     });
   }
@@ -230,6 +232,7 @@ export class CatalogItemsListComponent implements OnInit {
       codigo,
       text,
       grupoId: this.selectedGroupId,
+      includeChildren: this.includeChildrenFilter,
       ativo: status === '' ? '' : status === 'ativo'
     }).pipe(finalize(() => {
       this.loading = false;
@@ -267,6 +270,7 @@ export class CatalogItemsListComponent implements OnInit {
     this.searchTerm = '';
     this.searchFields = ['codigo', 'nome', 'descricao'];
     this.filters.patchValue({ status: '' }, { emitEvent: false });
+    this.includeChildrenFilter = true;
     this.loadItems(true);
   }
 
@@ -287,6 +291,11 @@ export class CatalogItemsListComponent implements OnInit {
 
   onGroupsChanged(): void {
     this.loadGroups();
+    this.loadItems(true);
+  }
+
+  onIncludeChildrenFilterChange(checked: boolean): void {
+    this.includeChildrenFilter = !!checked;
     this.loadItems(true);
   }
 

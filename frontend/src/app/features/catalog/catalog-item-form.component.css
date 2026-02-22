@@ -98,6 +98,55 @@
   font-size: 12px;
 }
 
+.catalog-sale-prices-section {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.catalog-sale-prices-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.catalog-sale-prices-table-wrap {
+  overflow: auto;
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+}
+
+.catalog-sale-prices-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 660px;
+}
+
+.catalog-sale-prices-table th,
+.catalog-sale-prices-table td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--border-light);
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.catalog-sale-prices-table th {
+  text-align: left;
+  font-weight: 700;
+  color: var(--ink);
+  background: #f8fafc;
+}
+
+.catalog-sale-prices-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.catalog-sale-prices-inactive {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
 :host ::ng-deep .catalog-price-card .mat-mdc-form-field-subscript-wrapper {
   display: none;
 }
@@ -358,6 +407,10 @@
 
   .catalog-stock-table-consolidated {
     min-width: 420px;
+  }
+
+  .catalog-sale-prices-table {
+    min-width: 540px;
   }
 
   .catalog-ledger-filters {

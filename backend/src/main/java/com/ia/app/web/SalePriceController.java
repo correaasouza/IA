@@ -3,6 +3,7 @@ package com.ia.app.web;
 import com.ia.app.domain.CatalogConfigurationType;
 import com.ia.app.dto.SalePriceApplyByGroupRequest;
 import com.ia.app.dto.SalePriceApplyByGroupResponse;
+import com.ia.app.dto.SalePriceByItemRowResponse;
 import com.ia.app.dto.SalePriceBulkUpsertRequest;
 import com.ia.app.dto.SalePriceGridRowResponse;
 import com.ia.app.dto.SalePriceGroupOptionResponse;
@@ -12,6 +13,7 @@ import com.ia.app.service.SalePriceResolverService;
 import com.ia.app.service.SalePriceService;
 import jakarta.validation.Valid;
 import java.util.List;
+import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -46,11 +48,23 @@ public class SalePriceController {
       @RequestParam Long priceBookId,
       @RequestParam(required = false) Long variantId,
       @RequestParam(required = false) String catalogType,
+      @RequestParam(required = false) String text,
+      @RequestParam(required = false) Long catalogItemId,
+      @RequestParam(required = false) Long catalogGroupId,
+      @RequestParam(required = false, defaultValue = "false") Boolean includeGroupChildren,
       Pageable pageable) {
     CatalogConfigurationType parsedType = catalogType == null || catalogType.isBlank()
       ? null
       : CatalogConfigurationType.from(catalogType);
-    return ResponseEntity.ok(service.grid(priceBookId, variantId, parsedType, pageable));
+    return ResponseEntity.ok(service.grid(
+      priceBookId,
+      variantId,
+      parsedType,
+      text,
+      catalogItemId,
+      catalogGroupId,
+      includeGroupChildren,
+      pageable));
   }
 
   @GetMapping("/group-options")
@@ -73,6 +87,16 @@ public class SalePriceController {
   public ResponseEntity<SalePriceApplyByGroupResponse> applyByGroup(
       @Valid @RequestBody SalePriceApplyByGroupRequest request) {
     return ResponseEntity.ok(service.applyByGroup(request));
+  }
+
+  @GetMapping("/by-item")
+  @PreAuthorize("@permissaoGuard.hasPermissao('CATALOG_PRICES_VIEW')")
+  public ResponseEntity<List<SalePriceByItemRowResponse>> byItem(
+      @RequestParam String catalogType,
+      @RequestParam Long catalogItemId,
+      @RequestParam(required = false) UUID tenantUnitId) {
+    CatalogConfigurationType parsedType = CatalogConfigurationType.from(catalogType);
+    return ResponseEntity.ok(resolverService.listByItem(parsedType, catalogItemId, tenantUnitId));
   }
 
   @DeleteMapping("/{id}")

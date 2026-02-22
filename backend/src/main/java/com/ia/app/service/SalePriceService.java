@@ -7,6 +7,7 @@ import com.ia.app.domain.CatalogPriceType;
 import com.ia.app.domain.PriceBook;
 import com.ia.app.domain.PriceChangeAction;
 import com.ia.app.domain.PriceChangeLog;
+import com.ia.app.domain.PriceAdjustmentKind;
 import com.ia.app.domain.PriceVariant;
 import com.ia.app.domain.SalePrice;
 import com.ia.app.dto.SalePriceApplyByGroupRequest;
@@ -39,6 +40,7 @@ import java.util.Set;
 import java.util.UUID;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -80,15 +82,31 @@ public class SalePriceService {
   }
 
   @Transactional(readOnly = true)
-  public Page<SalePriceGridRowResponse> grid(Long priceBookId, Long variantId, CatalogConfigurationType catalogType, Pageable pageable) {
+  public Page<SalePriceGridRowResponse> grid(
+      Long priceBookId,
+      Long variantId,
+      CatalogConfigurationType catalogType,
+      String text,
+      Long catalogItemId,
+      Long catalogGroupId,
+      Boolean includeGroupChildren,
+      Pageable pageable) {
     Long tenantId = requireTenant();
     validateBookAndVariant(tenantId, priceBookId, variantId);
+    String normalizedText = text == null ? null : text.trim();
+    if (normalizedText != null && normalizedText.isBlank()) {
+      normalizedText = null;
+    }
 
-    Page<SalePrice> page = repository.searchGrid(
+    Page<SalePriceRepository.SalePriceGridRowProjection> page = repository.searchGrid(
       tenantId,
       priceBookId,
       variantId,
       catalogType == null ? null : catalogType.name(),
+      normalizedText,
+      catalogItemId,
+      catalogGroupId,
+      includeGroupChildren != null && includeGroupChildren,
       pageable);
 
     return page.map(this::toGridRow);
@@ -159,43 +177,36 @@ public class SalePriceService {
     if (request.catalogType() == null) {
       throw new IllegalArgumentException("sale_price_catalog_type_required");
     }
-    if (request.catalogGroupId() == null || request.catalogGroupId() <= 0) {
-      throw new IllegalArgumentException("sale_price_catalog_group_required");
-    }
 
-    BigDecimal percentage = normalizeScale(request.percentage());
+    PriceAdjustmentKind adjustmentKind = request.adjustmentKind() == null
+      ? PriceAdjustmentKind.PERCENT
+      : request.adjustmentKind();
+    BigDecimal adjustmentValue = normalizeScale(request.adjustmentValue());
     boolean includeChildren = request.includeChildren() == null || request.includeChildren();
     boolean overwriteExisting = request.overwriteExisting() != null && request.overwriteExisting();
-
-    Long catalogConfigurationId = catalogConfigurationRepository.findByTenantIdAndType(tenantId, request.catalogType())
-      .map(config -> config.getId())
-      .orElseThrow(() -> new EntityNotFoundException("catalog_configuration_not_found"));
-
-    CatalogGroup rootGroup = catalogGroupRepository
-      .findByIdAndTenantIdAndCatalogConfigurationIdAndAtivoTrue(request.catalogGroupId(), tenantId, catalogConfigurationId)
-      .orElseThrow(() -> new EntityNotFoundException("catalog_group_not_found"));
-
-    Set<Long> groupIds = new HashSet<>();
-    groupIds.add(rootGroup.getId());
-    if (includeChildren) {
-      List<CatalogGroup> descendants = catalogGroupRepository
-        .findAllByTenantIdAndCatalogConfigurationIdAndPathStartingWithAndAtivoTrueOrderByPathAsc(
-          tenantId,
-          catalogConfigurationId,
-          rootGroup.getPath() + "/");
-      for (CatalogGroup row : descendants) {
-        groupIds.add(row.getId());
-      }
+    String normalizedText = request.text() == null ? null : request.text().trim();
+    if (normalizedText != null && normalizedText.isBlank()) {
+      normalizedText = null;
     }
+    Long catalogItemId = request.catalogItemId() == null || request.catalogItemId() <= 0
+      ? null
+      : request.catalogItemId();
+    Long catalogGroupId = request.catalogGroupId() == null || request.catalogGroupId() <= 0
+      ? null
+      : request.catalogGroupId();
 
-    List<Long> itemIds = resolveActiveItemIds(
+    List<Long> itemIds = resolveItemIdsInScope(
       tenantId,
+      request.priceBookId(),
+      request.variantId(),
       request.catalogType(),
-      catalogConfigurationId,
-      groupIds);
+      normalizedText,
+      catalogItemId,
+      catalogGroupId,
+      includeChildren);
     if (itemIds.isEmpty()) {
       return new SalePriceApplyByGroupResponse(
-        request.catalogGroupId(),
+        catalogGroupId,
         0,
         0,
         0,
@@ -205,9 +216,6 @@ public class SalePriceService {
     }
 
     Map<Long, BigDecimal> saleBaseByItemId = loadSaleBaseMap(tenantId, request.catalogType(), itemIds);
-    BigDecimal factor = BigDecimal.ONE.add(
-      percentage.divide(new BigDecimal("100"), CatalogPriceRuleService.PRICE_SCALE, RoundingMode.HALF_UP));
-
     int processed = 0;
     int created = 0;
     int updated = 0;
@@ -228,12 +236,13 @@ public class SalePriceService {
       }
 
       BigDecimal saleBase = saleBaseByItemId.get(itemId);
-      if (saleBase == null) {
+      if (saleBase == null && adjustmentKind == PriceAdjustmentKind.PERCENT) {
         skippedWithoutBasePrice++;
         continue;
       }
+      BigDecimal baseForAdjustment = saleBase == null ? BigDecimal.ZERO : saleBase;
 
-      BigDecimal targetPrice = normalizePrice(saleBase.multiply(factor));
+      BigDecimal targetPrice = normalizePrice(applyAdjustment(baseForAdjustment, adjustmentKind, adjustmentValue));
       Optional<SalePrice> saved = applyScopedPriceChange(
         tenantId,
         request.priceBookId(),
@@ -254,13 +263,62 @@ public class SalePriceService {
     }
 
     return new SalePriceApplyByGroupResponse(
-      request.catalogGroupId(),
+      catalogGroupId,
       itemIds.size(),
       processed,
       created,
       updated,
       skippedWithoutBasePrice,
       skippedExisting);
+  }
+
+  private List<Long> resolveItemIdsInScope(
+      Long tenantId,
+      Long priceBookId,
+      Long variantId,
+      CatalogConfigurationType catalogType,
+      String text,
+      Long catalogItemId,
+      Long catalogGroupId,
+      boolean includeChildren) {
+    List<Long> itemIds = new ArrayList<>();
+    Set<Long> seen = new HashSet<>();
+    int pageIndex = 0;
+    final int pageSize = 500;
+
+    while (true) {
+      Page<SalePriceRepository.SalePriceGridRowProjection> page = repository.searchGrid(
+        tenantId,
+        priceBookId,
+        variantId,
+        catalogType.name(),
+        text,
+        catalogItemId,
+        catalogGroupId,
+        includeChildren,
+        PageRequest.of(pageIndex, pageSize));
+
+      if (page.isEmpty()) {
+        break;
+      }
+
+      for (SalePriceRepository.SalePriceGridRowProjection row : page.getContent()) {
+        Long itemId = row.getCatalogItemId();
+        if (itemId != null && seen.add(itemId)) {
+          itemIds.add(itemId);
+        }
+      }
+
+      if (!page.hasNext()) {
+        break;
+      }
+      pageIndex++;
+      if (pageIndex > 5000) {
+        break;
+      }
+    }
+
+    return itemIds;
   }
 
   private void validateBookAndVariant(Long tenantId, Long priceBookId, Long variantId) {
@@ -437,8 +495,36 @@ public class SalePriceService {
       row.getVariantId(),
       row.getCatalogType(),
       row.getCatalogItemId(),
+      null,
+      null,
+      null,
       row.getTenantUnitId(),
-      normalizePrice(row.getPriceFinal()));
+      normalizeNullablePrice(row.getPriceFinal()));
+  }
+
+  private SalePriceGridRowResponse toGridRow(SalePriceRepository.SalePriceGridRowProjection row) {
+    return new SalePriceGridRowResponse(
+      row.getId(),
+      row.getPriceBookId(),
+      row.getVariantId(),
+      CatalogConfigurationType.from(row.getCatalogType()),
+      row.getCatalogItemId(),
+      row.getCatalogItemName(),
+      row.getCatalogGroupName(),
+      normalizeNullablePrice(row.getCatalogBasePrice()),
+      row.getTenantUnitId(),
+      normalizeNullablePrice(row.getPriceFinal()));
+  }
+
+  private BigDecimal applyAdjustment(BigDecimal basePrice, PriceAdjustmentKind adjustmentKind, BigDecimal adjustmentValue) {
+    BigDecimal base = basePrice == null ? BigDecimal.ZERO : basePrice;
+    BigDecimal value = adjustmentValue == null ? BigDecimal.ZERO : adjustmentValue;
+    if (adjustmentKind == PriceAdjustmentKind.PERCENT) {
+      BigDecimal factor = BigDecimal.ONE.add(
+        value.divide(new BigDecimal("100"), CatalogPriceRuleService.PRICE_SCALE, RoundingMode.HALF_UP));
+      return base.multiply(factor).setScale(CatalogPriceRuleService.PRICE_SCALE, RoundingMode.HALF_UP);
+    }
+    return base.add(value).setScale(CatalogPriceRuleService.PRICE_SCALE, RoundingMode.HALF_UP);
   }
 
   private BigDecimal normalizePrice(BigDecimal value) {
@@ -447,6 +533,10 @@ public class SalePriceService {
       throw new IllegalArgumentException("sale_price_negative");
     }
     return normalized;
+  }
+
+  private BigDecimal normalizeNullablePrice(BigDecimal value) {
+    return value == null ? null : normalizePrice(value);
   }
 
   private BigDecimal normalizeScale(BigDecimal value) {

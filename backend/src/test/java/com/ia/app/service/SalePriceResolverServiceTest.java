@@ -10,6 +10,7 @@ import com.ia.app.domain.PriceBook;
 import com.ia.app.domain.PriceVariant;
 import com.ia.app.domain.SalePrice;
 import com.ia.app.domain.SalePriceSource;
+import com.ia.app.dto.SalePriceByItemRowResponse;
 import com.ia.app.dto.SalePriceResolveRequest;
 import com.ia.app.dto.SalePriceResolveResponse;
 import com.ia.app.repository.CatalogItemPriceRepository;
@@ -18,6 +19,7 @@ import com.ia.app.repository.PriceVariantRepository;
 import com.ia.app.repository.SalePriceRepository;
 import com.ia.app.tenant.TenantContext;
 import java.math.BigDecimal;
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -151,6 +153,79 @@ class SalePriceResolverServiceTest {
     assertThat(resolved.priceFinal()).isEqualByComparingTo("88.123456");
     assertThat(resolved.salePriceId()).isNull();
     assertThat(resolved.source()).isEqualTo(SalePriceSource.CATALOG_BASE);
+  }
+
+  @Test
+  void shouldListAllBookAndVariantSalePricesByItem() {
+    TenantContext.setTenantId(504L);
+
+    PriceBook bookA = createBook(504L, "Tabela A", true);
+    PriceBook bookB = createBook(504L, "Tabela B", true);
+    PriceVariant variantAtacado = createVariant(504L, "Atacado", true);
+    PriceVariant variantPromo = createVariant(504L, "Promocao", false);
+
+    SalePrice bookABase = new SalePrice();
+    bookABase.setTenantId(504L);
+    bookABase.setPriceBookId(bookA.getId());
+    bookABase.setVariantId(null);
+    bookABase.setCatalogType(CatalogConfigurationType.PRODUCTS);
+    bookABase.setCatalogItemId(9901L);
+    bookABase.setPriceFinal(new BigDecimal("30.000000"));
+    salePriceRepository.save(bookABase);
+
+    SalePrice bookAAtacado = new SalePrice();
+    bookAAtacado.setTenantId(504L);
+    bookAAtacado.setPriceBookId(bookA.getId());
+    bookAAtacado.setVariantId(variantAtacado.getId());
+    bookAAtacado.setCatalogType(CatalogConfigurationType.PRODUCTS);
+    bookAAtacado.setCatalogItemId(9901L);
+    bookAAtacado.setPriceFinal(new BigDecimal("35.000000"));
+    salePriceRepository.save(bookAAtacado);
+
+    CatalogItemPrice fallback = new CatalogItemPrice();
+    fallback.setTenantId(504L);
+    fallback.setCatalogType(CatalogConfigurationType.PRODUCTS);
+    fallback.setCatalogItemId(9901L);
+    fallback.setPriceType(CatalogPriceType.SALE_BASE);
+    fallback.setPriceFinal(new BigDecimal("20.000000"));
+    fallback.setAdjustmentKind(com.ia.app.domain.PriceAdjustmentKind.FIXED);
+    fallback.setAdjustmentValue(BigDecimal.ZERO);
+    catalogItemPriceRepository.save(fallback);
+
+    List<SalePriceByItemRowResponse> rows = resolverService.listByItem(
+      CatalogConfigurationType.PRODUCTS,
+      9901L,
+      null);
+
+    assertThat(rows).hasSize(6);
+
+    SalePriceByItemRowResponse baseA = rows.stream()
+      .filter(row -> bookA.getId().equals(row.priceBookId()) && row.variantId() == null)
+      .findFirst()
+      .orElseThrow();
+    assertThat(baseA.priceFinal()).isEqualByComparingTo("30.000000");
+    assertThat(baseA.source()).isEqualTo(SalePriceSource.BOOK_BASE);
+
+    SalePriceByItemRowResponse atacadoA = rows.stream()
+      .filter(row -> bookA.getId().equals(row.priceBookId()) && variantAtacado.getId().equals(row.variantId()))
+      .findFirst()
+      .orElseThrow();
+    assertThat(atacadoA.priceFinal()).isEqualByComparingTo("35.000000");
+    assertThat(atacadoA.source()).isEqualTo(SalePriceSource.EXACT_VARIANT);
+
+    SalePriceByItemRowResponse promoA = rows.stream()
+      .filter(row -> bookA.getId().equals(row.priceBookId()) && variantPromo.getId().equals(row.variantId()))
+      .findFirst()
+      .orElseThrow();
+    assertThat(promoA.priceFinal()).isEqualByComparingTo("30.000000");
+    assertThat(promoA.source()).isEqualTo(SalePriceSource.INACTIVE_VARIANT_FALLBACK);
+
+    SalePriceByItemRowResponse baseB = rows.stream()
+      .filter(row -> bookB.getId().equals(row.priceBookId()) && row.variantId() == null)
+      .findFirst()
+      .orElseThrow();
+    assertThat(baseB.priceFinal()).isEqualByComparingTo("20.000000");
+    assertThat(baseB.source()).isEqualTo(SalePriceSource.CATALOG_BASE);
   }
 
   private PriceBook createBook(Long tenantId, String name, boolean active) {

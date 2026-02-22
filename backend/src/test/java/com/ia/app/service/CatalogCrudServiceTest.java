@@ -179,13 +179,34 @@ class CatalogCrudServiceTest {
     productService.create(new CatalogItemRequest(null, "OLEO 5W30", "API SN", group.getId(), tenantUnitId, null, null, true));
     productService.create(new CatalogItemRequest(null, "FILTRO AR", "Papel", null, tenantUnitId, null, null, true));
 
-    var byText = productService.list(null, "oleo", null, true, PageRequest.of(0, 20));
-    var byGroup = productService.list(null, null, group.getId(), true, PageRequest.of(0, 20));
+    var byText = productService.list(null, "oleo", null, false, true, PageRequest.of(0, 20));
+    var byGroup = productService.list(null, null, group.getId(), false, true, PageRequest.of(0, 20));
 
     assertThat(byText.getTotalElements()).isEqualTo(1);
     assertThat(byText.getContent().get(0).nome()).isEqualTo("OLEO 5W30");
     assertThat(byGroup.getTotalElements()).isEqualTo(1);
     assertThat(byGroup.getContent().get(0).catalogGroupId()).isEqualTo(group.getId());
+  }
+
+  @Test
+  void shouldIncludeDescendantsWhenFilteringByGroup() {
+    Long tenantId = 110L;
+    Long empresaId = createEmpresa(tenantId, "11000000000001");
+    setupCatalogGroupLink(tenantId, empresaId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    UUID tenantUnitId = createTenantUnit(tenantId);
+    TenantContext.setTenantId(tenantId);
+    EmpresaContext.setEmpresaId(empresaId);
+
+    var root = groupService.create(CatalogConfigurationType.PRODUCTS, new CatalogGroupRequest("Raiz", null));
+    var child = groupService.create(CatalogConfigurationType.PRODUCTS, new CatalogGroupRequest("Filho", root.getId()));
+    productService.create(new CatalogItemRequest(null, "ITEM FILHO", null, child.getId(), tenantUnitId, null, null, true));
+
+    var withoutDescendants = productService.list(null, null, root.getId(), false, true, PageRequest.of(0, 20));
+    var withDescendants = productService.list(null, null, root.getId(), true, true, PageRequest.of(0, 20));
+
+    assertThat(withoutDescendants.getTotalElements()).isEqualTo(0);
+    assertThat(withDescendants.getTotalElements()).isEqualTo(1);
+    assertThat(withDescendants.getContent().get(0).catalogGroupId()).isEqualTo(child.getId());
   }
 
   @Test

@@ -73,11 +73,23 @@ public class CatalogItemCrudSupportService {
       Long codigo,
       String text,
       Long catalogGroupId,
+      Boolean includeChildren,
       Boolean ativo,
       Pageable pageable) {
     var scope = contextService.resolveObrigatorio(type);
     Long normalizedCodigo = normalizeCodigo(codigo);
     String normalizedText = normalizeText(text);
+    String groupPathPrefix = null;
+    if (catalogGroupId != null && catalogGroupId > 0 && Boolean.TRUE.equals(includeChildren)) {
+      groupPathPrefix = groupRepository
+        .findByIdAndTenantIdAndCatalogConfigurationIdAndAtivoTrue(
+          catalogGroupId,
+          scope.tenantId(),
+          scope.catalogConfigurationId())
+        .map(CatalogGroup::getPath)
+        .map(path -> path + "/%")
+        .orElse(null);
+    }
 
     Page<? extends CatalogItemBase> page = switch (type) {
       case PRODUCTS -> productRepository.search(
@@ -87,6 +99,7 @@ public class CatalogItemCrudSupportService {
         normalizedCodigo,
         normalizedText,
         catalogGroupId,
+        groupPathPrefix,
         ativo,
         pageable);
       case SERVICES -> serviceItemRepository.search(
@@ -96,6 +109,7 @@ public class CatalogItemCrudSupportService {
         normalizedCodigo,
         normalizedText,
         catalogGroupId,
+        groupPathPrefix,
         ativo,
         pageable);
     };

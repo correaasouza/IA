@@ -57,13 +57,16 @@ export interface PriceVariantPayload {
 }
 
 export interface SalePriceGridRow {
-  id: number;
+  id?: number | null;
   priceBookId: number;
   variantId?: number | null;
   catalogType: CatalogConfigurationType;
   catalogItemId: number;
+  catalogItemName?: string | null;
+  catalogGroupName?: string | null;
+  catalogBasePrice?: number | null;
   tenantUnitId?: string | null;
-  priceFinal: number;
+  priceFinal?: number | null;
 }
 
 export interface SalePriceBulkItem {
@@ -85,7 +88,20 @@ export interface SalePriceResolveResponse {
   priceFinal: number;
   salePriceId?: number | null;
   resolvedVariantId?: number | null;
-  source: 'EXACT_VARIANT' | 'BOOK_BASE' | 'CATALOG_BASE' | 'INACTIVE_VARIANT_FALLBACK';
+  source: 'EXACT_VARIANT' | 'BOOK_BASE' | 'CATALOG_BASE' | 'INACTIVE_VARIANT_FALLBACK' | 'MANUAL';
+}
+
+export interface SalePriceByItemRow {
+  priceBookId: number;
+  priceBookName: string;
+  priceBookActive: boolean;
+  variantId?: number | null;
+  variantName?: string | null;
+  variantActive?: boolean | null;
+  priceFinal: number;
+  salePriceId?: number | null;
+  resolvedVariantId?: number | null;
+  source: 'EXACT_VARIANT' | 'BOOK_BASE' | 'CATALOG_BASE' | 'INACTIVE_VARIANT_FALLBACK' | 'MANUAL';
 }
 
 export interface SalePriceGroupOption {
@@ -94,18 +110,23 @@ export interface SalePriceGroupOption {
   nivel: number;
 }
 
+export type SalePriceApplyMode = 'PERCENT' | 'FIXED';
+
 export interface SalePriceApplyByGroupRequest {
   priceBookId: number;
   variantId?: number | null;
   catalogType: CatalogConfigurationType;
-  catalogGroupId: number;
-  percentage: number;
+  catalogGroupId?: number | null;
+  text?: string | null;
+  catalogItemId?: number | null;
+  adjustmentKind?: SalePriceApplyMode | null;
+  adjustmentValue: number;
   includeChildren?: boolean | null;
   overwriteExisting?: boolean | null;
 }
 
 export interface SalePriceApplyByGroupResponse {
-  catalogGroupId: number;
+  catalogGroupId: number | null;
   totalItemsInScope: number;
   processedItems: number;
   createdItems: number;
@@ -173,6 +194,10 @@ export class CatalogPricingService {
     priceBookId: number,
     variantId?: number | null,
     catalogType?: CatalogConfigurationType | null,
+    text?: string | null,
+    catalogItemId?: number | null,
+    catalogGroupId?: number | null,
+    includeGroupChildren?: boolean | null,
     page = 0,
     size = 50
   ): Observable<{ content: SalePriceGridRow[]; totalElements: number }> {
@@ -182,6 +207,10 @@ export class CatalogPricingService {
     params.set('size', `${size}`);
     if (variantId != null) params.set('variantId', `${variantId}`);
     if (catalogType) params.set('catalogType', catalogType);
+    if (text && text.trim()) params.set('text', text.trim());
+    if (catalogItemId != null && catalogItemId > 0) params.set('catalogItemId', `${catalogItemId}`);
+    if (catalogGroupId != null && catalogGroupId > 0) params.set('catalogGroupId', `${catalogGroupId}`);
+    if (catalogGroupId != null && catalogGroupId > 0) params.set('includeGroupChildren', `${!!includeGroupChildren}`);
     return this.http.get<{ content: SalePriceGridRow[]; totalElements: number }>(`${this.baseUrl}/sale-prices/grid?${params.toString()}`);
   }
 
@@ -209,5 +238,19 @@ export class CatalogPricingService {
 
   resolveSalePrice(payload: SalePriceResolveRequest): Observable<SalePriceResolveResponse> {
     return this.http.post<SalePriceResolveResponse>(`${this.baseUrl}/sale-prices/resolve`, payload);
+  }
+
+  listSalePricesByItem(
+    catalogType: CatalogConfigurationType,
+    catalogItemId: number,
+    tenantUnitId?: string | null
+  ): Observable<SalePriceByItemRow[]> {
+    const params = new URLSearchParams();
+    params.set('catalogType', catalogType);
+    params.set('catalogItemId', `${catalogItemId}`);
+    if (tenantUnitId && `${tenantUnitId}`.trim()) {
+      params.set('tenantUnitId', `${tenantUnitId}`.trim());
+    }
+    return this.http.get<SalePriceByItemRow[]>(`${this.baseUrl}/sale-prices/by-item?${params.toString()}`);
   }
 }

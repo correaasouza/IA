@@ -19,8 +19,14 @@ public class CatalogServiceCrudService {
     this.supportService = supportService;
   }
 
-  public Page<CatalogItemResponse> list(Long codigo, String text, Long catalogGroupId, Boolean ativo, Pageable pageable) {
-    return supportService.list(CatalogConfigurationType.SERVICES, codigo, text, catalogGroupId, ativo, pageable);
+  public Page<CatalogItemResponse> list(
+      Long codigo,
+      String text,
+      Long catalogGroupId,
+      Boolean includeChildren,
+      Boolean ativo,
+      Pageable pageable) {
+    return supportService.list(CatalogConfigurationType.SERVICES, codigo, text, catalogGroupId, includeChildren, ativo, pageable);
   }
 
   public CatalogItemResponse get(Long id) {

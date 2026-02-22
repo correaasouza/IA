@@ -169,6 +169,44 @@
         </div>
       </article>
     </div>
+
+    <div class="catalog-sale-prices-section">
+      <div class="catalog-sale-prices-title">Precos de venda por Tabela + Variacao</div>
+      <div class="catalog-empty-mini" *ngIf="!itemId">
+        Salve o item para visualizar todos os precos de venda por tabela e variacao.
+      </div>
+      <div class="catalog-price-rules-error" *ngIf="itemId && salePriceRowsError">{{ salePriceRowsError }}</div>
+      <div class="catalog-empty-mini" *ngIf="itemId && salePriceRowsLoading">
+        Carregando precos de venda...
+      </div>
+      <div class="catalog-empty-mini" *ngIf="itemId && !salePriceRowsLoading && !salePriceRowsError && salePriceRows.length === 0">
+        Nenhuma combinacao de tabela/variacao encontrada.
+      </div>
+
+      <div class="catalog-sale-prices-table-wrap" *ngIf="itemId && !salePriceRowsLoading && !salePriceRowsError && salePriceRows.length > 0">
+        <table class="catalog-sale-prices-table">
+          <thead>
+            <tr>
+              <th>Tabela</th>
+              <th>Variacao</th>
+              <th class="text-right">Preco final</th>
+              <th>Origem</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of salePriceRows">
+              <td>
+                {{ row.priceBookName || ('Tabela #' + row.priceBookId) }}
+                <span class="catalog-sale-prices-inactive" *ngIf="!row.priceBookActive">(inativa)</span>
+              </td>
+              <td>{{ salePriceVariantLabel(row) }}</td>
+              <td class="text-right app-money-value">{{ (row.priceFinal ?? 0) | number:'1.2-2' }}</td>
+              <td>{{ salePriceSourceLabel(row.source) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </section>
 
   <ng-container *ngIf="isTabActive('ESTOQUE')">

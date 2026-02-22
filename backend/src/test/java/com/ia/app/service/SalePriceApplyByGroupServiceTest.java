@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
 
 @DataJpaTest
 @Import({
@@ -89,6 +90,9 @@ class SalePriceApplyByGroupServiceTest {
       null,
       CatalogConfigurationType.PRODUCTS,
       root.getId(),
+      null,
+      null,
+      PriceAdjustmentKind.PERCENT,
       new BigDecimal("10"),
       true,
       false));
@@ -119,6 +123,105 @@ class SalePriceApplyByGroupServiceTest {
         null)
       .orElseThrow();
     assertThat(childPrice.getPriceFinal()).isEqualByComparingTo("55.000000");
+  }
+
+  @Test
+  void shouldApplyFixedValueByGroup() {
+    TenantContext.setTenantId(902L);
+
+    PriceBook book = createBook(902L);
+    CatalogConfiguration config = createCatalogConfiguration(902L, CatalogConfigurationType.PRODUCTS);
+    CatalogGroup root = createGroup(902L, config.getId(), null, "Bebidas");
+    CatalogProduct item = createProduct(902L, config.getId(), root.getId(), 3001L, "Suco");
+    CatalogProduct itemWithoutBase = createProduct(902L, config.getId(), root.getId(), 3002L, "Agua");
+    createSaleBase(902L, CatalogConfigurationType.PRODUCTS, item.getId(), "80.000000");
+
+    SalePriceApplyByGroupResponse response = service.applyByGroup(new SalePriceApplyByGroupRequest(
+      book.getId(),
+      null,
+      CatalogConfigurationType.PRODUCTS,
+      root.getId(),
+      null,
+      null,
+      PriceAdjustmentKind.FIXED,
+      new BigDecimal("12"),
+      false,
+      true));
+
+    assertThat(response.totalItemsInScope()).isEqualTo(2);
+    assertThat(response.processedItems()).isEqualTo(2);
+    assertThat(response.createdItems()).isEqualTo(2);
+    assertThat(response.updatedItems()).isEqualTo(0);
+    assertThat(response.skippedWithoutBasePrice()).isEqualTo(0);
+    assertThat(response.skippedExisting()).isEqualTo(0);
+
+    SalePrice saved = service.findExact(
+        902L,
+        book.getId(),
+        null,
+        CatalogConfigurationType.PRODUCTS,
+        item.getId(),
+        null)
+      .orElseThrow();
+    assertThat(saved.getPriceFinal()).isEqualByComparingTo("92.000000");
+
+    SalePrice savedWithoutBase = service.findExact(
+        902L,
+        book.getId(),
+        null,
+        CatalogConfigurationType.PRODUCTS,
+        itemWithoutBase.getId(),
+        null)
+      .orElseThrow();
+    assertThat(savedWithoutBase.getPriceFinal()).isEqualByComparingTo("12.000000");
+  }
+
+  @Test
+  void shouldListCatalogItemsIncludingRowsWithoutSalePrice() {
+    TenantContext.setTenantId(903L);
+
+    PriceBook book = createBook(903L);
+    CatalogConfiguration config = createCatalogConfiguration(903L, CatalogConfigurationType.PRODUCTS);
+    CatalogGroup root = createGroup(903L, config.getId(), null, "Linha");
+    CatalogProduct withPrice = createProduct(903L, config.getId(), root.getId(), 4001L, "Item com preco");
+    CatalogProduct withoutPrice = createProduct(903L, config.getId(), root.getId(), 4002L, "Item sem preco");
+    createSaleBase(903L, CatalogConfigurationType.PRODUCTS, withPrice.getId(), "50.000000");
+    createSaleBase(903L, CatalogConfigurationType.PRODUCTS, withoutPrice.getId(), "40.000000");
+
+    SalePrice existing = new SalePrice();
+    existing.setTenantId(903L);
+    existing.setPriceBookId(book.getId());
+    existing.setCatalogType(CatalogConfigurationType.PRODUCTS);
+    existing.setCatalogItemId(withPrice.getId());
+    existing.setPriceFinal(new BigDecimal("55.000000"));
+    salePriceRepository.save(existing);
+
+    var page = service.grid(
+      book.getId(),
+      null,
+      CatalogConfigurationType.PRODUCTS,
+      null,
+      null,
+      null,
+      true,
+      PageRequest.of(0, 20));
+
+    assertThat(page.getTotalElements()).isEqualTo(2);
+    var rows = page.getContent();
+
+    var rowWithPrice = rows.stream()
+      .filter(row -> row.catalogItemId().equals(withPrice.getId()))
+      .findFirst()
+      .orElseThrow();
+    assertThat(rowWithPrice.priceFinal()).isEqualByComparingTo("55.000000");
+    assertThat(rowWithPrice.id()).isNotNull();
+
+    var rowWithoutPrice = rows.stream()
+      .filter(row -> row.catalogItemId().equals(withoutPrice.getId()))
+      .findFirst()
+      .orElseThrow();
+    assertThat(rowWithoutPrice.priceFinal()).isNull();
+    assertThat(rowWithoutPrice.id()).isNull();
   }
 
   private PriceBook createBook(Long tenantId) {

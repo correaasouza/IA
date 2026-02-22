@@ -132,6 +132,17 @@
     <div class="p-3 pt-2">
       <div class="catalog-main-layout" [class.catalog-main-layout-groups-open]="groupTreeOpen">
         <aside class="catalog-main-groups" *ngIf="groupTreeOpen">
+          <label class="app-subgroups-toggle mb-2">
+            <input
+              type="checkbox"
+              [checked]="includeChildrenFilter"
+              (change)="onIncludeChildrenFilterChange($any($event.target).checked)" />
+            <span class="app-subgroups-toggle-indicator" aria-hidden="true">
+              <mat-icon>check</mat-icon>
+            </span>
+            <span>Incluir subgrupos</span>
+          </label>
+
           <app-catalog-groups-tree
             [type]="type"
             [canManage]="true"

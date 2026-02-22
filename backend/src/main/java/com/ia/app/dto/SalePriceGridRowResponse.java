@@ -10,6 +10,9 @@ public record SalePriceGridRowResponse(
   Long variantId,
   CatalogConfigurationType catalogType,
   Long catalogItemId,
+  String catalogItemName,
+  String catalogGroupName,
+  BigDecimal catalogBasePrice,
   UUID tenantUnitId,
   BigDecimal priceFinal
 ) {}

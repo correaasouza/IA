@@ -56,12 +56,13 @@ public class CatalogItemController {
       @RequestParam(required = false) Long codigo,
       @RequestParam(required = false) String text,
       @RequestParam(required = false) Long grupoId,
+      @RequestParam(required = false, defaultValue = "false") Boolean includeChildren,
       @RequestParam(required = false) Boolean ativo,
       Pageable pageable) {
     CatalogConfigurationType parsedType = CatalogConfigurationType.from(type);
     return ResponseEntity.ok(switch (parsedType) {
-      case PRODUCTS -> productService.list(codigo, text, grupoId, ativo, pageable);
-      case SERVICES -> serviceCrudService.list(codigo, text, grupoId, ativo, pageable);
+      case PRODUCTS -> productService.list(codigo, text, grupoId, includeChildren, ativo, pageable);
+      case SERVICES -> serviceCrudService.list(codigo, text, grupoId, includeChildren, ativo, pageable);
     });
   }
 

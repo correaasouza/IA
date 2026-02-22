@@ -103,6 +103,7 @@ export class CatalogItemService {
       codigo?: number | null;
       text?: string;
       grupoId?: number | null;
+      includeChildren?: boolean | null;
       ativo?: boolean | '';
     }
   ): Observable<CatalogItemListResponse> {

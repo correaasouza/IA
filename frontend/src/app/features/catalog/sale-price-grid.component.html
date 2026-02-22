@@ -1,201 +1,332 @@
-﻿<div class="grid gap-3">
-  <div class="page-list-sticky grid gap-2">
+<div class="grid gap-3">
+  <div #stickyShell class="page-list-sticky grid gap-2">
     <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-xs)]">
-      <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-        <div class="min-w-0">
-          <h1 class="m-0 text-base font-bold">Tabela Final de Venda</h1>
-          <p class="mt-0.5 text-[11px] text-[var(--muted)]">Grid de preco por Book + Variant.</p>
+      <div class="catalog-list-header-top">
+        <div class="catalog-list-header-main min-w-0">
+          <h1 class="m-0 text-base font-bold">Precos por Tabela + Variacao</h1>
+          <p class="mt-0.5 text-[11px] text-[var(--muted)]">Gestao de precos finais por tabela e variacao.</p>
+          <p class="mt-0.5 text-sm font-bold text-[var(--ink)]">
+            Tabela e variacao em edicao: {{ priceColumnLabel() }}
+          </p>
         </div>
 
-        <div class="flex items-center justify-between gap-2 md:justify-end">
-          <div class="hidden text-xs text-[var(--muted)] md:block">{{ rows.length }} registro(s)</div>
-          <button mat-flat-button color="primary" type="button" (click)="saveChanges()" [disabled]="saving || !hasPendingChanges()" appAccessControl="catalog.pricing.sale-prices.save" [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-            <mat-icon>save</mat-icon>
-            Salvar alteracoes
-          </button>
-          <button mat-stroked-button type="button" (click)="loadGrid()">
-            <mat-icon>refresh</mat-icon>
-            Atualizar
-          </button>
+        <div class="catalog-list-header-actions">
+          <div class="hidden text-xs text-[var(--muted)] md:block">{{ totalElements }} registro(s)</div>
         </div>
       </div>
 
-      <div class="grid gap-1.5 min-w-0 mt-2">
+      <div class="catalog-list-header-filters-row">
         <div class="flex items-center justify-between gap-2 md:hidden">
           <button mat-button type="button" class="mobile-filter-toggle" (click)="toggleMobileFilters()">
             <mat-icon>tune</mat-icon>
             Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
             <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
           </button>
-          <div class="text-xs text-[var(--muted)]">{{ rows.length }} registro(s)</div>
+          <div class="text-xs text-[var(--muted)]">{{ totalElements }} registro(s)</div>
         </div>
 
-        <form [formGroup]="filters" class="grid grid-cols-1 items-start gap-2 md:grid-cols-[220px_220px_180px_auto]" *ngIf="!isMobile || mobileFiltersOpen" role="search">
-          <div class="status-search-like">
-            <select class="status-native-select" formControlName="priceBookId" aria-label="Book">
-              <option [value]="0">Book: Selecione</option>
-              <option *ngFor="let book of books" [value]="book.id">{{ book.name }}</option>
-            </select>
-          </div>
+        <form
+          [formGroup]="filters"
+          class="grid grid-cols-1 items-start gap-1.5 md:grid-cols-[180px_220px_220px_minmax(0,1fr)_auto]"
+          *ngIf="!isMobile || mobileFiltersOpen"
+          role="search">
+          <label class="catalog-field">
+            <span>Tipo</span>
+            <div class="status-search-like">
+              <select
+                class="status-native-select"
+                formControlName="catalogType"
+                aria-label="Tipo de catalogo"
+                (change)="onCatalogTypeUiChange($any($event.target).value)">
+                <option value="PRODUCTS">Produtos</option>
+                <option value="SERVICES">Servicos</option>
+              </select>
+            </div>
+          </label>
 
-          <div class="status-search-like">
-            <select class="status-native-select" formControlName="variantId" aria-label="Variant">
-              <option value="">Variant: Base (null)</option>
-              <option *ngFor="let variant of variants" [value]="variant.id">{{ variant.name }}</option>
-            </select>
-          </div>
+          <label class="catalog-field">
+            <span>Tabela</span>
+            <div class="status-search-like">
+              <select
+                class="status-native-select"
+                formControlName="priceBookId"
+                aria-label="Tabela de preco"
+                (change)="onBookOrVariantUiChange()">
+                <option *ngFor="let book of books" [value]="book.id">{{ book.name }}</option>
+              </select>
+            </div>
+          </label>
 
-          <div class="status-search-like">
-            <select class="status-native-select" formControlName="catalogType" aria-label="Tipo de catalogo">
-              <option value="">Tipo: Todos</option>
-              <option value="PRODUCTS">Tipo: Produtos</option>
-              <option value="SERVICES">Tipo: Servicos</option>
-            </select>
-          </div>
+          <label class="catalog-field">
+            <span>Variacao</span>
+            <div class="status-search-like">
+              <select
+                class="status-native-select"
+                formControlName="variantId"
+                aria-label="Variacao de preco"
+                (change)="onBookOrVariantUiChange()">
+                <option value="">Base</option>
+                <option *ngFor="let variant of variants" [value]="variant.id">{{ variant.name }}</option>
+              </select>
+            </div>
+          </label>
 
-          <div class="flex items-center justify-end gap-2">
-            <button mat-stroked-button type="button" (click)="loadGrid()">Carregar</button>
+          <label class="catalog-field">
+            <span>Filtro geral</span>
+            <div class="min-w-0">
+              <app-field-search
+                [options]="searchOptions"
+                [defaultFields]="searchFields"
+                [showActions]="false"
+                placeholder="Digite e selecione os campos"
+                (searchChange)="onSearchChange($event)">
+              </app-field-search>
+            </div>
+          </label>
+
+          <div class="flex items-end justify-end gap-2">
             <button mat-stroked-button type="button" (click)="clearFilters()">Limpar</button>
           </div>
         </form>
       </div>
     </section>
 
-    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-      <div class="mb-1.5 text-sm font-semibold">Inclusao rapida por grupo</div>
-      <p class="mb-2 text-xs text-[var(--muted)]">
-        Inclui itens do grupo na tabela selecionada aplicando percentual sobre o preco Venda Base original do catalogo.
-      </p>
-      <form [formGroup]="groupApplyForm" class="grid grid-cols-1 gap-2 md:grid-cols-5">
-        <div class="status-search-like">
-          <select class="status-native-select" formControlName="catalogType" aria-label="Tipo do catalogo para inclusao">
-            <option value="PRODUCTS">Tipo: Produtos</option>
-            <option value="SERVICES">Tipo: Servicos</option>
-          </select>
-        </div>
-
-        <div class="status-search-like md:col-span-2">
-          <select class="status-native-select" formControlName="catalogGroupId" aria-label="Grupo do catalogo">
-            <option [value]="0">{{ groupOptionsLoading ? 'Carregando grupos...' : 'Grupo: Selecione' }}</option>
-            <option *ngFor="let group of groupOptions" [value]="group.id">{{ groupOptionLabel(group) }}</option>
-          </select>
-        </div>
-
-        <label class="sale-price-inline-field">
-          <span>Percentual sobre Venda Base</span>
-          <input type="number" step="0.01" class="app-qty-input" formControlName="percentage" />
-        </label>
-
-        <div class="flex items-center justify-end">
-          <button
-            mat-flat-button
-            color="primary"
-            type="button"
-            (click)="applyByGroup()"
-            [disabled]="applyingGroup || groupApplyForm.invalid"
-            appAccessControl="catalog.pricing.sale-prices.save"
-            [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-            <mat-icon>playlist_add</mat-icon>
-            Aplicar grupo
-          </button>
-        </div>
-
-        <label class="sale-price-inline-check">
-          <input type="checkbox" formControlName="includeChildren" />
-          Incluir subgrupos
-        </label>
-        <label class="sale-price-inline-check md:col-span-2">
-          <input type="checkbox" formControlName="overwriteExisting" />
-          Sobrescrever itens ja cadastrados nesta tabela
-        </label>
-        <div class="md:col-span-2 text-xs text-[var(--muted)]">
-          Use percentual positivo para acrescimo e negativo para desconto.
-        </div>
-      </form>
-    </section>
-
-    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-      <div class="mb-2 text-sm font-semibold">Novo preco manual</div>
-      <form [formGroup]="createForm" class="grid grid-cols-1 gap-2 md:grid-cols-4">
-        <label class="catalog-field">
-          <span>Tipo</span>
-          <select class="status-native-select" formControlName="catalogType">
-            <option value="PRODUCTS">Produtos</option>
-            <option value="SERVICES">Servicos</option>
-          </select>
-        </label>
-        <label class="catalog-field">
-          <span>ID item catalogo</span>
-          <input type="number" min="1" formControlName="catalogItemId" />
-        </label>
-        <label class="catalog-field">
-          <span>Preco final</span>
-          <input type="number" min="0" step="0.01" class="app-money-input" formControlName="priceFinal" />
-        </label>
-        <div class="flex items-end text-xs text-[var(--muted)]">
-          Salve para incluir/atualizar este item no book/variant selecionado.
-        </div>
-      </form>
-    </section>
   </div>
 
-  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="rows.length > 0">
-    <div class="table-sticky-actions hidden overflow-auto border-b border-[var(--border-light)] md:block">
-      <table mat-table [dataSource]="rows" class="w-full">
-        <ng-container matColumnDef="catalogType">
-          <th mat-header-cell *matHeaderCellDef>Tipo</th>
-          <td mat-cell *matCellDef="let row">{{ row.catalogType === 'PRODUCTS' ? 'Produto' : 'Servico' }}</td>
-        </ng-container>
+  <section
+    #workspaceShell
+    class="pricing-workspace-grid"
+    [style.--sale-price-workspace-height.px]="workspaceHeightPx">
+    <aside class="pricing-groups-col">
+      <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-xs)]">
+        <button mat-stroked-button type="button" class="sale-price-maintenance-toggle-btn" (click)="toggleQuickMaintenance()">
+          <mat-icon>{{ quickMaintenanceOpen ? 'toggle_off' : 'toggle_on' }}</mat-icon>
+          {{ quickMaintenanceOpen ? 'Desativar manutencao rapida' : 'Ativar manutencao rapida' }}
+        </button>
+      </section>
 
-        <ng-container matColumnDef="catalogItemId">
-          <th mat-header-cell *matHeaderCellDef>Item</th>
-          <td mat-cell *matCellDef="let row">{{ row.catalogItemId }}</td>
-        </ng-container>
+      <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)] sale-price-groups-card">
+        <div class="filters-group-row">
+          <button mat-button class="filters-group-toggle" type="button" (click)="showAllGroups()" [disabled]="!selectedGroupId" aria-label="Mostrar todos os grupos">
+            <mat-icon>layers</mat-icon>
+            Todos
+          </button>
+          <span class="selected-group-label" [attr.title]="selectedGroupLabel()">
+            Grupo selecionado: <strong>{{ selectedGroupLabel() }}</strong>
+          </span>
+        </div>
+        <label class="app-subgroups-toggle mt-2">
+          <input
+            type="checkbox"
+            [checked]="includeChildrenFilter"
+            (change)="onIncludeChildrenFilterChange($any($event.target).checked)" />
+          <span class="app-subgroups-toggle-indicator" aria-hidden="true">
+            <mat-icon>check</mat-icon>
+          </span>
+          <span>Incluir subgrupos</span>
+        </label>
+        <div class="mt-2">
+          <app-catalog-groups-tree
+            [type]="groupTreeType()"
+            [canManage]="false"
+            [showAllOption]="false"
+            [selectedGroupId]="selectedGroupId"
+            (selectedGroupIdChange)="onGroupSelected($event)"
+            (changed)="onGroupsChanged()">
+          </app-catalog-groups-tree>
+        </div>
+      </section>
+    </aside>
 
-        <ng-container matColumnDef="tenantUnitId">
-          <th mat-header-cell *matHeaderCellDef>Unidade</th>
-          <td mat-cell *matCellDef="let row">{{ row.tenantUnitId || '-' }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="priceFinal">
-          <th mat-header-cell *matHeaderCellDef class="text-right">Preco Final</th>
-          <td mat-cell *matCellDef="let row" class="text-right">
-            <input type="number" min="0" step="0.01" class="app-money-input" [value]="priceInputValue(row)" (change)="setEditedPrice(row, $any($event.target).value)" />
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="acoes" stickyEnd>
-          <th mat-header-cell *matHeaderCellDef class="acoes-header"><span class="acoes-label">Acoes</span></th>
-          <td mat-cell *matCellDef="let row" class="acoes-cell">
-            <div class="role-actions flex-nowrap">
-              <button mat-icon-button color="warn" matTooltip="Excluir" (click)="remove(row)" appAccessControl="catalog.pricing.sale-prices.delete" [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-                <mat-icon>delete</mat-icon>
+    <div class="pricing-content-col">
+      <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)] sale-price-quick-section" *ngIf="quickMaintenanceOpen">
+        <div class="sale-price-quick-title">Manutencao rapida nos itens da lista</div>
+        <div class="mb-1 text-xs text-[var(--muted)]">
+          Tipo aplicado: {{ selectedCatalogTypeLabel() }} | Grupo aplicado: {{ selectedGroupLabel() }}
+        </div>
+        <form [formGroup]="groupApplyForm" class="grid grid-cols-1 gap-2 md:grid-cols-6">
+          <label class="catalog-field md:col-span-2">
+            <span>Aplicar por</span>
+            <div class="inclusion-option-box" role="radiogroup" aria-label="Tipo de aplicacao">
+              <button
+                type="button"
+                class="inclusion-option"
+                [class.inclusion-option-active]="isPercentualApplyMode()"
+                [attr.aria-checked]="isPercentualApplyMode()"
+                role="radio"
+                (click)="setApplyMode('PERCENT')">
+                Percentual
+              </button>
+              <button
+                type="button"
+                class="inclusion-option"
+                [class.inclusion-option-active]="!isPercentualApplyMode()"
+                [attr.aria-checked]="!isPercentualApplyMode()"
+                role="radio"
+                (click)="setApplyMode('FIXED')">
+                Valor
               </button>
             </div>
-          </td>
-        </ng-container>
+          </label>
 
-        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
-        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
-      </table>
-    </div>
+          <label class="sale-price-inline-field md:col-span-2">
+            <span>{{ applyAdjustmentLabel() }}</span>
+            <input
+              type="text"
+              [step]="applyAdjustmentStep()"
+              [class]="applyAdjustmentInputClass()"
+              inputmode="decimal"
+              [value]="applyAdjustmentInputRaw"
+              (input)="onApplyAdjustmentInput($any($event.target).value)"
+              (blur)="onApplyAdjustmentBlur()" />
+          </label>
 
-    <div class="grid gap-2.5 p-3 pt-2.5 md:hidden">
-      <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]" *ngFor="let row of rows">
-        <div class="text-sm font-semibold">{{ row.catalogType === 'PRODUCTS' ? 'Produto' : 'Servico' }} #{{ row.catalogItemId }}</div>
-        <div class="text-xs text-[var(--muted)]">Unidade: {{ row.tenantUnitId || '-' }}</div>
-        <label class="catalog-field">
-          <span>Preco final</span>
-          <input type="number" min="0" step="0.01" class="app-money-input" [value]="priceInputValue(row)" (change)="setEditedPrice(row, $any($event.target).value)" />
-        </label>
-        <div class="flex justify-end gap-1.5">
-          <button mat-icon-button color="warn" (click)="remove(row)" aria-label="Excluir" appAccessControl="catalog.pricing.sale-prices.delete" [appAccessFallbackRoles]="['MASTER', 'ADMIN']"><mat-icon>delete</mat-icon></button>
+          <div class="flex items-end justify-end md:col-span-2">
+            <button
+              mat-flat-button
+              color="primary"
+              type="button"
+              (click)="applyByGroup()"
+              [disabled]="applyingGroup"
+              appAccessControl="catalog.pricing.sale-prices.save"
+              [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+              <mat-icon>playlist_add</mat-icon>
+              Aplicar
+            </button>
+          </div>
+
+          <label class="sale-price-inline-check md:col-span-3">
+            <input type="checkbox" formControlName="overwriteExisting" />
+            Subscrever itens com preco ja definido
+          </label>
+        </form>
+      </section>
+
+      <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)] sale-price-list-section" *ngIf="rows.length > 0">
+        <div #rowsPane class="table-sticky-actions sale-price-rows-pane hidden overflow-auto border-b border-[var(--border-light)] md:block" (scroll)="onRowsScroll($event)">
+          <table mat-table [dataSource]="rows" class="w-full">
+            <ng-container matColumnDef="catalogType">
+              <th mat-header-cell *matHeaderCellDef>Tipo</th>
+              <td mat-cell *matCellDef="let row">{{ row.catalogType === 'PRODUCTS' ? 'Produto' : 'Servico' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="catalogItemId">
+              <th mat-header-cell *matHeaderCellDef>ID Item</th>
+              <td mat-cell *matCellDef="let row">{{ row.catalogItemId }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="catalogItemName">
+              <th mat-header-cell *matHeaderCellDef>Nome</th>
+              <td mat-cell *matCellDef="let row">{{ row.catalogItemName || '-' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="catalogGroupName">
+              <th mat-header-cell *matHeaderCellDef>Grupo</th>
+              <td mat-cell *matCellDef="let row">{{ row.catalogGroupName || '-' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="catalogBasePrice">
+              <th mat-header-cell *matHeaderCellDef class="text-right">Valor Base</th>
+              <td mat-cell *matCellDef="let row" class="text-right app-money-value">{{ (row.catalogBasePrice ?? 0) | number:'1.2-2' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="tenantUnitId">
+              <th mat-header-cell *matHeaderCellDef>Unidade</th>
+              <td mat-cell *matCellDef="let row">{{ row.tenantUnitId || '-' }}</td>
+            </ng-container>
+
+            <ng-container matColumnDef="priceFinal">
+              <th mat-header-cell *matHeaderCellDef class="text-right">{{ priceColumnLabel() }}</th>
+              <td mat-cell *matCellDef="let row" class="text-right">
+                <div class="sale-price-cell-stack">
+                  <input
+                    type="text"
+                    inputmode="decimal"
+                    class="app-money-input"
+                    [value]="priceInputDisplay(row)"
+                    (input)="onRowPriceInput(row, $any($event.target).value)"
+                    (blur)="onRowPriceBlur(row)" />
+                  <span class="sale-price-empty-label" *ngIf="priceStatusLabel(row)">{{ priceStatusLabel(row) }}</span>
+                </div>
+              </td>
+            </ng-container>
+
+            <ng-container matColumnDef="acoes" stickyEnd>
+              <th mat-header-cell *matHeaderCellDef class="acoes-header"><span class="acoes-label">Acoes</span></th>
+              <td mat-cell *matCellDef="let row" class="acoes-cell">
+                <div class="role-actions flex-nowrap">
+                  <button
+                    mat-icon-button
+                    color="primary"
+                    matTooltip="Salvar linha"
+                    (click)="saveRow(row)"
+                    [disabled]="!hasPendingRowChange(row) || isSavingRow(row)"
+                    appAccessControl="catalog.pricing.sale-prices.save"
+                    [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+                    <mat-icon>{{ isSavingRow(row) ? 'hourglass_top' : 'save' }}</mat-icon>
+                  </button>
+                  <button mat-icon-button color="warn" matTooltip="Excluir" (click)="remove(row)" [disabled]="!row.id" appAccessControl="catalog.pricing.sale-prices.delete" [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+          </table>
         </div>
-      </article>
-    </div>
-  </section>
+        <div class="hidden px-2 py-1 text-xs text-[var(--muted)] md:block">
+          {{ rows.length }} de {{ totalElements }} registros
+          <span *ngIf="loadingMoreRows"> | Carregando mais...</span>
+        </div>
 
-  <section class="px-3 py-2.5 text-sm text-[var(--muted)] rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)]" *ngIf="!loading && rows.length === 0">
-    Sem precos cadastrados para os filtros informados.
+        <div class="grid gap-2.5 p-3 pt-2.5 md:hidden">
+          <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]" *ngFor="let row of rows">
+            <div class="text-sm font-semibold">{{ row.catalogType === 'PRODUCTS' ? 'Produto' : 'Servico' }} #{{ row.catalogItemId }}</div>
+            <div class="text-xs text-[var(--muted)]">Nome: {{ row.catalogItemName || '-' }}</div>
+            <div class="text-xs text-[var(--muted)]">Grupo: {{ row.catalogGroupName || '-' }}</div>
+            <div class="text-xs text-[var(--muted)]">Valor base: {{ (row.catalogBasePrice ?? 0) | number:'1.2-2' }}</div>
+            <div class="text-xs text-[var(--muted)]">Unidade: {{ row.tenantUnitId || '-' }}</div>
+            <label class="catalog-field">
+              <span>{{ priceColumnLabel() }}</span>
+              <input
+                type="text"
+                inputmode="decimal"
+                class="app-money-input"
+                [value]="priceInputDisplay(row)"
+                (input)="onRowPriceInput(row, $any($event.target).value)"
+                (blur)="onRowPriceBlur(row)" />
+              <span class="sale-price-empty-label" *ngIf="priceStatusLabel(row)">{{ priceStatusLabel(row) }}</span>
+            </label>
+            <div class="flex justify-end gap-1.5">
+              <button
+                mat-icon-button
+                color="primary"
+                (click)="saveRow(row)"
+                [disabled]="!hasPendingRowChange(row) || isSavingRow(row)"
+                aria-label="Salvar linha"
+                appAccessControl="catalog.pricing.sale-prices.save"
+                [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+                <mat-icon>{{ isSavingRow(row) ? 'hourglass_top' : 'save' }}</mat-icon>
+              </button>
+              <button mat-icon-button color="warn" (click)="remove(row)" [disabled]="!row.id" aria-label="Excluir" appAccessControl="catalog.pricing.sale-prices.delete" [appAccessFallbackRoles]="['MASTER', 'ADMIN']"><mat-icon>delete</mat-icon></button>
+            </div>
+          </article>
+          <div class="text-xs text-[var(--muted)]">
+            {{ rows.length }} de {{ totalElements }} registros
+            <span *ngIf="loadingMoreRows"> | Carregando mais...</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="px-3 py-2.5 text-sm text-[var(--muted)] rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)]" *ngIf="loading && rows.length === 0">
+        Carregando precos...
+      </section>
+
+      <section class="px-3 py-2.5 text-sm text-[var(--muted)] rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)]" *ngIf="!loading && rows.length === 0">
+        Sem precos cadastrados para os filtros informados.
+      </section>
+    </div>
   </section>
 </div>

@@ -48,43 +48,59 @@ public interface CatalogProductRepository extends JpaRepository<CatalogProduct, 
     value = """
       SELECT cp.*
       FROM catalog_product cp
+      LEFT JOIN catalog_group cg
+        ON cg.id = cp.catalog_group_id
+       AND cg.tenant_id = cp.tenant_id
+       AND cg.catalog_configuration_id = cp.catalog_configuration_id
       WHERE cp.tenant_id = :tenantId
         AND cp.catalog_configuration_id = :catalogConfigurationId
         AND cp.agrupador_empresa_id = :agrupadorEmpresaId
         AND (
-          (:codigo IS NULL AND :text IS NULL)
-          OR (:codigo IS NOT NULL AND cp.codigo = :codigo)
+          (cast(:codigo as bigint) IS NULL AND cast(:text as varchar) IS NULL)
+          OR (cast(:codigo as bigint) IS NOT NULL AND cp.codigo = cast(:codigo as bigint))
           OR (
-            :text IS NOT NULL
+            cast(:text as varchar) IS NOT NULL
             AND (
-              lower(cp.nome) LIKE lower(concat('%', :text, '%'))
-              OR lower(coalesce(cp.descricao, '')) LIKE lower(concat('%', :text, '%'))
+              lower(cp.nome) LIKE lower(concat('%', cast(:text as varchar), '%'))
+              OR lower(coalesce(cp.descricao, '')) LIKE lower(concat('%', cast(:text as varchar), '%'))
             )
           )
         )
-        AND (:catalogGroupId IS NULL OR cp.catalog_group_id = :catalogGroupId)
-        AND (:ativo IS NULL OR cp.ativo = :ativo)
+        AND (
+          cast(:catalogGroupId as bigint) IS NULL
+          OR cp.catalog_group_id = cast(:catalogGroupId as bigint)
+          OR (cast(:groupPathPrefix as varchar) IS NOT NULL AND cg.path LIKE cast(:groupPathPrefix as varchar))
+        )
+        AND (cast(:ativo as boolean) IS NULL OR cp.ativo = cast(:ativo as boolean))
       ORDER BY cp.codigo ASC
       """,
     countQuery = """
       SELECT COUNT(1)
       FROM catalog_product cp
+      LEFT JOIN catalog_group cg
+        ON cg.id = cp.catalog_group_id
+       AND cg.tenant_id = cp.tenant_id
+       AND cg.catalog_configuration_id = cp.catalog_configuration_id
       WHERE cp.tenant_id = :tenantId
         AND cp.catalog_configuration_id = :catalogConfigurationId
         AND cp.agrupador_empresa_id = :agrupadorEmpresaId
         AND (
-          (:codigo IS NULL AND :text IS NULL)
-          OR (:codigo IS NOT NULL AND cp.codigo = :codigo)
+          (cast(:codigo as bigint) IS NULL AND cast(:text as varchar) IS NULL)
+          OR (cast(:codigo as bigint) IS NOT NULL AND cp.codigo = cast(:codigo as bigint))
           OR (
-            :text IS NOT NULL
+            cast(:text as varchar) IS NOT NULL
             AND (
-              lower(cp.nome) LIKE lower(concat('%', :text, '%'))
-              OR lower(coalesce(cp.descricao, '')) LIKE lower(concat('%', :text, '%'))
+              lower(cp.nome) LIKE lower(concat('%', cast(:text as varchar), '%'))
+              OR lower(coalesce(cp.descricao, '')) LIKE lower(concat('%', cast(:text as varchar), '%'))
             )
           )
         )
-        AND (:catalogGroupId IS NULL OR cp.catalog_group_id = :catalogGroupId)
-        AND (:ativo IS NULL OR cp.ativo = :ativo)
+        AND (
+          cast(:catalogGroupId as bigint) IS NULL
+          OR cp.catalog_group_id = cast(:catalogGroupId as bigint)
+          OR (cast(:groupPathPrefix as varchar) IS NOT NULL AND cg.path LIKE cast(:groupPathPrefix as varchar))
+        )
+        AND (cast(:ativo as boolean) IS NULL OR cp.ativo = cast(:ativo as boolean))
       """,
     nativeQuery = true)
   Page<CatalogProduct> search(
@@ -94,6 +110,7 @@ public interface CatalogProductRepository extends JpaRepository<CatalogProduct, 
     @Param("codigo") Long codigo,
     @Param("text") String text,
     @Param("catalogGroupId") Long catalogGroupId,
+    @Param("groupPathPrefix") String groupPathPrefix,
     @Param("ativo") Boolean ativo,
     Pageable pageable);
 

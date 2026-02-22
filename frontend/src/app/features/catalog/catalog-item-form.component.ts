@@ -32,7 +32,7 @@ import {
   CatalogStockService
 } from './catalog-stock.service';
 import { CatalogItemHistoryDialogComponent } from './catalog-item-history-dialog.component';
-import { CatalogPriceRule, CatalogPricingService } from './catalog-pricing.service';
+import { CatalogPriceRule, CatalogPricingService, SalePriceByItemRow } from './catalog-pricing.service';
 
 @Component({
   selector: 'app-catalog-item-form',
@@ -97,6 +97,9 @@ export class CatalogItemFormComponent implements OnInit {
   readonly priceTypeOrder: Array<CatalogItemPrice['priceType']> = ['PURCHASE', 'COST', 'AVERAGE_COST', 'SALE_BASE'];
   priceRulesLoading = false;
   priceRulesError = '';
+  salePriceRowsLoading = false;
+  salePriceRowsError = '';
+  salePriceRows: SalePriceByItemRow[] = [];
   private pricePreviewRequestId = 0;
   private readonly priceRuleByType = new Map<CatalogItemPrice['priceType'], CatalogPriceRule>();
 
@@ -232,6 +235,7 @@ export class CatalogItemFormComponent implements OnInit {
       this.unidadeAlternativaTenantUnitIdLocked = null;
       this.fatorConversaoAlternativaLocked = null;
       this.itemPrices = this.defaultPriceRows();
+      this.clearSalePriceRows();
       return;
     }
 
@@ -243,6 +247,7 @@ export class CatalogItemFormComponent implements OnInit {
     if (!this.hasEmpresaContext()) {
       this.context = null;
       this.contextWarning = 'Selecione uma empresa no topo do sistema para continuar.';
+      this.clearSalePriceRows();
       this.clearStockData();
       this.form.disable();
       return;
@@ -256,6 +261,7 @@ export class CatalogItemFormComponent implements OnInit {
           this.context = context;
           if (!context.vinculado) {
             this.contextWarning = context.mensagem || 'Empresa sem grupo configurado para este catalogo.';
+            this.clearSalePriceRows();
             this.clearStockData();
             this.form.disable();
             return;
@@ -269,6 +275,7 @@ export class CatalogItemFormComponent implements OnInit {
                 this.loadItem(this.itemId);
               } else {
                 this.itemPrices = this.defaultPriceRows();
+                this.clearSalePriceRows();
                 this.clearStockData();
                 this.applyModeState();
               }
@@ -278,6 +285,7 @@ export class CatalogItemFormComponent implements OnInit {
         error: err => {
           this.context = null;
           this.contextWarning = err?.error?.detail || 'Nao foi possivel resolver o contexto da empresa.';
+          this.clearSalePriceRows();
           this.clearStockData();
           this.form.disable();
         }
@@ -291,11 +299,13 @@ export class CatalogItemFormComponent implements OnInit {
       .subscribe({
         next: item => {
           this.patchForm(item);
+          this.loadSalePriceRows(item.id, item.tenantUnitId || null);
           this.applyModeState();
           this.refreshStockData();
         },
         error: err => {
           this.notify.error(err?.error?.detail || 'Nao foi possivel carregar item do catalogo.');
+          this.clearSalePriceRows();
           this.clearStockData();
           this.back();
         }
@@ -472,6 +482,20 @@ export class CatalogItemFormComponent implements OnInit {
       minimumFractionDigits: scale,
       maximumFractionDigits: scale
     });
+  }
+
+  salePriceVariantLabel(row: SalePriceByItemRow): string {
+    if (row.variantId == null) return 'Base';
+    const name = (row.variantName || '').trim() || `Variacao #${row.variantId}`;
+    return row.variantActive === false ? `${name} (inativa)` : name;
+  }
+
+  salePriceSourceLabel(source: SalePriceByItemRow['source']): string {
+    if (source === 'EXACT_VARIANT') return 'Variação exata';
+    if (source === 'BOOK_BASE') return 'Base da tabela';
+    if (source === 'CATALOG_BASE') return 'Venda Base do item';
+    if (source === 'INACTIVE_VARIANT_FALLBACK') return 'Variação inativa (base da tabela)';
+    return 'Manual';
   }
 
   private loadUnitOptions(onLoaded: () => void): void {
@@ -919,6 +943,33 @@ export class CatalogItemFormComponent implements OnInit {
     if (this.activeTab === 'ESTOQUE' && !this.canOpenStockTab()) {
       this.activeTab = 'GERAL';
     }
+  }
+
+  private loadSalePriceRows(catalogItemId: number, tenantUnitId?: string | null): void {
+    const targetItemId = Number(catalogItemId || 0);
+    if (!targetItemId) {
+      this.clearSalePriceRows();
+      return;
+    }
+    this.salePriceRowsLoading = true;
+    this.salePriceRowsError = '';
+    this.pricingService.listSalePricesByItem(this.type, targetItemId, tenantUnitId || null)
+      .pipe(finalize(() => (this.salePriceRowsLoading = false)))
+      .subscribe({
+        next: rows => {
+          this.salePriceRows = rows || [];
+        },
+        error: err => {
+          this.salePriceRows = [];
+          this.salePriceRowsError = err?.error?.detail || 'Nao foi possivel carregar precos de venda por tabela e variacao.';
+        }
+      });
+  }
+
+  private clearSalePriceRows(): void {
+    this.salePriceRows = [];
+    this.salePriceRowsLoading = false;
+    this.salePriceRowsError = '';
   }
 
   private loadPriceRules(agrupadorId: number | null | undefined, onLoaded: () => void): void {
