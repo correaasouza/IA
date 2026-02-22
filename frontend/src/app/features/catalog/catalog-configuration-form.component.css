@@ -11,17 +11,17 @@
 .catalog-tab-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .catalog-tab-btn {
-  min-width: 200px;
+  min-width: 150px;
 }
 
 .catalog-tab-active {
-  border-color: var(--brand);
-  color: var(--brand);
-  background: #eef4ff;
+  border-color: var(--brand) !important;
+  color: var(--brand) !important;
+  background: var(--surface) !important;
 }
 
 .catalog-config-tab-shell {
@@ -131,6 +131,75 @@
 .catalog-config-card-desc {
   font-size: 12px;
   color: var(--muted);
+}
+
+.catalog-price-rules-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.catalog-price-rule-card {
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.catalog-price-rule-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.catalog-price-rule-type {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--muted-strong);
+}
+
+.catalog-price-rule-fields {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.catalog-price-lock-field {
+  grid-column: span 2;
+}
+
+:host ::ng-deep .catalog-price-rule-fields .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+:host ::ng-deep .catalog-price-rule-fields .mat-mdc-text-field-wrapper {
+  min-height: 28px;
+  background: var(--surface);
+}
+
+:host ::ng-deep .catalog-price-rule-fields .mat-mdc-form-field-infix {
+  min-height: 28px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+}
+
+:host ::ng-deep .catalog-price-rule-fields .mat-mdc-form-field {
+  font-size: 12px;
+  --mdc-outlined-text-field-outline-color: var(--border);
+  --mdc-outlined-text-field-hover-outline-color: var(--border);
+  --mdc-outlined-text-field-focus-outline-color: var(--border);
+  --mdc-outlined-text-field-label-text-color: var(--muted);
+  --mdc-outlined-text-field-focus-label-text-color: var(--muted-strong);
+  --mdc-outlined-text-field-caret-color: var(--ink);
+  --mat-select-focused-arrow-color: var(--muted-strong);
+}
+
+:host ::ng-deep .catalog-price-rule-fields .mat-mdc-select-value-text,
+:host ::ng-deep .catalog-price-rule-fields .mdc-text-field__input {
+  color: var(--ink);
 }
 
 .catalog-adjustment-summary {
@@ -294,6 +363,14 @@
   .catalog-stock-layout {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .catalog-price-rule-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .catalog-price-lock-field {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 640px) {
@@ -321,6 +398,10 @@
   }
 
   .catalog-stock-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .catalog-price-rule-fields {
     grid-template-columns: minmax(0, 1fr);
   }
 

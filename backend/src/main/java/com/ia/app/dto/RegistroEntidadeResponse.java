@@ -6,6 +6,7 @@ public record RegistroEntidadeResponse(
   Long codigo,
   Long grupoEntidadeId,
   String grupoEntidadeNome,
+  Long priceBookId,
   boolean ativo,
   PessoaVinculoResponse pessoa
 ) {}

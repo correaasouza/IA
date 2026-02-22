@@ -1,4 +1,4 @@
-﻿-- ===== BEGIN V9__catalog_movement.sql =====
+-- ===== BEGIN V9__catalog_movement.sql =====
 
 CREATE TABLE IF NOT EXISTS catalog_movement (
   id BIGSERIAL PRIMARY KEY,

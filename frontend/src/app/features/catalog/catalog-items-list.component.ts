@@ -1,12 +1,11 @@
 ﻿import { CommonModule } from '@angular/common';
-import { Component, HostListener, OnInit } from '@angular/core';
+import { Component, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -37,7 +36,6 @@ import { CatalogItemHistoryDialogComponent } from './catalog-item-history-dialog
     RouterLink,
     MatButtonModule,
     MatIconModule,
-    MatPaginatorModule,
     MatSlideToggleModule,
     MatTableModule,
     MatTooltipModule,
@@ -61,7 +59,9 @@ export class CatalogItemsListComponent implements OnInit {
   displayedColumns = ['codigo', 'nome', 'unidade', 'descricao', 'grupo', 'ativo', 'acoes'];
   totalElements = 0;
   pageIndex = 0;
-  pageSize = 20;
+  pageSize = 30;
+  hasMoreRows = true;
+  loadingMoreRows = false;
 
   selectedGroupId: number | null = null;
   groupOptions: Array<{ id: number; nome: string }> = [];
@@ -85,6 +85,7 @@ export class CatalogItemsListComponent implements OnInit {
   filters = this.fb.group({
     status: ['']
   });
+  @ViewChild('itemsPane') itemsPane?: ElementRef<HTMLElement>;
 
   constructor(
     private fb: FormBuilder,
@@ -116,8 +117,20 @@ export class CatalogItemsListComponent implements OnInit {
   @HostListener('window:empresa-context-updated')
   onEmpresaContextUpdated(): void {
     this.selectedGroupId = null;
-    this.pageIndex = 0;
     this.refreshContextAndData();
+  }
+
+  @HostListener('window:scroll')
+  onWindowScroll(): void {
+    if (!this.isMobile) {
+      return;
+    }
+    const scrollTop = window.scrollY || document.documentElement.scrollTop || 0;
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    const fullHeight = document.documentElement.scrollHeight || 0;
+    if (scrollTop + viewportHeight >= fullHeight - 180) {
+      this.loadItems(false);
+    }
   }
 
   refreshContextAndData(): void {
@@ -126,6 +139,9 @@ export class CatalogItemsListComponent implements OnInit {
       this.contextWarning = 'Selecione uma empresa no topo do sistema para continuar.';
       this.items = [];
       this.totalElements = 0;
+      this.pageIndex = 0;
+      this.hasMoreRows = false;
+      this.loadingMoreRows = false;
       this.groupOptions = [];
       return;
     }
@@ -141,18 +157,24 @@ export class CatalogItemsListComponent implements OnInit {
             this.contextWarning = context.mensagem || 'Empresa sem grupo configurado para este catalogo.';
             this.items = [];
             this.totalElements = 0;
+            this.pageIndex = 0;
+            this.hasMoreRows = false;
+            this.loadingMoreRows = false;
             this.groupOptions = [];
             return;
           }
           this.contextWarning = '';
           this.loadGroups();
-          this.loadItems();
+          this.loadItems(true);
         },
         error: err => {
           this.context = null;
           this.contextWarning = err?.error?.detail || 'Nao foi possivel resolver o contexto da empresa.';
           this.items = [];
           this.totalElements = 0;
+          this.pageIndex = 0;
+          this.hasMoreRows = false;
+          this.loadingMoreRows = false;
           this.groupOptions = [];
         }
       });
@@ -172,11 +194,25 @@ export class CatalogItemsListComponent implements OnInit {
     });
   }
 
-  loadItems(): void {
+  loadItems(reset = false): void {
     if (!this.context?.vinculado) {
       this.items = [];
       this.totalElements = 0;
+      this.pageIndex = 0;
+      this.hasMoreRows = false;
+      this.loadingMoreRows = false;
       return;
+    }
+    if (this.loadingMoreRows) {
+      return;
+    }
+    if (!reset && !this.hasMoreRows) {
+      return;
+    }
+    if (reset) {
+      this.pageIndex = 0;
+      this.hasMoreRows = true;
+      this.items = [];
     }
 
     const term = this.searchTerm.trim();
@@ -184,38 +220,54 @@ export class CatalogItemsListComponent implements OnInit {
     const textEnabled = this.searchFields.includes('nome') || this.searchFields.includes('descricao');
     const text = textEnabled ? term : '';
     const status = (this.filters.value.status || '').trim();
+    const targetPage = reset ? 0 : this.pageIndex;
 
-    this.loading = true;
+    this.loading = reset;
+    this.loadingMoreRows = true;
     this.itemService.list(this.type, {
-      page: this.pageIndex,
+      page: targetPage,
       size: this.pageSize,
       codigo,
       text,
       grupoId: this.selectedGroupId,
       ativo: status === '' ? '' : status === 'ativo'
-    }).pipe(finalize(() => (this.loading = false))).subscribe({
+    }).pipe(finalize(() => {
+      this.loading = false;
+      this.loadingMoreRows = false;
+    })).subscribe({
       next: data => {
-        this.items = data?.content || [];
-        this.totalElements = this.extractTotalElements(data);
+        const incoming = data?.content || [];
+        this.items = reset ? incoming : [...this.items, ...incoming];
+        const serverTotal = Number(this.extractTotalElements(data) || 0);
+        if (serverTotal > 0) {
+          this.totalElements = serverTotal;
+          this.hasMoreRows = this.items.length < this.totalElements;
+        } else {
+          this.totalElements = this.items.length + (incoming.length >= this.pageSize ? 1 : 0);
+          this.hasMoreRows = incoming.length >= this.pageSize;
+        }
+        this.pageIndex = targetPage + 1;
+        this.ensureItemsFillViewport();
       },
       error: err => {
         this.items = [];
         this.totalElements = 0;
+        this.pageIndex = 0;
+        this.hasMoreRows = false;
         this.notify.error(err?.error?.detail || 'Nao foi possivel carregar itens do catalogo.');
       }
     });
   }
 
   applyFilters(): void {
-    this.pageIndex = 0;
-    this.loadItems();
+    this.loadItems(true);
   }
 
   clearFilters(): void {
     this.searchTerm = '';
     this.searchFields = ['codigo', 'nome', 'descricao'];
     this.filters.patchValue({ status: '' }, { emitEvent: false });
-    this.applyFilters();
+    this.loadItems(true);
   }
 
   onSearchChange(value: FieldSearchValue): void {
@@ -224,16 +276,9 @@ export class CatalogItemsListComponent implements OnInit {
     this.applyFilters();
   }
 
-  pageChange(event: PageEvent): void {
-    this.pageIndex = event.pageIndex;
-    this.pageSize = event.pageSize;
-    this.loadItems();
-  }
-
   onGroupSelected(groupId: number | null): void {
     this.selectedGroupId = groupId;
-    this.pageIndex = 0;
-    this.loadItems();
+    this.loadItems(true);
     if (this.isMobile) {
       this.groupTreeOpen = false;
       this.mobileFiltersOpen = false;
@@ -242,7 +287,7 @@ export class CatalogItemsListComponent implements OnInit {
 
   onGroupsChanged(): void {
     this.loadGroups();
-    this.loadItems();
+    this.loadItems(true);
   }
 
   showAllGroups(): void {
@@ -318,6 +363,16 @@ export class CatalogItemsListComponent implements OnInit {
     }
   }
 
+  onItemsScroll(event: Event): void {
+    const target = event.target as HTMLElement;
+    if (!target) {
+      return;
+    }
+    if (target.scrollTop + target.clientHeight >= target.scrollHeight - 120) {
+      this.loadItems(false);
+    }
+  }
+
   goNew(): void {
     if (!this.context?.vinculado) return;
     this.router.navigate([`/catalog/${this.routeSegment()}/new`]);
@@ -363,7 +418,7 @@ export class CatalogItemsListComponent implements OnInit {
       next: updated => {
         row.ativo = !!updated.ativo;
         this.notify.success(`${this.titleLabelSingle()} ${updated.codigo} ${row.ativo ? 'ativado' : 'inativado'}.`);
-        this.loadItems();
+        this.loadItems(true);
       },
       error: err => {
         row.ativo = previous;
@@ -378,7 +433,7 @@ export class CatalogItemsListComponent implements OnInit {
     this.itemService.delete(this.type, row.id).subscribe({
       next: () => {
         this.notify.success(`${this.titleLabelSingle()} excluido.`);
-        this.loadItems();
+        this.loadItems(true);
       },
       error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel excluir item do catalogo.')
     });
@@ -392,13 +447,16 @@ export class CatalogItemsListComponent implements OnInit {
     return `Cadastro de ${this.title}`;
   }
 
-  newButtonLabel(): string {
-    return `Novo ${this.singular}`;
+  empresaHeaderLabel(): string {
+    const contextName = (this.context?.empresaNome || '').trim();
+    if (contextName) {
+      return contextName;
+    }
+    return (localStorage.getItem('empresaContextNome') || '').trim();
   }
 
-  numberingModeLabel(): string {
-    if (!this.context) return '-';
-    return this.context.numberingMode === 'AUTOMATICA' ? 'Automatica' : 'Manual';
+  newButtonLabel(): string {
+    return `Novo ${this.singular}`;
   }
 
   selectedGroupLabel(): string {
@@ -428,7 +486,7 @@ export class CatalogItemsListComponent implements OnInit {
       next: updated => {
         row.catalogGroupId = updated.catalogGroupId || null;
         row.catalogGroupNome = updated.catalogGroupNome || null;
-        this.loadItems();
+        this.loadItems(true);
         this.notify.success(`${this.titleLabelSingle()} ${row.codigo} movido de grupo.`);
       },
       error: err => {
@@ -462,7 +520,7 @@ export class CatalogItemsListComponent implements OnInit {
         return;
       }
       this.notify.success(`${moved} item(ns) movido(s) para ${this.dropTargetGroupLabel()}.`);
-      this.loadItems();
+      this.loadItems(true);
     } catch (err: any) {
       this.notify.error(err?.error?.detail || 'Nao foi possivel mover itens do grupo selecionado.');
     } finally {
@@ -578,6 +636,26 @@ export class CatalogItemsListComponent implements OnInit {
       this.dropZoneActive = false;
       this.dropZoneBusy = false;
     }
+  }
+
+  private ensureItemsFillViewport(): void {
+    setTimeout(() => {
+      if (this.loadingMoreRows || !this.hasMoreRows) {
+        return;
+      }
+      const pane = this.itemsPane?.nativeElement;
+      if (pane && pane.scrollHeight <= pane.clientHeight + 4) {
+        this.loadItems(false);
+        return;
+      }
+      if (this.isMobile) {
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+        const fullHeight = document.documentElement.scrollHeight || 0;
+        if (fullHeight <= viewportHeight + 120) {
+          this.loadItems(false);
+        }
+      }
+    }, 0);
   }
 
   private parseNumber(value: unknown): number | null {

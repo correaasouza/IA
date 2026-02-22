@@ -5,15 +5,15 @@
 .catalog-tab-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .catalog-tab-btn {
-  min-width: 120px;
+  min-width: 104px;
 }
 
 .catalog-tab-active {
-  border-color: var(--brand);
-  color: var(--brand);
-  background: #eef4ff;
+  border-color: var(--brand) !important;
+  color: var(--brand) !important;
+  background: var(--surface) !important;
 }

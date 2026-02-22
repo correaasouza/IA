@@ -413,7 +413,7 @@ export class AppComponent {
   private filterMenuByMode(items: MenuItem[]): MenuItem[] {
     return (items || []).filter(item => {
       if (this.menuMode === 'operacao') {
-        return item.id === 'group-cadastros';
+        return item.id === 'group-cadastros' || item.id === 'group-stock';
       }
       if (item.id === 'group-globals') {
         return this.isMasterTenantContext();
@@ -744,7 +744,13 @@ export class AppComponent {
       const entityChildren = this.dynamicEntityTypeItems.length > 0
         ? this.dynamicEntityTypeItems
         : staticEntityChildren;
-      cadastros.children = [...entityChildren, ...staticNonEntityChildren, ...this.dynamicMovementTypeItems];
+      cadastros.children = [...entityChildren, ...staticNonEntityChildren];
+    }
+    const estoque = source.find(item => item.id === 'group-stock');
+    if (estoque && this.dynamicMovementTypeItems.length > 0) {
+      const staticChildren = estoque.children || [];
+      const semMovimentoEstatico = staticChildren.filter(child => child.id !== 'stock-movements');
+      estoque.children = [...semMovimentoEstatico, ...this.dynamicMovementTypeItems];
     }
     return source;
   }

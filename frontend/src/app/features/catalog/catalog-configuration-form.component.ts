@@ -2,17 +2,28 @@ import { CommonModule } from '@angular/common';
 import { Component, HostListener, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDialog } from '@angular/material/dialog';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
 import { MatRadioModule } from '@angular/material/radio';
-import { finalize } from 'rxjs/operators';
+import { MatSelectModule } from '@angular/material/select';
+import { Observable, of } from 'rxjs';
+import { finalize, map, switchMap, tap } from 'rxjs/operators';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { ConfigSectionShellComponent } from '../../shared/config-section-shell.component';
 import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { AgrupadorEmpresa } from '../configs/agrupador-empresa.service';
-import { AgrupadoresEmpresaComponent } from '../configs/agrupadores-empresa.component';
+import { AgrupadorAfterSaveContext, AgrupadoresEmpresaComponent } from '../configs/agrupadores-empresa.component';
+import {
+  CatalogPriceRule,
+  CatalogPriceRuleUpsert,
+  CatalogPriceType,
+  CatalogPricingService
+} from './catalog-pricing.service';
 import {
   CatalogConfiguration,
   CatalogConfigurationByGroup,
@@ -26,6 +37,8 @@ import {
   CatalogStockAdjustmentFormDialogComponent,
   CatalogStockAdjustmentFormDialogData
 } from './catalog-stock-adjustment-form-dialog.component';
+import { PriceBooksListComponent } from './price-books-list.component';
+import { PriceVariantsListComponent } from './price-variants-list.component';
 
 @Component({
   selector: 'app-catalog-configuration-form',
@@ -34,19 +47,26 @@ import {
     CommonModule,
     FormsModule,
     MatButtonModule,
+    MatCheckboxModule,
+    MatFormFieldModule,
     MatIconModule,
+    MatInputModule,
     MatRadioModule,
+    MatSelectModule,
     ConfigSectionShellComponent,
     FieldSearchComponent,
     InlineLoaderComponent,
-    AgrupadoresEmpresaComponent
+    AgrupadoresEmpresaComponent,
+    PriceBooksListComponent,
+    PriceVariantsListComponent
   ],
   templateUrl: './catalog-configuration-form.component.html',
   styleUrls: ['./catalog-configuration-form.component.css']
 })
 export class CatalogConfigurationFormComponent implements OnChanges {
   @Input({ required: true }) type: CatalogConfigurationType = 'PRODUCTS';
-  activeTab: 'GROUP_CONFIG' | 'STOCK_ADJUSTMENT_TYPES' = 'GROUP_CONFIG';
+  @Input() initialTab: 'GROUP_CONFIG' | 'PRICE_BOOKS' | 'PRICE_VARIANTS' | 'STOCK_ADJUSTMENT_TYPES' | null = null;
+  activeTab: 'GROUP_CONFIG' | 'PRICE_BOOKS' | 'PRICE_VARIANTS' | 'STOCK_ADJUSTMENT_TYPES' = 'GROUP_CONFIG';
 
   isMobile = false;
   mobileStockAdjustmentFiltersOpen = false;
@@ -62,6 +82,13 @@ export class CatalogConfigurationFormComponent implements OnChanges {
   currentGroupNome = '';
   currentGroupNumberingMode: CatalogNumberingMode = 'AUTOMATICA';
   currentGroupConfigSaving = false;
+  groupPriceRules: CatalogPriceRule[] = [];
+  groupPriceRulesLoading = false;
+  groupPriceRulesSaving = false;
+  groupPriceRulesError = '';
+  readonly priceTypeOrder: CatalogPriceType[] = ['PURCHASE', 'COST', 'AVERAGE_COST', 'SALE_BASE'];
+  readonly saveGroupCatalogSettings = (context: AgrupadorAfterSaveContext): Observable<unknown> =>
+    this.saveGroupCatalogBundle(context);
 
   groupStockTypes: CatalogStockType[] = [];
   groupStockTypesLoading = false;
@@ -97,6 +124,7 @@ export class CatalogConfigurationFormComponent implements OnChanges {
 
   constructor(
     private service: CatalogConfigurationService,
+    private pricingService: CatalogPricingService,
     private notify: NotificationService,
     private dialog: MatDialog
   ) {
@@ -105,16 +133,21 @@ export class CatalogConfigurationFormComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['type']) {
+      this.activeTab = this.resolveInitialTab();
       this.resetCurrentGroup();
       this.load();
+      return;
+    }
+    if (changes['initialTab']) {
+      this.activeTab = this.resolveInitialTab();
     }
   }
 
-  setTab(tab: 'GROUP_CONFIG' | 'STOCK_ADJUSTMENT_TYPES'): void {
+  setTab(tab: 'GROUP_CONFIG' | 'PRICE_BOOKS' | 'PRICE_VARIANTS' | 'STOCK_ADJUSTMENT_TYPES'): void {
     this.activeTab = tab;
   }
 
-  isTabActive(tab: 'GROUP_CONFIG' | 'STOCK_ADJUSTMENT_TYPES'): boolean {
+  isTabActive(tab: 'GROUP_CONFIG' | 'PRICE_BOOKS' | 'PRICE_VARIANTS' | 'STOCK_ADJUSTMENT_TYPES'): boolean {
     return this.activeTab === tab;
   }
 
@@ -177,29 +210,73 @@ export class CatalogConfigurationFormComponent implements OnChanges {
     this.currentGroupNome = group.nome;
     const existing = this.groupRows.find(item => item.agrupadorId === group.id);
     this.currentGroupNumberingMode = (existing?.numberingMode || 'AUTOMATICA') as CatalogNumberingMode;
+    this.loadGroupPriceRules(group.id);
     this.loadGroupStockTypes(group.id);
   }
 
-  saveCurrentGroupConfig(): void {
-    if (!this.currentGroupId || this.currentGroupConfigSaving) return;
-    this.currentGroupConfigSaving = true;
-    this.service.updateByGroup(this.type, this.currentGroupId, { numberingMode: this.currentGroupNumberingMode })
-      .pipe(finalize(() => (this.currentGroupConfigSaving = false)))
+  loadGroupPriceRules(groupId?: number | null): void {
+    const targetGroupId = Number(groupId || this.currentGroupId || 0);
+    if (!targetGroupId) {
+      this.groupPriceRules = [];
+      this.groupPriceRulesError = '';
+      return;
+    }
+    this.groupPriceRulesLoading = true;
+    this.groupPriceRulesError = '';
+    this.pricingService.listPriceRules(this.type, targetGroupId)
+      .pipe(finalize(() => (this.groupPriceRulesLoading = false)))
       .subscribe({
-        next: updated => {
-          const index = this.groupRows.findIndex(item => item.agrupadorId === updated.agrupadorId);
-          if (index >= 0) {
-            this.groupRows[index] = updated;
-          } else {
-            this.groupRows = [...this.groupRows, updated];
-          }
-          this.notify.success('Configuracao do agrupador atualizada.');
-        },
+        next: rows => this.groupPriceRules = this.sortRules(rows || []),
         error: err => {
-          this.notify.error(err?.error?.detail || 'Nao foi possivel atualizar a configuracao do agrupador.');
-          this.loadGroupRows();
+          this.groupPriceRules = [];
+          this.groupPriceRulesError = err?.error?.detail || 'Nao foi possivel carregar regras de preco.';
         }
       });
+  }
+
+  priceTypeLabel(value: CatalogPriceType): string {
+    if (value === 'PURCHASE') return 'Compra';
+    if (value === 'COST') return 'Custo';
+    if (value === 'AVERAGE_COST') return 'Custo Medio';
+    return 'Venda Base';
+  }
+
+  baseOptionsFor(rule: CatalogPriceRule): CatalogPriceType[] {
+    return this.priceTypeOrder.filter(type => type !== rule.priceType);
+  }
+
+  onBaseModeChanged(rule: CatalogPriceRule): void {
+    if (!rule) return;
+    if (rule.baseMode === 'NONE') {
+      rule.basePriceType = null;
+      rule.adjustmentKindDefault = 'FIXED';
+      rule.adjustmentDefault = 0;
+      rule.uiLockMode = 'II';
+      return;
+    }
+    if (!rule.basePriceType || rule.basePriceType === rule.priceType) {
+      const option = this.baseOptionsFor(rule)[0];
+      rule.basePriceType = option || null;
+    }
+  }
+
+  adjustmentKindLabel(value: 'FIXED' | 'PERCENT'): string {
+    return value === 'PERCENT' ? 'Percentual' : 'Fixo';
+  }
+
+  adjustmentValueLabel(kind: 'FIXED' | 'PERCENT'): string {
+    return kind === 'PERCENT' ? 'Percentual padrao' : 'Valor fixo padrao';
+  }
+
+  adjustmentValueStep(kind: 'FIXED' | 'PERCENT'): string {
+    return kind === 'PERCENT' ? '0.001' : '0.01';
+  }
+
+  uiLockModeLabel(value: 'I' | 'II' | 'III' | 'IV'): string {
+    if (value === 'I') return 'Modo I - Valor bloqueado / ajuste livre';
+    if (value === 'II') return 'Modo II - Valor livre / ajuste bloqueado';
+    if (value === 'III') return 'Modo III - Ambos livres com sincronismo';
+    return 'Modo IV - Ambos bloqueados com recalc automatico';
   }
 
   loadGroupStockTypes(groupId?: number | null, preferredId?: number | null): void {
@@ -413,6 +490,10 @@ export class CatalogConfigurationFormComponent implements OnChanges {
     this.currentGroupId = null;
     this.currentGroupNome = '';
     this.currentGroupNumberingMode = 'AUTOMATICA';
+    this.groupPriceRules = [];
+    this.groupPriceRulesLoading = false;
+    this.groupPriceRulesSaving = false;
+    this.groupPriceRulesError = '';
     this.groupStockTypes = [];
     this.groupStockTypesLoading = false;
     this.groupStockTypesError = '';
@@ -483,5 +564,90 @@ export class CatalogConfigurationFormComponent implements OnChanges {
     if (!this.isMobile) {
       this.mobileStockAdjustmentFiltersOpen = false;
     }
+  }
+
+  private resolveInitialTab(): 'GROUP_CONFIG' | 'PRICE_BOOKS' | 'PRICE_VARIANTS' | 'STOCK_ADJUSTMENT_TYPES' {
+    if (this.initialTab === 'PRICE_BOOKS') return 'PRICE_BOOKS';
+    if (this.initialTab === 'PRICE_VARIANTS') return 'PRICE_VARIANTS';
+    if (this.initialTab === 'STOCK_ADJUSTMENT_TYPES') return 'STOCK_ADJUSTMENT_TYPES';
+    return 'GROUP_CONFIG';
+  }
+
+  private saveGroupCatalogBundle(context: AgrupadorAfterSaveContext): Observable<unknown> {
+    const groupId = Number(context?.groupId || 0);
+    if (!groupId) {
+      return of(null);
+    }
+    if (context?.isCreate) {
+      return of(null);
+    }
+
+    const numberingMode = this.resolveGroupNumberingMode(groupId);
+    const rulesPayload = this.resolveGroupRulesPayload(groupId);
+
+    this.currentGroupConfigSaving = true;
+    this.groupPriceRulesSaving = true;
+
+    return this.service.updateByGroup(this.type, groupId, { numberingMode })
+      .pipe(
+        tap(updated => this.mergeGroupRow(updated)),
+        switchMap(() =>
+          rulesPayload.length > 0
+            ? this.pricingService.upsertPriceRules(this.type, groupId, rulesPayload)
+            : of([] as CatalogPriceRule[])
+        ),
+        tap(rows => {
+          if (this.currentGroupId === groupId) {
+            this.groupPriceRules = this.sortRules(rows || []);
+          }
+        }),
+        map(() => null),
+        finalize(() => {
+          this.currentGroupConfigSaving = false;
+          this.groupPriceRulesSaving = false;
+        })
+      );
+  }
+
+  private resolveGroupNumberingMode(groupId: number): CatalogNumberingMode {
+    if (this.currentGroupId === groupId) {
+      return this.currentGroupNumberingMode;
+    }
+    const row = this.groupRows.find(item => item.agrupadorId === groupId);
+    return (row?.numberingMode || 'AUTOMATICA') as CatalogNumberingMode;
+  }
+
+  private resolveGroupRulesPayload(groupId: number): CatalogPriceRuleUpsert[] {
+    if (this.currentGroupId !== groupId) {
+      return [];
+    }
+    return this.toPriceRulePayload(this.groupPriceRules || []);
+  }
+
+  private toPriceRulePayload(rules: CatalogPriceRule[]): CatalogPriceRuleUpsert[] {
+    return (rules || []).map(rule => ({
+      priceType: rule.priceType,
+      customName: (rule.customName || '').trim() || null,
+      baseMode: rule.baseMode,
+      basePriceType: rule.baseMode === 'BASE_PRICE' ? rule.basePriceType || null : null,
+      adjustmentKindDefault: rule.baseMode === 'BASE_PRICE' ? rule.adjustmentKindDefault : 'FIXED',
+      adjustmentDefault: rule.baseMode === 'BASE_PRICE' ? Number(rule.adjustmentDefault || 0) : 0,
+      uiLockMode: rule.baseMode === 'NONE' ? 'II' : rule.uiLockMode,
+      active: !!rule.active
+    }));
+  }
+
+  private mergeGroupRow(updated: CatalogConfigurationByGroup): void {
+    const index = this.groupRows.findIndex(item => item.agrupadorId === updated.agrupadorId);
+    if (index >= 0) {
+      this.groupRows[index] = updated;
+      return;
+    }
+    this.groupRows = [...this.groupRows, updated];
+  }
+
+  private sortRules(rows: CatalogPriceRule[]): CatalogPriceRule[] {
+    return [...(rows || [])]
+      .sort((a, b) => this.priceTypeOrder.indexOf(a.priceType) - this.priceTypeOrder.indexOf(b.priceType));
   }
 }

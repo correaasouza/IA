@@ -1,0 +1,50 @@
+﻿<div class="page-form-shell grid gap-3">
+  <header class="page-header-sticky flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
+    <div>
+      <h1 class="m-0 text-lg font-bold">Variacoes de Preco</h1>
+      <p class="mt-1 text-xs text-[var(--muted)]">{{ title() }}</p>
+      <p class="mt-1 text-sm font-semibold text-[var(--ink)]">Nome: {{ form.value.name || '-' }}</p>
+    </div>
+
+    <div class="flex flex-wrap gap-2">
+      <button mat-stroked-button type="button" (click)="back()">
+        <mat-icon>arrow_back</mat-icon>
+        Voltar
+      </button>
+      <button mat-stroked-button *ngIf="mode === 'view'" type="button" (click)="toEdit()" appAccessControl="catalog.pricing.variants.update" [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+        <mat-icon>edit</mat-icon>
+        Alterar
+      </button>
+      <button mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()" [disabled]="saving" appAccessControl="catalog.pricing.variants.save" [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+        <mat-icon>save</mat-icon>
+        Salvar
+      </button>
+      <button mat-button color="warn" *ngIf="mode !== 'new'" type="button" (click)="remove()" [disabled]="deleting" appAccessControl="catalog.pricing.variants.delete" [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+        <mat-icon>delete</mat-icon>
+        Excluir
+      </button>
+    </div>
+  </header>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+    <form [formGroup]="form" class="grid grid-cols-1 gap-2 md:grid-cols-2">
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>Nome</mat-label>
+        <input matInput formControlName="name" />
+        <mat-error *ngIf="form.get('name')?.hasError('required')">Informe o nome.</mat-error>
+      </mat-form-field>
+
+      <mat-slide-toggle formControlName="active">Ativo</mat-slide-toggle>
+
+      <div class="col-span-full flex justify-end" *ngIf="loading">
+        <app-inline-loader label="Carregando"></app-inline-loader>
+      </div>
+      <div class="col-span-full flex justify-end" *ngIf="saving">
+        <app-inline-loader label="Salvando"></app-inline-loader>
+      </div>
+      <div class="col-span-full flex justify-end" *ngIf="deleting">
+        <app-inline-loader label="Excluindo"></app-inline-loader>
+      </div>
+    </form>
+  </section>
+</div>

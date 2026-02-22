@@ -15,7 +15,10 @@ import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import {
   CatalogCrudType,
   CatalogItem,
+  CatalogItemPrice,
   CatalogItemContext,
+  CatalogPriceEditedField,
+  CatalogItemPricePayload,
   CatalogItemPayload,
   CatalogItemService
 } from './catalog-item.service';
@@ -29,6 +32,7 @@ import {
   CatalogStockService
 } from './catalog-stock.service';
 import { CatalogItemHistoryDialogComponent } from './catalog-item-history-dialog.component';
+import { CatalogPriceRule, CatalogPricingService } from './catalog-pricing.service';
 
 @Component({
   selector: 'app-catalog-item-form',
@@ -52,7 +56,7 @@ export class CatalogItemFormComponent implements OnInit {
   type: CatalogCrudType = 'PRODUCTS';
   titlePlural = 'Produtos';
   titleSingular = 'produto';
-  activeTab: 'GERAL' | 'ESTOQUE' = 'GERAL';
+  activeTab: 'GERAL' | 'PRECOS' | 'ESTOQUE' = 'GERAL';
 
   itemId: number | null = null;
   context: CatalogItemContext | null = null;
@@ -89,6 +93,12 @@ export class CatalogItemFormComponent implements OnInit {
     { value: 'QUANTIDADE', label: 'Quantidade' },
     { value: 'PRECO', label: 'Preco' }
   ];
+  itemPrices: Array<CatalogItemPrice & { lastEditedField?: CatalogPriceEditedField }> = [];
+  readonly priceTypeOrder: Array<CatalogItemPrice['priceType']> = ['PURCHASE', 'COST', 'AVERAGE_COST', 'SALE_BASE'];
+  priceRulesLoading = false;
+  priceRulesError = '';
+  private pricePreviewRequestId = 0;
+  private readonly priceRuleByType = new Map<CatalogItemPrice['priceType'], CatalogPriceRule>();
 
   form = this.fb.group({
     codigo: [null as number | null],
@@ -112,6 +122,7 @@ export class CatalogItemFormComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private itemService: CatalogItemService,
+    private pricingService: CatalogPricingService,
     private unitsService: UnitsService,
     private stockService: CatalogStockService,
     private notify: NotificationService,
@@ -196,10 +207,6 @@ export class CatalogItemFormComponent implements OnInit {
     this.form.controls.ativo.setValue(!!nextValue);
   }
 
-  ativoHeaderLabel(): string {
-    return this.form.value.ativo ? 'Ativo' : 'Inativo';
-  }
-
   cadastroTitle(): string {
     return `Cadastro de ${this.titlePlural}`;
   }
@@ -208,13 +215,6 @@ export class CatalogItemFormComponent implements OnInit {
     if (this.mode === 'new') return `Novo ${this.titleSingular}`;
     if (this.mode === 'edit') return `Editar ${this.titleSingular}`;
     return `Consultar ${this.titleSingular}`;
-  }
-
-  codigoHint(): string {
-    if (this.context?.numberingMode === 'AUTOMATICA') {
-      return this.mode === 'new' ? 'Gerado automaticamente ao salvar.' : 'Codigo gerado automaticamente.';
-    }
-    return 'Codigo informado manualmente.';
   }
 
   private resolveMode(): void {
@@ -226,10 +226,12 @@ export class CatalogItemFormComponent implements OnInit {
       this.itemId = null;
       this.codigoInfo = 'Gerado ao salvar';
       this.activeTab = 'GERAL';
+      this.priceRulesError = '';
       this.catalogGroupIdLocked = null;
       this.catalogGroupNomeLocked = '-';
       this.unidadeAlternativaTenantUnitIdLocked = null;
       this.fatorConversaoAlternativaLocked = null;
+      this.itemPrices = this.defaultPriceRows();
       return;
     }
 
@@ -260,14 +262,17 @@ export class CatalogItemFormComponent implements OnInit {
           }
 
           this.contextWarning = '';
-          this.loadUnitOptions(() => {
-            this.applyNumberingMode();
-            if (this.itemId) {
-              this.loadItem(this.itemId);
-            } else {
-              this.clearStockData();
-              this.applyModeState();
-            }
+          this.loadPriceRules(context.agrupadorId, () => {
+            this.loadUnitOptions(() => {
+              this.applyNumberingMode();
+              if (this.itemId) {
+                this.loadItem(this.itemId);
+              } else {
+                this.itemPrices = this.defaultPriceRows();
+                this.clearStockData();
+                this.applyModeState();
+              }
+            });
           });
         },
         error: err => {
@@ -310,6 +315,7 @@ export class CatalogItemFormComponent implements OnInit {
     this.catalogGroupNomeLocked = item.catalogGroupNome || '-';
     this.unidadeAlternativaTenantUnitIdLocked = item.unidadeAlternativaTenantUnitId || null;
     this.fatorConversaoAlternativaLocked = item.fatorConversaoAlternativa ?? null;
+    this.itemPrices = this.normalizePriceRows(item.prices || []);
     this.ensureUnitOption(item.tenantUnitId, item.tenantUnitSigla, item.tenantUnitNome);
   }
 
@@ -360,8 +366,112 @@ export class CatalogItemFormComponent implements OnInit {
       tenantUnitId,
       unidadeAlternativaTenantUnitId: this.unidadeAlternativaTenantUnitIdLocked,
       fatorConversaoAlternativa: this.fatorConversaoAlternativaLocked,
+      prices: this.buildPriceInputsPayload(),
       ativo: !!this.form.value.ativo
     };
+  }
+
+  priceTypeLabel(value: CatalogItemPrice['priceType']): string {
+    if (value === 'PURCHASE') return 'Compra';
+    if (value === 'COST') return 'Custo';
+    if (value === 'AVERAGE_COST') return 'Custo Medio';
+    return 'Venda Base';
+  }
+
+  priceCardLabel(priceType: CatalogItemPrice['priceType']): string {
+    const rule = this.ruleFor(priceType);
+    const customName = (rule?.customName || '').trim();
+    return customName || this.priceTypeLabel(priceType);
+  }
+
+  priceCalculationDescription(row: CatalogItemPrice): string {
+    const rule = this.ruleFor(row.priceType);
+    if (!rule || rule.baseMode !== 'BASE_PRICE' || !rule.basePriceType) {
+      return '';
+    }
+    const target = this.priceCardLabel(row.priceType);
+    const base = this.priceCardLabel(rule.basePriceType);
+    if (row.adjustmentKind === 'PERCENT') {
+      const percent = this.roundToScale(row.adjustmentValue, 3).toLocaleString('pt-BR', {
+        minimumFractionDigits: 3,
+        maximumFractionDigits: 3
+      });
+      return `Formula: ${target} = ${base} x (1 + ${percent}%). ${this.lockModeDescription(rule.uiLockMode)}`;
+    }
+    const fixed = this.moneyInputValue(row.adjustmentValue);
+    return `Formula: ${target} = ${base} + R$ ${fixed}. ${this.lockModeDescription(rule.uiLockMode)}`;
+  }
+
+  showAdjustmentSection(row: CatalogItemPrice): boolean {
+    return this.hasBaseRule(row.priceType);
+  }
+
+  canEditPrice(row: CatalogItemPrice): boolean {
+    if (this.mode === 'view') return false;
+    const rule = this.ruleFor(row.priceType);
+    if (!rule) return true;
+    return rule.uiLockMode === 'II' || rule.uiLockMode === 'III';
+  }
+
+  canEditAdjustment(row: CatalogItemPrice): boolean {
+    if (this.mode === 'view') return false;
+    if (!this.hasBaseRule(row.priceType)) return false;
+    const rule = this.ruleFor(row.priceType);
+    if (!rule) return true;
+    return rule.uiLockMode === 'I' || rule.uiLockMode === 'III';
+  }
+
+  canEditAdjustmentKind(row: CatalogItemPrice): boolean {
+    return this.canEditAdjustment(row);
+  }
+
+  onPriceFinalChanged(index: number, rawValue: string): void {
+    const current = this.itemPrices[index];
+    if (!current) return;
+    if (!this.canEditPrice(current)) return;
+    const parsed = this.parseLocalizedNumber(rawValue);
+    current.priceFinal = parsed !== null && parsed >= 0 ? this.roundToScale(parsed, 2) : 0;
+    current.lastEditedField = 'PRICE';
+    this.requestPricePreview();
+  }
+
+  onAdjustmentChanged(index: number, rawValue: string): void {
+    const current = this.itemPrices[index];
+    if (!current) return;
+    if (!this.canEditAdjustment(current)) return;
+    const parsed = this.parseLocalizedNumber(rawValue);
+    const scale = current.adjustmentKind === 'PERCENT' ? 3 : 2;
+    current.adjustmentValue = parsed !== null ? this.roundToScale(parsed, scale) : 0;
+    current.lastEditedField = 'ADJUSTMENT';
+    this.requestPricePreview();
+  }
+
+  onAdjustmentKindChanged(index: number, rawValue: string): void {
+    const current = this.itemPrices[index];
+    if (!current) return;
+    if (!this.canEditAdjustmentKind(current)) return;
+    current.adjustmentKind = rawValue === 'PERCENT' ? 'PERCENT' : 'FIXED';
+    const scale = current.adjustmentKind === 'PERCENT' ? 3 : 2;
+    current.adjustmentValue = this.roundToScale(current.adjustmentValue, scale);
+    current.lastEditedField = 'ADJUSTMENT';
+    this.requestPricePreview();
+  }
+
+  moneyInputValue(value: number | null | undefined): string {
+    const normalized = this.roundToScale(value, 2);
+    return normalized.toLocaleString('pt-BR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+  }
+
+  adjustmentInputValue(row: CatalogItemPrice): string {
+    const scale = row.adjustmentKind === 'PERCENT' ? 3 : 2;
+    const normalized = this.roundToScale(row.adjustmentValue, scale);
+    return normalized.toLocaleString('pt-BR', {
+      minimumFractionDigits: scale,
+      maximumFractionDigits: scale
+    });
   }
 
   private loadUnitOptions(onLoaded: () => void): void {
@@ -426,12 +536,42 @@ export class CatalogItemFormComponent implements OnInit {
     return this.type === 'PRODUCTS' ? 'products' : 'services';
   }
 
-  setTab(tab: 'GERAL' | 'ESTOQUE'): void {
+  private normalizePriceRows(rows: CatalogItemPrice[]): Array<CatalogItemPrice & { lastEditedField?: CatalogPriceEditedField }> {
+    const byType = new Map<CatalogItemPrice['priceType'], CatalogItemPrice>();
+    for (const item of rows || []) {
+      byType.set(item.priceType, item);
+    }
+    return this.priceTypeOrder.map(type => {
+      const row = byType.get(type);
+      const rule = this.ruleFor(type);
+      const hasBase = rule?.baseMode === 'BASE_PRICE';
+      const adjustmentKind = hasBase
+        ? (row?.adjustmentKind || rule?.adjustmentKindDefault || 'FIXED')
+        : 'FIXED';
+      const adjustmentScale = adjustmentKind === 'PERCENT' ? 3 : 2;
+      const adjustmentValue = hasBase
+        ? this.roundToScale(row?.adjustmentValue ?? rule?.adjustmentDefault ?? 0, adjustmentScale)
+        : 0;
+      return {
+        priceType: type,
+        priceFinal: this.roundToScale(row?.priceFinal, 2),
+        adjustmentKind,
+        adjustmentValue,
+        lastEditedField: 'ADJUSTMENT'
+      };
+    });
+  }
+
+  private defaultPriceRows(): Array<CatalogItemPrice & { lastEditedField?: CatalogPriceEditedField }> {
+    return this.normalizePriceRows([]);
+  }
+
+  setTab(tab: 'GERAL' | 'PRECOS' | 'ESTOQUE'): void {
     if (tab === 'ESTOQUE' && !this.canOpenStockTab()) return;
     this.activeTab = tab;
   }
 
-  isTabActive(tab: 'GERAL' | 'ESTOQUE'): boolean {
+  isTabActive(tab: 'GERAL' | 'PRECOS' | 'ESTOQUE'): boolean {
     return this.activeTab === tab;
   }
 
@@ -779,5 +919,127 @@ export class CatalogItemFormComponent implements OnInit {
     if (this.activeTab === 'ESTOQUE' && !this.canOpenStockTab()) {
       this.activeTab = 'GERAL';
     }
+  }
+
+  private loadPriceRules(agrupadorId: number | null | undefined, onLoaded: () => void): void {
+    const targetGroupId = Number(agrupadorId || 0);
+    if (!targetGroupId) {
+      this.priceRuleByType.clear();
+      this.priceRulesError = '';
+      this.priceRulesLoading = false;
+      onLoaded();
+      return;
+    }
+
+    this.priceRulesLoading = true;
+    this.priceRulesError = '';
+    this.pricingService.listPriceRules(this.type, targetGroupId)
+      .pipe(finalize(() => (this.priceRulesLoading = false)))
+      .subscribe({
+        next: rows => {
+          this.priceRuleByType.clear();
+          for (const row of this.sortRules(rows || [])) {
+            this.priceRuleByType.set(row.priceType, row);
+          }
+          this.itemPrices = this.normalizePriceRows(this.itemPrices || []);
+          onLoaded();
+        },
+        error: err => {
+          this.priceRuleByType.clear();
+          this.priceRulesError = err?.error?.detail || 'Nao foi possivel carregar regras de preco do agrupador.';
+          this.itemPrices = this.normalizePriceRows(this.itemPrices || []);
+          onLoaded();
+        }
+      });
+  }
+
+  private sortRules(rows: CatalogPriceRule[]): CatalogPriceRule[] {
+    return [...(rows || [])]
+      .sort((a, b) => this.priceTypeOrder.indexOf(a.priceType) - this.priceTypeOrder.indexOf(b.priceType));
+  }
+
+  private ruleFor(priceType: CatalogItemPrice['priceType']): CatalogPriceRule | null {
+    return this.priceRuleByType.get(priceType) || null;
+  }
+
+  private hasBaseRule(priceType: CatalogItemPrice['priceType']): boolean {
+    const rule = this.ruleFor(priceType);
+    return !!rule && rule.baseMode === 'BASE_PRICE';
+  }
+
+  private lockModeDescription(mode: CatalogPriceRule['uiLockMode']): string {
+    if (mode === 'I') return 'Modo I: ajuste manual.';
+    if (mode === 'II') return 'Modo II: ajuste bloqueado.';
+    if (mode === 'III') return 'Modo III: sincronismo entre valor e ajuste.';
+    return 'Modo IV: recalculo automatico.';
+  }
+
+  private parseLocalizedNumber(rawValue: string | number | null | undefined): number | null {
+    if (rawValue === null || rawValue === undefined) return null;
+    const raw = `${rawValue}`.trim();
+    if (!raw) return null;
+    const sanitized = raw.replace(/\s/g, '');
+    const normalized = sanitized.includes(',')
+      ? sanitized.replace(/\./g, '').replace(',', '.')
+      : sanitized.replace(/,/g, '');
+    const parsed = Number(normalized);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private roundToScale(value: number | null | undefined, scale: number): number {
+    const parsed = Number(value ?? 0);
+    if (!Number.isFinite(parsed)) return 0;
+    const factor = Math.pow(10, scale);
+    return Math.round(parsed * factor) / factor;
+  }
+
+  private buildPriceInputsPayload(): CatalogItemPricePayload[] {
+    return this.itemPrices.map(row => ({
+      priceType: row.priceType,
+      priceFinal: this.roundToScale(row.priceFinal, 2),
+      adjustmentKind: this.hasBaseRule(row.priceType)
+        ? row.adjustmentKind
+        : 'FIXED',
+      adjustmentValue: this.hasBaseRule(row.priceType)
+        ? this.roundToScale(
+          row.adjustmentValue,
+          row.adjustmentKind === 'PERCENT' ? 3 : 2
+        )
+        : 0,
+      lastEditedField: this.hasBaseRule(row.priceType)
+        ? (row.lastEditedField || 'ADJUSTMENT')
+        : 'PRICE'
+    }));
+  }
+
+  private requestPricePreview(): void {
+    if (this.mode === 'view' || !this.context?.vinculado) {
+      return;
+    }
+    const payload = this.buildPriceInputsPayload();
+    if (!payload.length) {
+      return;
+    }
+    const currentRequestId = ++this.pricePreviewRequestId;
+    this.itemService.previewPrices(this.type, {
+      catalogItemId: this.itemId,
+      prices: payload
+    }).subscribe({
+      next: rows => {
+        if (currentRequestId !== this.pricePreviewRequestId) {
+          return;
+        }
+        this.applyPricePreviewRows(rows || []);
+      },
+      error: () => {}
+    });
+  }
+
+  private applyPricePreviewRows(rows: CatalogItemPrice[]): void {
+    const lastEditedByType = new Map(this.itemPrices.map(row => [row.priceType, row.lastEditedField || 'ADJUSTMENT']));
+    this.itemPrices = this.normalizePriceRows(rows).map(row => ({
+      ...row,
+      lastEditedField: lastEditedByType.get(row.priceType) || row.lastEditedField || 'ADJUSTMENT'
+    }));
   }
 }

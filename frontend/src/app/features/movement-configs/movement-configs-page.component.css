@@ -121,12 +121,14 @@
 }
 
 .type-tab-btn {
-  min-height: 36px;
+  min-height: 28px;
   border-color: var(--border) !important;
-  background: var(--surface);
+  background: var(--surface-muted);
   color: var(--muted-strong);
   border-radius: 8px;
-  padding-inline: 12px;
+  padding-inline: 10px;
+  font-size: 12px;
+  line-height: 1;
 }
 
 .movement-type-grid {
@@ -142,16 +144,16 @@
 
 .movement-type-btn {
   width: 100%;
-  min-height: 34px;
-  padding-inline: 10px;
-  font-size: 13px;
+  min-height: 28px;
+  padding-inline: 8px;
+  font-size: 12px;
   line-height: 1.2;
 }
 
 .movement-type-btn-compact {
   min-height: 28px;
   padding-inline: 6px;
-  font-size: 11px;
+  font-size: 10.5px;
   line-height: 1.1;
 }
 
@@ -177,9 +179,9 @@
 }
 
 .type-tab-active {
-  border-color: #7da6d8 !important;
-  background: #edf4ff !important;
-  color: #0b4a8b !important;
+  border-color: var(--brand) !important;
+  background: var(--surface) !important;
+  color: var(--brand) !important;
 }
 
 .table-sticky-actions {

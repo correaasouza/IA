@@ -1,44 +1,43 @@
 <div class="grid gap-3">
-  <div class="page-list-sticky grid gap-3">
-    <div class="flex flex-col items-start justify-between gap-2 md:flex-row md:items-start">
-      <div>
-        <h1 class="m-0 text-lg font-bold">{{ headerTitle() }}</h1>
-        <p class="mt-1 text-xs text-[var(--muted)]">Listagem no contexto da empresa selecionada no sistema.</p>
+  <div class="page-list-sticky grid gap-2">
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-xs)]">
+      <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div class="min-w-0">
+          <h1 class="m-0 text-base font-bold">{{ headerTitle() }}</h1>
+          <p class="mt-0.5 text-[11px] text-[var(--muted)]" *ngIf="context?.vinculado && context?.empresaNome">
+            Empresa: {{ context?.empresaNome }}
+          </p>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 md:justify-end">
+          <div class="hidden text-xs text-[var(--muted)] md:block">{{ totalElements }} registro(s)</div>
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            (click)="goNew()"
+            [disabled]="!context?.vinculado"
+            [attr.aria-label]="newEntityButtonLabel()">
+            <mat-icon>add</mat-icon>
+            {{ newEntityButtonLabel() }}
+          </button>
+        </div>
       </div>
-      <button
-        mat-flat-button
-        color="primary"
-        type="button"
-        (click)="goNew()"
-        [disabled]="!context?.vinculado"
-        [attr.aria-label]="newEntityButtonLabel()">
-        <mat-icon>add</mat-icon>
-        {{ newEntityButtonLabel() }}
-      </button>
-    </div>
 
-    <div class="header-context-line text-xs text-[var(--muted)]" *ngIf="context?.vinculado && context">
-      Empresa: <strong>{{ context.empresaNome }}</strong> |
-      Grupo: <strong>{{ context.agrupadorNome }}</strong>
-    </div>
-
-    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-      <div class="mb-2 flex items-center justify-between gap-2">
-        <div class="text-sm font-semibold">Filtros</div>
-        <div class="flex items-center gap-2">
-          <button mat-button type="button" class="mobile-filter-toggle md:!hidden" (click)="toggleMobileFilters()">
+      <div class="grid gap-1.5 min-w-0 mt-2">
+        <div class="flex items-center justify-between gap-2 md:hidden">
+          <button mat-button type="button" class="mobile-filter-toggle" (click)="toggleMobileFilters()">
             <mat-icon>tune</mat-icon>
             Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
             <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
           </button>
           <div class="text-xs text-[var(--muted)]">{{ totalElements }} registro(s)</div>
         </div>
-      </div>
 
-      <ng-container *ngIf="!isMobile || mobileFiltersOpen">
         <form
+          *ngIf="!isMobile || mobileFiltersOpen"
           [formGroup]="filters"
-          class="grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1fr)_220px_auto]"
+          class="grid grid-cols-1 items-start gap-2 md:grid-cols-[minmax(0,1fr)_220px_auto]"
           role="search">
           <div class="min-w-0">
             <app-field-search
@@ -63,7 +62,7 @@
             </button>
           </div>
         </form>
-      </ng-container>
+      </div>
 
       <div class="filters-group-row mt-2" *ngIf="context?.vinculado">
         <button
@@ -83,7 +82,7 @@
           (click)="showAllGroups()"
           [disabled]="!selectedGroupId"
           aria-label="Mostrar todos os grupos">
-          <mat-icon>list</mat-icon>
+          <mat-icon>layers</mat-icon>
           Todos
         </button>
         <button
@@ -103,17 +102,6 @@
           [attr.title]="selectedGroupHeader()">
           Grupo selecionado: <strong>{{ selectedGroupHeader() }}</strong>
         </span>
-      </div>
-
-      <div class="group-tree-inline mt-2" *ngIf="groupTreeOpen && context?.vinculado">
-        <app-entity-groups-tree
-          [tipoEntidadeId]="selectedTipoEntidadeId()"
-          [allowEntityDrop]="false"
-          [selectedGroupId]="selectedGroupId"
-          [canManage]="!!context?.vinculado"
-          (selectedGroupIdChange)="onGroupSelected($event)"
-          (changed)="refreshContextAndData()">
-        </app-entity-groups-tree>
       </div>
 
       <div class="group-destination-panel mt-1" *ngIf="!isMobile && context?.vinculado && movementAreaOpen">
@@ -156,7 +144,19 @@
 
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="context?.vinculado">
     <div class="p-3 pt-2">
-      <div class="entity-records-list-col">
+      <div class="entity-main-layout" [class.entity-main-layout-groups-open]="groupTreeOpen">
+        <aside class="entity-main-groups" *ngIf="groupTreeOpen">
+          <app-entity-groups-tree
+            [tipoEntidadeId]="selectedTipoEntidadeId()"
+            [allowEntityDrop]="false"
+            [selectedGroupId]="selectedGroupId"
+            [canManage]="!!context?.vinculado"
+            (selectedGroupIdChange)="onGroupSelected($event)"
+            (changed)="refreshContextAndData()">
+          </app-entity-groups-tree>
+        </aside>
+
+        <div class="entity-records-list-col">
         <div class="hidden overflow-auto border-b border-[var(--border-light)] md:block">
           <table mat-table [dataSource]="registros" class="w-full">
         <ng-container matColumnDef="codigo">
@@ -282,6 +282,7 @@
           [pageSizeOptions]="[10,20,50]"
           (page)="pageChange($event)">
         </mat-paginator>
+        </div>
       </div>
     </div>
   </section>

@@ -35,6 +35,14 @@ public class ApiExceptionHandler {
       pd.setDetail("Movimento de estoque nao encontrado no contexto atual.");
     } else if (message.startsWith("movimento_estoque_item_not_found")) {
       pd.setDetail("Item do movimento de estoque nao encontrado no contexto atual.");
+    } else if (message.startsWith("price_book_not_found")) {
+      pd.setDetail("Tabela de preco nao encontrada.");
+    } else if (message.startsWith("price_variant_not_found")) {
+      pd.setDetail("Variacao de preco nao encontrada.");
+    } else if (message.startsWith("sale_price_not_found")) {
+      pd.setDetail("Preco de venda nao encontrado.");
+    } else if (message.startsWith("catalog_configuration_group_not_found")) {
+      pd.setDetail("Configuracao por agrupador nao encontrada para o catalogo.");
     } else if (message.startsWith("workflow_definition_not_found")) {
       pd.setDetail("Definicao de workflow nao encontrada.");
     } else if (message.startsWith("workflow_instance_not_found")) {
@@ -149,6 +157,48 @@ public class ApiExceptionHandler {
       pd.setDetail("Unidade alternativa invalida para o locatario.");
     } else if (message.startsWith("catalog_item_alt_factor_invalid")) {
       pd.setDetail("Fator de conversao da unidade alternativa deve ser maior que zero.");
+    } else if (message.startsWith("catalog_item_price_negative")) {
+      pd.setDetail("Preco final do item nao pode ser negativo.");
+    } else if (message.startsWith("catalog_item_price_duplicated_type_input")) {
+      pd.setDetail("Entrada de preco duplicada para o mesmo tipo.");
+    } else if (message.startsWith("catalog_price_rule_none_requires_mode_ii")) {
+      pd.setDetail("Quando a base for NONE, o modo permitido e somente II.");
+    } else if (message.startsWith("catalog_price_rule_base_required")) {
+      pd.setDetail("Informe o tipo base quando a regra usar BASE_PRICE.");
+    } else if (message.startsWith("catalog_price_rule_self_reference")) {
+      pd.setDetail("Um tipo de preco nao pode usar ele mesmo como base.");
+    } else if (message.startsWith("catalog_price_rule_none_root_required")) {
+      pd.setDetail("Ao menos um tipo de preco deve ter base NONE.");
+    } else if (message.startsWith("catalog_price_rule_cycle_detected")) {
+      pd.setDetail("Configuracao de preco invalida: dependencia ciclica entre tipos.");
+    } else if (message.startsWith("catalog_price_rule_custom_name_too_long")) {
+      pd.setDetail("Nome customizado da regra excede o limite permitido.");
+    } else if (message.startsWith("price_book_name_required")) {
+      pd.setDetail("Informe o nome da tabela de preco.");
+    } else if (message.startsWith("price_book_name_too_long")) {
+      pd.setDetail("Nome da tabela de preco excede o limite permitido.");
+    } else if (message.startsWith("price_book_name_duplicated")) {
+      pd.setDetail("Ja existe tabela de preco com este nome.");
+    } else if (message.startsWith("price_variant_name_required")) {
+      pd.setDetail("Informe o nome da variacao de preco.");
+    } else if (message.startsWith("price_variant_name_too_long")) {
+      pd.setDetail("Nome da variacao de preco excede o limite permitido.");
+    } else if (message.startsWith("price_variant_name_duplicated")) {
+      pd.setDetail("Ja existe variacao de preco com este nome.");
+    } else if (message.startsWith("sale_price_book_required")) {
+      pd.setDetail("Informe a tabela de preco.");
+    } else if (message.startsWith("sale_price_book_inactive")) {
+      pd.setDetail("Tabela de preco inativa.");
+    } else if (message.startsWith("sale_price_variant_inactive")) {
+      pd.setDetail("Variacao de preco inativa.");
+    } else if (message.startsWith("sale_price_catalog_type_required")) {
+      pd.setDetail("Informe o tipo de catalogo no preco de venda.");
+    } else if (message.startsWith("sale_price_catalog_item_required")) {
+      pd.setDetail("Informe o item de catalogo no preco de venda.");
+    } else if (message.startsWith("sale_price_scope_duplicated")) {
+      pd.setDetail("Ja existe preco para a combinacao informada.");
+    } else if (message.startsWith("sale_price_negative")) {
+      pd.setDetail("Preco de venda nao pode ser negativo.");
     } else if (message.startsWith("catalog_item_unit_locked_by_stock_movements")) {
       pd.setDetail("Unidades do item bloqueadas por movimentacoes de estoque.");
     } else if (message.startsWith("official_unit_codigo_required")) {
@@ -307,6 +357,12 @@ public class ApiExceptionHandler {
       pd.setDetail("Item de catalogo invalido para o contexto da empresa e tipo de item.");
     } else if (message.startsWith("movimento_estoque_item_unidade_invalid")) {
       pd.setDetail("Unidade informada invalida para o item do movimento.");
+    } else if (message.startsWith("movimento_estoque_item_price_book_invalid")) {
+      pd.setDetail("Tabela de preco invalida para o item do movimento.");
+    } else if (message.startsWith("movimento_estoque_item_price_variant_invalid")) {
+      pd.setDetail("Variacao de preco invalida para o item do movimento.");
+    } else if (message.startsWith("movimento_estoque_item_price_book_required_for_variant")) {
+      pd.setDetail("Informe a tabela de preco ao selecionar uma variacao de preco.");
     } else if (message.startsWith("movimento_item_tipo_id_invalid")) {
       pd.setDetail("Identificador do tipo de item invalido.");
     } else if (message.startsWith("movimento_item_tipo_not_found")) {
@@ -454,6 +510,12 @@ public class ApiExceptionHandler {
       pd.setDetail("Ja existe unidade com esta sigla no locatario.");
     } else if (normalized.contains("ux_tenant_unit_conversion_scope")) {
       pd.setDetail("Ja existe conversao cadastrada para origem e destino informados.");
+    } else if (normalized.contains("ux_price_book_tenant_name")) {
+      pd.setDetail("Ja existe tabela de preco com este nome.");
+    } else if (normalized.contains("ux_price_variant_tenant_name")) {
+      pd.setDetail("Ja existe variacao de preco com este nome.");
+    } else if (normalized.contains("ux_sale_price_scope")) {
+      pd.setDetail("Ja existe preco para a combinacao informada.");
     } else if (normalized.contains("ux_movimento_config_empresa_scope")) {
       pd.setDetail("A empresa ja esta vinculada a esta configuracao de movimento.");
     } else if (normalized.contains("ux_movimento_config_tipo_entidade_scope")) {
@@ -537,6 +599,9 @@ public class ApiExceptionHandler {
       || message.startsWith("catalog_context_required")
       || message.startsWith("catalog_context_sem_grupo")
       || message.startsWith("catalog_item_codigo_duplicado")
+      || message.startsWith("price_book_name_duplicated")
+      || message.startsWith("price_variant_name_duplicated")
+      || message.startsWith("sale_price_scope_duplicated")
       || message.startsWith("catalog_item_unit_locked_by_stock_movements")
       || message.startsWith("catalog_group_nome_duplicado_mesmo_pai")
       || message.startsWith("catalog_group_possui_itens")

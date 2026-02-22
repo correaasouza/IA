@@ -54,6 +54,8 @@ import org.springframework.transaction.annotation.Transactional;
   CatalogStockQueryService.class,
   CatalogItemCodeService.class,
   CatalogItemCrudSupportService.class,
+  CatalogPriceRuleService.class,
+  CatalogItemPriceService.class,
   CatalogUnitLockService.class,
   CatalogProductService.class,
   CatalogServiceCrudService.class,

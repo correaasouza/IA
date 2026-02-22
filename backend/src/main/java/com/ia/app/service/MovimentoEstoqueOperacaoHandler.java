@@ -301,6 +301,11 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
       entity.setQuantidadeConvertidaBase(resolved.quantidadeConvertidaBase());
       entity.setFatorAplicado(resolved.fatorAplicado());
       entity.setFatorFonte(resolved.fatorFonte());
+      entity.setUnitPriceApplied(resolved.unitPriceApplied());
+      entity.setPriceBookIdSnapshot(resolved.priceBookIdSnapshot());
+      entity.setVariantIdSnapshot(resolved.variantIdSnapshot());
+      entity.setSalePriceSourceSnapshot(resolved.salePriceSourceSnapshot());
+      entity.setSalePriceIdSnapshot(resolved.salePriceIdSnapshot());
       entity.setValorUnitario(resolved.valorUnitario());
       entity.setValorTotal(resolved.valorTotal());
       entity.setCobrar(resolved.cobrar());
@@ -437,6 +442,11 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
           item.getQuantidadeConvertidaBase(),
           item.getFatorAplicado(),
           item.getFatorFonte(),
+          item.getUnitPriceApplied(),
+          item.getPriceBookIdSnapshot(),
+          item.getVariantIdSnapshot(),
+          item.getSalePriceSourceSnapshot(),
+          item.getSalePriceIdSnapshot(),
           item.getValorUnitario(),
           item.getValorTotal(),
           item.isCobrar(),

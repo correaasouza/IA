@@ -8,6 +8,8 @@ public record MovimentoEstoqueItemRequest(
   @NotNull Long movimentoItemTipoId,
   @NotNull Long catalogItemId,
   UUID tenantUnitId,
+  Long priceBookId,
+  Long variantId,
   @NotNull BigDecimal quantidade,
   BigDecimal valorUnitario,
   Integer ordem,

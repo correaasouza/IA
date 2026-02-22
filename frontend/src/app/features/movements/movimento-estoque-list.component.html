@@ -1,40 +1,10 @@
 <div class="grid gap-2">
   <div class="page-list-sticky grid gap-2">
     <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-xs)]">
-      <div class="grid grid-cols-1 gap-2 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
+      <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div class="min-w-0">
           <h1 class="m-0 text-base font-bold">Movimento de Estoque</h1>
           <p class="mt-0.5 text-[11px] text-[var(--muted)]">Lista da empresa selecionada no contexto.</p>
-        </div>
-
-        <div class="grid gap-1.5 min-w-0">
-          <div class="flex items-center justify-between gap-2 md:hidden">
-            <button mat-button type="button" class="mobile-filter-toggle" (click)="toggleMobileFilters()">
-              <mat-icon>tune</mat-icon>
-              Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
-              <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
-            </button>
-            <div class="text-xs text-[var(--muted)]">{{ totalElements }} movimento(s)</div>
-          </div>
-
-          <form *ngIf="!isMobile || mobileFiltersOpen" class="grid grid-cols-1 items-start gap-1.5 md:grid-cols-[minmax(0,1fr)_auto]" role="search">
-            <div class="min-w-0">
-              <app-field-search
-                [options]="searchOptions"
-                label="Buscar"
-                placeholder="Digite e selecione os campos"
-                [defaultFields]="searchFields"
-                [showActions]="false"
-                (searchChange)="onSearchChange($event)">
-              </app-field-search>
-            </div>
-
-            <div class="flex items-center justify-end gap-2">
-              <button mat-stroked-button type="button" (click)="clearFilters()">
-                Limpar
-              </button>
-            </div>
-          </form>
         </div>
 
         <div class="flex items-center justify-between gap-2 md:justify-end">
@@ -51,6 +21,36 @@
             Novo movimento
           </button>
         </div>
+      </div>
+
+      <div class="grid gap-1.5 min-w-0 mt-2">
+        <div class="flex items-center justify-between gap-2 md:hidden">
+          <button mat-button type="button" class="mobile-filter-toggle" (click)="toggleMobileFilters()">
+            <mat-icon>tune</mat-icon>
+            Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
+            <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+          <div class="text-xs text-[var(--muted)]">{{ totalElements }} movimento(s)</div>
+        </div>
+
+        <form *ngIf="!isMobile || mobileFiltersOpen" class="grid grid-cols-1 items-start gap-1.5 md:grid-cols-[minmax(0,1fr)_auto]" role="search">
+          <div class="min-w-0">
+            <app-field-search
+              [options]="searchOptions"
+              label="Buscar"
+              placeholder="Digite e selecione os campos"
+              [defaultFields]="searchFields"
+              [showActions]="false"
+              (searchChange)="onSearchChange($event)">
+            </app-field-search>
+          </div>
+
+          <div class="flex items-center justify-end gap-2">
+            <button mat-stroked-button type="button" (click)="clearFilters()">
+              Limpar
+            </button>
+          </div>
+        </form>
       </div>
     </section>
   </div>

@@ -72,15 +72,17 @@ public class PermissaoCatalogService {
   }
 
   public void seedDefaults(Long tenantId) {
-    seed(tenantId, "CONFIG_EDITOR", "Configurar colunas e formulários");
-    seed(tenantId, "USUARIO_MANAGE", "Gerenciar usuários");
-    seed(tenantId, "PAPEL_MANAGE", "Gerenciar papéis");
-    seed(tenantId, "RELATORIO_VIEW", "Visualizar relatórios");
+    seed(tenantId, "CONFIG_EDITOR", "Configurar colunas e formulÃƒÂ¡rios");
+    seed(tenantId, "USUARIO_MANAGE", "Gerenciar usuÃƒÂ¡rios");
+    seed(tenantId, "PAPEL_MANAGE", "Gerenciar papÃƒÂ©is");
+    seed(tenantId, "RELATORIO_VIEW", "Visualizar relatÃƒÂ³rios");
     seed(tenantId, "ENTIDADE_EDIT", "Editar entidades");
     seed(tenantId, "MOVIMENTO_ESTOQUE_OPERAR", "Operar movimento de estoque");
     seed(tenantId, "MOVIMENTO_ITEM_CONFIGURAR", "Configurar tipos de itens de movimento");
     seed(tenantId, "MOVIMENTO_ESTOQUE_ITEM_OPERAR", "Operar itens no movimento de estoque");
     seed(tenantId, "MOVIMENTO_ESTOQUE_DESFAZER", "Desfazer movimentacao de estoque do item");
+    seed(tenantId, "CATALOG_PRICES_VIEW", "Visualizar precos de catalogo");
+    seed(tenantId, "CATALOG_PRICES_MANAGE", "Gerenciar precos de catalogo");
     seed(tenantId, "WORKFLOW_CONFIGURAR", "Configurar workflows");
     seed(tenantId, "WORKFLOW_TRANSICIONAR", "Executar transicoes de workflow");
   }

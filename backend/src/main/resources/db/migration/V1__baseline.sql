@@ -1,4 +1,4 @@
-﻿-- ===== BEGIN V1__baseline.sql =====
+-- ===== BEGIN V1__baseline.sql =====
 CREATE TABLE locatario (
   id BIGSERIAL PRIMARY KEY,
   nome VARCHAR(120) NOT NULL,

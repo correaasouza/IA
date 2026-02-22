@@ -1,40 +1,37 @@
-﻿<div class="grid gap-3">
-  <div class="page-list-sticky grid gap-3">
-    <div class="flex flex-col items-start justify-between gap-2 md:flex-row md:items-start">
-      <div>
-        <h1 class="m-0 text-lg font-bold">{{ pageTitle() }}</h1>
-        <p class="mt-1 text-xs text-[var(--muted)]">Listagem no contexto da empresa selecionada no sistema.</p>
+<div class="grid gap-3">
+  <div class="page-list-sticky grid gap-2">
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-xs)]">
+      <div class="catalog-list-header-top">
+        <div class="catalog-list-header-main min-w-0">
+          <h1 class="m-0 text-base font-bold">{{ pageTitle() }}</h1>
+          <p class="mt-0.5 text-[11px] text-[var(--muted)]" *ngIf="empresaHeaderLabel() as empresaNome">
+            Empresa: {{ empresaNome }}
+          </p>
+        </div>
+
+        <div class="catalog-list-header-actions">
+          <div class="hidden text-xs text-[var(--muted)] md:block">{{ totalElements }} registro(s)</div>
+          <button mat-flat-button color="primary" type="button" (click)="goNew()" [disabled]="!context?.vinculado">
+            <mat-icon>add</mat-icon>
+            {{ newButtonLabel() }}
+          </button>
+        </div>
       </div>
 
-      <button mat-flat-button color="primary" type="button" (click)="goNew()" [disabled]="!context?.vinculado">
-        <mat-icon>add</mat-icon>
-        {{ newButtonLabel() }}
-      </button>
-    </div>
-
-    <div class="header-context-line text-xs text-[var(--muted)]" *ngIf="context?.vinculado">
-      Empresa: <strong>{{ context?.empresaNome }}</strong> |
-      Grupo de Empresas: <strong>{{ context?.agrupadorNome || '-' }}</strong> |
-      Numeracao: <strong>{{ numberingModeLabel() }}</strong>
-    </div>
-
-    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-      <div class="mb-2 flex items-center justify-between gap-2">
-        <div class="text-sm font-semibold">Filtros</div>
-        <div class="flex items-center gap-2">
-          <button mat-button type="button" class="mobile-filter-toggle md:!hidden" (click)="toggleMobileFilters()">
+      <div class="catalog-list-header-filters-row">
+        <div class="flex items-center justify-between gap-2 md:hidden">
+          <button mat-button type="button" class="mobile-filter-toggle" (click)="toggleMobileFilters()">
             <mat-icon>tune</mat-icon>
             Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
             <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
           </button>
           <div class="text-xs text-[var(--muted)]">{{ totalElements }} registro(s)</div>
         </div>
-      </div>
 
-      <ng-container *ngIf="!isMobile || mobileFiltersOpen">
         <form
+          *ngIf="!isMobile || mobileFiltersOpen"
           [formGroup]="filters"
-          class="grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1fr)_220px_auto]"
+          class="grid grid-cols-1 items-start gap-1.5 md:grid-cols-[minmax(0,1fr)_200px_auto]"
           role="search">
           <div class="min-w-0">
             <app-field-search
@@ -53,18 +50,27 @@
               <option value="inativo">Status: Inativo</option>
             </select>
           </div>
+
           <div class="flex items-center justify-end gap-2">
-            <button mat-stroked-button type="button" (click)="clearFilters()">
-              Limpar
-            </button>
+            <button mat-stroked-button type="button" (click)="clearFilters()">Limpar</button>
           </div>
         </form>
-      </ng-container>
+      </div>
 
       <div class="filters-group-row mt-2" *ngIf="context?.vinculado">
         <button mat-button type="button" class="filters-group-toggle" (click)="toggleGroupTree()">
           <mat-icon>account_tree</mat-icon>
           {{ groupTreeOpen ? 'Fechar grupos' : 'Grupos' }}
+        </button>
+        <button
+          mat-button
+          class="filters-group-toggle"
+          type="button"
+          (click)="showAllGroups()"
+          [disabled]="!selectedGroupId"
+          aria-label="Mostrar todos os grupos">
+          <mat-icon>layers</mat-icon>
+          Todos
         </button>
         <button
           *ngIf="!isMobile"
@@ -129,7 +135,7 @@
           <app-catalog-groups-tree
             [type]="type"
             [canManage]="true"
-            [showAllOption]="true"
+            [showAllOption]="false"
             [allowGroupDrag]="!isMobile && movementAreaOpen"
             [selectedGroupId]="selectedGroupId"
             (selectedGroupIdChange)="onGroupSelected($event)"
@@ -138,7 +144,7 @@
         </aside>
 
         <div class="catalog-items-list-col">
-        <div class="hidden overflow-auto border-b border-[var(--border-light)] md:block">
+        <div #itemsPane class="table-sticky-actions catalog-items-pane hidden overflow-auto border-b border-[var(--border-light)] md:block" (scroll)="onItemsScroll($event)">
           <table mat-table [dataSource]="items" class="w-full">
             <ng-container matColumnDef="codigo">
               <th mat-header-cell *matHeaderCellDef>Codigo</th>
@@ -178,7 +184,7 @@
               </td>
             </ng-container>
 
-            <ng-container matColumnDef="acoes">
+            <ng-container matColumnDef="acoes" stickyEnd>
               <th mat-header-cell *matHeaderCellDef class="text-right">Acoes</th>
               <td mat-cell *matCellDef="let row">
                 <div class="flex justify-end gap-1">
@@ -198,7 +204,7 @@
               </td>
             </ng-container>
 
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
             <tr
               mat-row
               *matRowDef="let row; columns: displayedColumns"
@@ -208,6 +214,10 @@
               matTooltip="Arraste esta linha para a area de movimentacao">
             </tr>
           </table>
+        </div>
+        <div class="hidden px-2 py-1 text-xs text-[var(--muted)] md:block">
+          {{ items.length }} de {{ totalElements }} registros
+          <span *ngIf="loadingMoreRows"> | Carregando mais...</span>
         </div>
 
         <div class="grid gap-2.5 md:hidden" *ngIf="items.length > 0">
@@ -254,18 +264,14 @@
             </div>
           </article>
         </div>
+        <div class="text-xs text-[var(--muted)] md:hidden" *ngIf="items.length > 0">
+          {{ items.length }} de {{ totalElements }} registros
+          <span *ngIf="loadingMoreRows"> | Carregando mais...</span>
+        </div>
 
         <div class="catalog-empty" *ngIf="!loading && items.length === 0">
           Nenhum item encontrado para os filtros e contexto atuais.
         </div>
-
-        <mat-paginator
-          [length]="totalElements"
-          [pageIndex]="pageIndex"
-          [pageSize]="pageSize"
-          [pageSizeOptions]="[10, 20, 50]"
-          (page)="pageChange($event)">
-        </mat-paginator>
         </div>
       </div>
     </div>

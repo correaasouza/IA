@@ -1,4 +1,4 @@
-﻿-- ===== BEGIN V10__catalog_stock_balance.sql =====
+-- ===== BEGIN V10__catalog_stock_balance.sql =====
 
 CREATE TABLE IF NOT EXISTS catalog_stock_balance (
   id BIGSERIAL PRIMARY KEY,

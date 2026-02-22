@@ -1,4 +1,4 @@
-﻿-- ===== BEGIN V8__catalog_stock_type.sql =====
+-- ===== BEGIN V8__catalog_stock_type.sql =====
 
 CREATE TABLE IF NOT EXISTS catalog_stock_type (
   id BIGSERIAL PRIMARY KEY,

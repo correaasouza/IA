@@ -5,6 +5,7 @@ import com.ia.app.domain.CatalogProduct;
 import com.ia.app.domain.CatalogServiceItem;
 import com.ia.app.domain.ConversionFactorSource;
 import com.ia.app.domain.MovimentoTipo;
+import com.ia.app.domain.SalePriceSource;
 import com.ia.app.domain.TenantUnit;
 import com.ia.app.dto.MovimentoConfigItemTipoResponse;
 import com.ia.app.dto.MovimentoEstoqueItemRequest;
@@ -13,6 +14,8 @@ import com.ia.app.dto.MovimentoItemCatalogOptionResponse;
 import com.ia.app.dto.MovimentoConfigResolverResponse;
 import com.ia.app.dto.MovimentoItemUnitConversionPreviewRequest;
 import com.ia.app.dto.MovimentoItemUnitConversionPreviewResponse;
+import com.ia.app.dto.SalePriceResolveRequest;
+import com.ia.app.dto.SalePriceResolveResponse;
 import com.ia.app.repository.CatalogProductRepository;
 import com.ia.app.repository.CatalogServiceItemRepository;
 import com.ia.app.repository.TenantUnitRepository;
@@ -48,6 +51,11 @@ public class MovimentoEstoqueItemCatalogService {
     BigDecimal quantidadeConvertidaBase,
     BigDecimal fatorAplicado,
     ConversionFactorSource fatorFonte,
+    BigDecimal unitPriceApplied,
+    Long priceBookIdSnapshot,
+    Long variantIdSnapshot,
+    SalePriceSource salePriceSourceSnapshot,
+    Long salePriceIdSnapshot,
     BigDecimal valorUnitario,
     BigDecimal valorTotal,
     boolean cobrar,
@@ -62,6 +70,7 @@ public class MovimentoEstoqueItemCatalogService {
   private final CatalogServiceItemRepository catalogServiceItemRepository;
   private final TenantUnitRepository tenantUnitRepository;
   private final UnitConversionService unitConversionService;
+  private final SalePriceResolverService salePriceResolverService;
 
   public MovimentoEstoqueItemCatalogService(
       MovimentoConfigService movimentoConfigService,
@@ -70,7 +79,8 @@ public class MovimentoEstoqueItemCatalogService {
       CatalogProductRepository catalogProductRepository,
       CatalogServiceItemRepository catalogServiceItemRepository,
       TenantUnitRepository tenantUnitRepository,
-      UnitConversionService unitConversionService) {
+      UnitConversionService unitConversionService,
+      SalePriceResolverService salePriceResolverService) {
     this.movimentoConfigService = movimentoConfigService;
     this.movimentoConfigItemTipoService = movimentoConfigItemTipoService;
     this.catalogItemContextService = catalogItemContextService;
@@ -78,6 +88,7 @@ public class MovimentoEstoqueItemCatalogService {
     this.catalogServiceItemRepository = catalogServiceItemRepository;
     this.tenantUnitRepository = tenantUnitRepository;
     this.unitConversionService = unitConversionService;
+    this.salePriceResolverService = salePriceResolverService;
   }
 
   @Transactional(readOnly = true)
@@ -139,11 +150,17 @@ public class MovimentoEstoqueItemCatalogService {
       .setScale(UnitConversionService.FACTOR_SCALE, RoundingMode.HALF_UP);
     BigDecimal quantidadeConvertidaBase = unitConversionService.convert(quantidade, fatorInformadaParaBase);
 
-    BigDecimal valorUnitarioInformado = request.valorUnitario() == null ? BigDecimal.ZERO : request.valorUnitario();
-    BigDecimal valorUnitario = normalizeNonNegative(valorUnitarioInformado, "movimento_estoque_item_valor_unitario_invalid");
+    PricingSnapshot pricingSnapshot = resolvePricingSnapshot(
+      vinculo.cobrar(),
+      request,
+      vinculo.catalogType(),
+      snapshot,
+      unidadeInformadaId);
+    BigDecimal valorUnitario = pricingSnapshot.unitPriceApplied();
     boolean cobrar = vinculo.cobrar();
     if (!cobrar) {
       valorUnitario = BigDecimal.ZERO.setScale(6, RoundingMode.HALF_UP);
+      pricingSnapshot = pricingSnapshot.withUnitPriceApplied(valorUnitario);
     }
 
     BigDecimal valorTotal = cobrar
@@ -168,6 +185,11 @@ public class MovimentoEstoqueItemCatalogService {
       quantidadeConvertidaBase,
       fatorInformadaParaBase,
       baseToInformed.source(),
+      pricingSnapshot.unitPriceApplied(),
+      pricingSnapshot.priceBookIdSnapshot(),
+      pricingSnapshot.variantIdSnapshot(),
+      pricingSnapshot.salePriceSourceSnapshot(),
+      pricingSnapshot.salePriceIdSnapshot(),
       valorUnitario,
       valorTotal,
       cobrar,
@@ -259,6 +281,7 @@ public class MovimentoEstoqueItemCatalogService {
         scope.agrupadorId())
       .orElseThrow(() -> new IllegalArgumentException("movimento_estoque_item_catalogo_invalido"));
     return new Snapshot(
+      item.getId(),
       item.getCodigo(),
       item.getNome(),
       item.getTenantUnitId(),
@@ -275,6 +298,7 @@ public class MovimentoEstoqueItemCatalogService {
         scope.agrupadorId())
       .orElseThrow(() -> new IllegalArgumentException("movimento_estoque_item_catalogo_invalido"));
     return new Snapshot(
+      item.getId(),
       item.getCodigo(),
       item.getNome(),
       item.getTenantUnitId(),
@@ -335,11 +359,78 @@ public class MovimentoEstoqueItemCatalogService {
     return value.trim();
   }
 
+  private PricingSnapshot resolvePricingSnapshot(
+      boolean cobrar,
+      MovimentoEstoqueItemRequest request,
+      CatalogConfigurationType catalogType,
+      Snapshot snapshot,
+      UUID tenantUnitId) {
+    Long priceBookId = normalizeOptionalPositive(request.priceBookId(), "movimento_estoque_item_price_book_invalid");
+    Long variantId = normalizeOptionalPositive(request.variantId(), "movimento_estoque_item_price_variant_invalid");
+    if (variantId != null && priceBookId == null) {
+      throw new IllegalArgumentException("movimento_estoque_item_price_book_required_for_variant");
+    }
+
+    if (!cobrar) {
+      return PricingSnapshot.manual(BigDecimal.ZERO.setScale(6, RoundingMode.HALF_UP), priceBookId, variantId);
+    }
+
+    if (request.valorUnitario() != null) {
+      BigDecimal informed = normalizeNonNegative(request.valorUnitario(), "movimento_estoque_item_valor_unitario_invalid");
+      return PricingSnapshot.manual(informed, priceBookId, variantId);
+    }
+
+    if (priceBookId != null) {
+      SalePriceResolveResponse resolved = salePriceResolverService.resolve(new SalePriceResolveRequest(
+        priceBookId,
+        variantId,
+        catalogType,
+        snapshot.catalogItemId(),
+        tenantUnitId));
+      BigDecimal resolvedPrice = normalizeNonNegative(resolved.priceFinal(), "movimento_estoque_item_valor_unitario_invalid");
+      return new PricingSnapshot(
+        resolvedPrice,
+        priceBookId,
+        variantId,
+        resolved.source(),
+        resolved.salePriceId());
+    }
+
+    return PricingSnapshot.manual(BigDecimal.ZERO.setScale(6, RoundingMode.HALF_UP), null, null);
+  }
+
+  private Long normalizeOptionalPositive(Long value, String errorCode) {
+    if (value == null) {
+      return null;
+    }
+    if (value <= 0) {
+      throw new IllegalArgumentException(errorCode);
+    }
+    return value;
+  }
+
   private record Snapshot(
+    Long catalogItemId,
     Long codigo,
     String nome,
     UUID unidadeBaseId,
     UUID unidadeAlternativaId,
     BigDecimal fatorAlternativo
   ) {}
+
+  private record PricingSnapshot(
+    BigDecimal unitPriceApplied,
+    Long priceBookIdSnapshot,
+    Long variantIdSnapshot,
+    SalePriceSource salePriceSourceSnapshot,
+    Long salePriceIdSnapshot
+  ) {
+    static PricingSnapshot manual(BigDecimal unitPriceApplied, Long priceBookIdSnapshot, Long variantIdSnapshot) {
+      return new PricingSnapshot(unitPriceApplied, priceBookIdSnapshot, variantIdSnapshot, SalePriceSource.MANUAL, null);
+    }
+
+    PricingSnapshot withUnitPriceApplied(BigDecimal value) {
+      return new PricingSnapshot(value, priceBookIdSnapshot, variantIdSnapshot, salePriceSourceSnapshot, salePriceIdSnapshot);
+    }
+  }
 }

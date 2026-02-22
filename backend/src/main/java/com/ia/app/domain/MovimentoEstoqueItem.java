@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
@@ -72,6 +73,22 @@ public class MovimentoEstoqueItem extends AuditableEntity {
   @Enumerated(EnumType.STRING)
   @Column(name = "fator_fonte", length = 40)
   private ConversionFactorSource fatorFonte = ConversionFactorSource.IDENTITY;
+
+  @Column(name = "unit_price_applied", nullable = false, precision = 19, scale = 6)
+  private BigDecimal unitPriceApplied = BigDecimal.ZERO;
+
+  @Column(name = "price_book_id_snapshot")
+  private Long priceBookIdSnapshot;
+
+  @Column(name = "variant_id_snapshot")
+  private Long variantIdSnapshot;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "sale_price_source_snapshot", length = 40)
+  private SalePriceSource salePriceSourceSnapshot;
+
+  @Column(name = "sale_price_id_snapshot")
+  private Long salePriceIdSnapshot;
 
   @Column(name = "cobrar", nullable = false)
   private boolean cobrar = true;
@@ -230,6 +247,46 @@ public class MovimentoEstoqueItem extends AuditableEntity {
 
   public void setFatorFonte(ConversionFactorSource fatorFonte) {
     this.fatorFonte = fatorFonte;
+  }
+
+  public BigDecimal getUnitPriceApplied() {
+    return unitPriceApplied;
+  }
+
+  public void setUnitPriceApplied(BigDecimal unitPriceApplied) {
+    this.unitPriceApplied = unitPriceApplied;
+  }
+
+  public Long getPriceBookIdSnapshot() {
+    return priceBookIdSnapshot;
+  }
+
+  public void setPriceBookIdSnapshot(Long priceBookIdSnapshot) {
+    this.priceBookIdSnapshot = priceBookIdSnapshot;
+  }
+
+  public Long getVariantIdSnapshot() {
+    return variantIdSnapshot;
+  }
+
+  public void setVariantIdSnapshot(Long variantIdSnapshot) {
+    this.variantIdSnapshot = variantIdSnapshot;
+  }
+
+  public SalePriceSource getSalePriceSourceSnapshot() {
+    return salePriceSourceSnapshot;
+  }
+
+  public void setSalePriceSourceSnapshot(SalePriceSource salePriceSourceSnapshot) {
+    this.salePriceSourceSnapshot = salePriceSourceSnapshot;
+  }
+
+  public Long getSalePriceIdSnapshot() {
+    return salePriceIdSnapshot;
+  }
+
+  public void setSalePriceIdSnapshot(Long salePriceIdSnapshot) {
+    this.salePriceIdSnapshot = salePriceIdSnapshot;
   }
 
   public boolean isCobrar() {

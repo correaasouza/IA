@@ -2,6 +2,7 @@ package com.ia.app.dto;
 
 import com.ia.app.domain.CatalogConfigurationType;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 public record CatalogItemResponse(
@@ -22,6 +23,7 @@ public record CatalogItemResponse(
   String unidadeAlternativaSigla,
   String unidadeAlternativaNome,
   BigDecimal fatorConversaoAlternativa,
+  List<CatalogItemPriceResponse> prices,
   boolean hasStockMovements,
   boolean ativo
 ) {}

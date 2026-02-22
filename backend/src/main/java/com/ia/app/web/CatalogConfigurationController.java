@@ -9,7 +9,10 @@ import com.ia.app.dto.CatalogStockAdjustmentUpsertRequest;
 import com.ia.app.dto.CatalogStockTypeResponse;
 import com.ia.app.dto.CatalogStockTypeUpsertRequest;
 import com.ia.app.dto.CatalogConfigurationUpdateRequest;
+import com.ia.app.dto.CatalogPriceRuleBulkUpsertRequest;
+import com.ia.app.dto.CatalogPriceRuleResponse;
 import com.ia.app.service.CatalogConfigurationByGroupService;
+import com.ia.app.service.CatalogPriceRuleService;
 import com.ia.app.service.CatalogConfigurationService;
 import com.ia.app.service.CatalogStockAdjustmentConfigurationService;
 import com.ia.app.service.CatalogStockTypeConfigurationService;
@@ -31,16 +34,19 @@ public class CatalogConfigurationController {
 
   private final CatalogConfigurationService service;
   private final CatalogConfigurationByGroupService byGroupService;
+  private final CatalogPriceRuleService priceRuleService;
   private final CatalogStockTypeConfigurationService stockTypeConfigurationService;
   private final CatalogStockAdjustmentConfigurationService stockAdjustmentConfigurationService;
 
   public CatalogConfigurationController(
       CatalogConfigurationService service,
       CatalogConfigurationByGroupService byGroupService,
+      CatalogPriceRuleService priceRuleService,
       CatalogStockTypeConfigurationService stockTypeConfigurationService,
       CatalogStockAdjustmentConfigurationService stockAdjustmentConfigurationService) {
     this.service = service;
     this.byGroupService = byGroupService;
+    this.priceRuleService = priceRuleService;
     this.stockTypeConfigurationService = stockTypeConfigurationService;
     this.stockAdjustmentConfigurationService = stockAdjustmentConfigurationService;
   }
@@ -76,6 +82,25 @@ public class CatalogConfigurationController {
       @Valid @RequestBody CatalogConfigurationUpdateRequest request) {
     CatalogConfigurationType parsedType = CatalogConfigurationType.from(type);
     return ResponseEntity.ok(byGroupService.update(parsedType, agrupadorId, request.numberingMode()));
+  }
+
+  @GetMapping("/{type}/group-config/{agrupadorId}/price-rules")
+  @PreAuthorize("@permissaoGuard.hasPermissao('CATALOG_PRICES_VIEW')")
+  public ResponseEntity<List<CatalogPriceRuleResponse>> listPriceRulesByGroup(
+      @PathVariable String type,
+      @PathVariable Long agrupadorId) {
+    CatalogConfigurationType parsedType = CatalogConfigurationType.from(type);
+    return ResponseEntity.ok(priceRuleService.listByGroup(parsedType, agrupadorId));
+  }
+
+  @PutMapping("/{type}/group-config/{agrupadorId}/price-rules")
+  @PreAuthorize("@permissaoGuard.hasPermissao('CATALOG_PRICES_MANAGE')")
+  public ResponseEntity<List<CatalogPriceRuleResponse>> upsertPriceRulesByGroup(
+      @PathVariable String type,
+      @PathVariable Long agrupadorId,
+      @Valid @RequestBody CatalogPriceRuleBulkUpsertRequest request) {
+    CatalogConfigurationType parsedType = CatalogConfigurationType.from(type);
+    return ResponseEntity.ok(priceRuleService.upsertByGroup(parsedType, agrupadorId, request));
   }
 
   @GetMapping("/{type}/group-config/{agrupadorId}/stock-types")

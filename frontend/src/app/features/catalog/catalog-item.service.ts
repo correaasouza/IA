@@ -5,6 +5,9 @@ import { environment } from '../../../environments/environment';
 
 export type CatalogCrudType = 'PRODUCTS' | 'SERVICES';
 export type CatalogNumberingMode = 'AUTOMATICA' | 'MANUAL';
+export type CatalogPriceType = 'PURCHASE' | 'COST' | 'AVERAGE_COST' | 'SALE_BASE';
+export type PriceAdjustmentKind = 'FIXED' | 'PERCENT';
+export type CatalogPriceEditedField = 'PRICE' | 'ADJUSTMENT';
 
 export interface CatalogItemContext {
   empresaId: number;
@@ -28,6 +31,27 @@ export interface CatalogItemPayload {
   unidadeAlternativaTenantUnitId?: string | null;
   fatorConversaoAlternativa?: number | null;
   ativo: boolean;
+  prices?: CatalogItemPricePayload[];
+}
+
+export interface CatalogItemPricePayload {
+  priceType: CatalogPriceType;
+  priceFinal?: number | null;
+  adjustmentKind?: PriceAdjustmentKind | null;
+  adjustmentValue?: number | null;
+  lastEditedField?: CatalogPriceEditedField | null;
+}
+
+export interface CatalogItemPricePreviewPayload {
+  catalogItemId?: number | null;
+  prices: CatalogItemPricePayload[];
+}
+
+export interface CatalogItemPrice {
+  priceType: CatalogPriceType;
+  priceFinal: number;
+  adjustmentKind: PriceAdjustmentKind;
+  adjustmentValue: number;
 }
 
 export interface CatalogItem {
@@ -48,6 +72,7 @@ export interface CatalogItem {
   unidadeAlternativaSigla?: string | null;
   unidadeAlternativaNome?: string | null;
   fatorConversaoAlternativa?: number | null;
+  prices?: CatalogItemPrice[];
   hasStockMovements?: boolean;
   ativo: boolean;
 }
@@ -90,6 +115,10 @@ export class CatalogItemService {
 
   get(type: CatalogCrudType, id: number): Observable<CatalogItem> {
     return this.http.get<CatalogItem>(`${this.baseUrl}/${type}/items/${id}`);
+  }
+
+  previewPrices(type: CatalogCrudType, payload: CatalogItemPricePreviewPayload): Observable<CatalogItemPrice[]> {
+    return this.http.post<CatalogItemPrice[]>(`${this.baseUrl}/${type}/items/prices/preview`, payload);
   }
 
   create(type: CatalogCrudType, payload: CatalogItemPayload): Observable<CatalogItem> {

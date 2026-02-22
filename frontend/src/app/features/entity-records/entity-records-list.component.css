@@ -32,11 +32,6 @@
   white-space: nowrap;
 }
 
-.group-tree-inline {
-  border-top: 1px solid var(--border-light);
-  padding-top: 8px;
-}
-
 .group-destination-panel {
   border-top: 1px solid var(--border-light);
   padding-top: 6px;
@@ -142,6 +137,21 @@
   min-width: 0;
 }
 
+.entity-main-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.entity-main-layout-groups-open {
+  grid-template-columns: minmax(250px, 320px) minmax(0, 1fr);
+}
+
+.entity-main-groups {
+  min-width: 0;
+}
+
 .entity-row-draggable {
   cursor: grab;
 }
@@ -231,6 +241,10 @@
     flex-basis: 100%;
     white-space: normal;
     overflow-wrap: anywhere;
+  }
+
+  .entity-main-layout-groups-open {
+    grid-template-columns: 1fr;
   }
 
   :host ::ng-deep .mat-mdc-paginator-container {

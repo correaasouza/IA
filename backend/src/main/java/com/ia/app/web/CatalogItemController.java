@@ -2,12 +2,15 @@ package com.ia.app.web;
 
 import com.ia.app.domain.CatalogConfigurationType;
 import com.ia.app.dto.CatalogItemContextResponse;
+import com.ia.app.dto.CatalogItemPricePreviewRequest;
+import com.ia.app.dto.CatalogItemPriceResponse;
 import com.ia.app.dto.CatalogItemRequest;
 import com.ia.app.dto.CatalogItemResponse;
 import com.ia.app.service.CatalogItemContextService;
 import com.ia.app.service.CatalogProductService;
 import com.ia.app.service.CatalogServiceCrudService;
 import jakarta.validation.Valid;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -71,6 +74,18 @@ public class CatalogItemController {
     return ResponseEntity.ok(switch (parsedType) {
       case PRODUCTS -> productService.get(id);
       case SERVICES -> serviceCrudService.get(id);
+    });
+  }
+
+  @PostMapping("/items/prices/preview")
+  @PreAuthorize("@permissaoGuard.hasPermissao('CONFIG_EDITOR')")
+  public ResponseEntity<List<CatalogItemPriceResponse>> previewPrices(
+      @PathVariable String type,
+      @Valid @RequestBody CatalogItemPricePreviewRequest request) {
+    CatalogConfigurationType parsedType = CatalogConfigurationType.from(type);
+    return ResponseEntity.ok(switch (parsedType) {
+      case PRODUCTS -> productService.previewPrices(request);
+      case SERVICES -> serviceCrudService.previewPrices(request);
     });
   }
 

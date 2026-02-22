@@ -7,6 +7,8 @@ import com.ia.app.domain.CatalogNumberingMode;
 import com.ia.app.domain.CatalogProduct;
 import com.ia.app.domain.CatalogServiceItem;
 import com.ia.app.domain.TenantUnit;
+import com.ia.app.dto.CatalogItemPricePreviewRequest;
+import com.ia.app.dto.CatalogItemPriceResponse;
 import com.ia.app.dto.CatalogItemRequest;
 import com.ia.app.dto.CatalogItemResponse;
 import com.ia.app.repository.CatalogGroupRepository;
@@ -17,6 +19,7 @@ import jakarta.persistence.EntityNotFoundException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -37,6 +40,8 @@ public class CatalogItemCrudSupportService {
   private final CatalogServiceItemRepository serviceItemRepository;
   private final TenantUnitRepository tenantUnitRepository;
   private final CatalogUnitLockService catalogUnitLockService;
+  private final CatalogPriceRuleService catalogPriceRuleService;
+  private final CatalogItemPriceService catalogItemPriceService;
   private final AuditService auditService;
 
   public CatalogItemCrudSupportService(
@@ -47,6 +52,8 @@ public class CatalogItemCrudSupportService {
       CatalogServiceItemRepository serviceItemRepository,
       TenantUnitRepository tenantUnitRepository,
       CatalogUnitLockService catalogUnitLockService,
+      CatalogPriceRuleService catalogPriceRuleService,
+      CatalogItemPriceService catalogItemPriceService,
       AuditService auditService) {
     this.contextService = contextService;
     this.codeService = codeService;
@@ -55,6 +62,8 @@ public class CatalogItemCrudSupportService {
     this.serviceItemRepository = serviceItemRepository;
     this.tenantUnitRepository = tenantUnitRepository;
     this.catalogUnitLockService = catalogUnitLockService;
+    this.catalogPriceRuleService = catalogPriceRuleService;
+    this.catalogItemPriceService = catalogItemPriceService;
     this.auditService = auditService;
   }
 
@@ -98,16 +107,32 @@ public class CatalogItemCrudSupportService {
     Map<Long, String> groupNameById = loadGroupNameById(scope.tenantId(), scope.catalogConfigurationId(), groupIds);
     Map<UUID, TenantUnit> tenantUnitById = loadTenantUnitById(scope.tenantId(), page.getContent());
 
-    return page.map(item -> toResponse(type, scope.agrupadorNome(), item, groupNameById, tenantUnitById));
+    return page.map(item -> toResponse(type, scope.agrupadorNome(), item, groupNameById, tenantUnitById, java.util.List.of()));
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public CatalogItemResponse get(CatalogConfigurationType type, Long id) {
     var scope = contextService.resolveObrigatorio(type);
     CatalogItemBase entity = findByScope(type, id, scope);
     String groupName = resolveGroupName(scope.tenantId(), scope.catalogConfigurationId(), entity.getCatalogGroupId());
     Map<UUID, TenantUnit> tenantUnitById = loadTenantUnitById(scope.tenantId(), java.util.List.of(entity));
-    return toResponse(type, scope.agrupadorNome(), entity, singleGroupNameMap(entity.getCatalogGroupId(), groupName), tenantUnitById);
+    Long groupConfigId = catalogPriceRuleService.resolveByGroupConfigurationId(type, scope.agrupadorId());
+    var prices = catalogItemPriceService.getOrCreateForItem(scope.tenantId(), type, entity.getId(), groupConfigId, true);
+    return toResponse(type, scope.agrupadorNome(), entity, singleGroupNameMap(entity.getCatalogGroupId(), groupName), tenantUnitById, prices);
+  }
+
+  @Transactional(readOnly = true)
+  public List<CatalogItemPriceResponse> previewPrices(
+      CatalogConfigurationType type,
+      CatalogItemPricePreviewRequest request) {
+    var scope = contextService.resolveObrigatorio(type);
+    Long groupConfigId = catalogPriceRuleService.resolveByGroupConfigurationId(type, scope.agrupadorId());
+    return catalogItemPriceService.previewForItem(
+      scope.tenantId(),
+      type,
+      request == null ? null : request.catalogItemId(),
+      groupConfigId,
+      request == null ? List.of() : request.prices());
   }
 
   @Transactional
@@ -130,6 +155,8 @@ public class CatalogItemCrudSupportService {
     entity.setHasStockMovements(false);
 
     CatalogItemBase saved = save(type, entity);
+    Long groupConfigId = catalogPriceRuleService.resolveByGroupConfigurationId(type, scope.agrupadorId());
+    var prices = catalogItemPriceService.upsertForItem(scope.tenantId(), type, saved.getId(), groupConfigId, request.prices());
     auditService.log(
       scope.tenantId(),
       "CATALOG_ITEM_CREATED",
@@ -142,7 +169,7 @@ public class CatalogItemCrudSupportService {
 
     String groupName = resolveGroupName(scope.tenantId(), scope.catalogConfigurationId(), saved.getCatalogGroupId());
     Map<UUID, TenantUnit> tenantUnitById = loadTenantUnitById(scope.tenantId(), java.util.List.of(saved));
-    return toResponse(type, scope.agrupadorNome(), saved, singleGroupNameMap(saved.getCatalogGroupId(), groupName), tenantUnitById);
+    return toResponse(type, scope.agrupadorNome(), saved, singleGroupNameMap(saved.getCatalogGroupId(), groupName), tenantUnitById, prices);
   }
 
   @Transactional
@@ -175,6 +202,8 @@ public class CatalogItemCrudSupportService {
     }
 
     CatalogItemBase saved = save(type, entity);
+    Long groupConfigId = catalogPriceRuleService.resolveByGroupConfigurationId(type, scope.agrupadorId());
+    var prices = catalogItemPriceService.upsertForItem(scope.tenantId(), type, saved.getId(), groupConfigId, request.prices());
     auditService.log(
       scope.tenantId(),
       "CATALOG_ITEM_UPDATED",
@@ -187,7 +216,7 @@ public class CatalogItemCrudSupportService {
 
     String groupName = resolveGroupName(scope.tenantId(), scope.catalogConfigurationId(), saved.getCatalogGroupId());
     Map<UUID, TenantUnit> tenantUnitById = loadTenantUnitById(scope.tenantId(), java.util.List.of(saved));
-    return toResponse(type, scope.agrupadorNome(), saved, singleGroupNameMap(saved.getCatalogGroupId(), groupName), tenantUnitById);
+    return toResponse(type, scope.agrupadorNome(), saved, singleGroupNameMap(saved.getCatalogGroupId(), groupName), tenantUnitById, prices);
   }
 
   @Transactional
@@ -281,7 +310,8 @@ public class CatalogItemCrudSupportService {
       String agrupadorNome,
       CatalogItemBase entity,
       Map<Long, String> groupNameById,
-      Map<UUID, TenantUnit> tenantUnitById) {
+      Map<UUID, TenantUnit> tenantUnitById,
+      java.util.List<com.ia.app.dto.CatalogItemPriceResponse> prices) {
     String groupName = entity.getCatalogGroupId() == null
       ? null
       : groupNameById.get(entity.getCatalogGroupId());
@@ -305,6 +335,7 @@ public class CatalogItemCrudSupportService {
       altUnit == null ? null : altUnit.getSigla(),
       altUnit == null ? null : altUnit.getNome(),
       entity.getFatorConversaoAlternativa(),
+      prices == null ? java.util.List.of() : prices,
       catalogUnitLockService.hasStockMovements(type, entity),
       entity.isAtivo());
   }

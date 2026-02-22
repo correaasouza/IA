@@ -1,8 +1,11 @@
 package com.ia.app.service;
 
 import com.ia.app.domain.CatalogConfigurationType;
+import com.ia.app.dto.CatalogItemPricePreviewRequest;
+import com.ia.app.dto.CatalogItemPriceResponse;
 import com.ia.app.dto.CatalogItemRequest;
 import com.ia.app.dto.CatalogItemResponse;
+import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -22,6 +25,10 @@ public class CatalogServiceCrudService {
 
   public CatalogItemResponse get(Long id) {
     return supportService.get(CatalogConfigurationType.SERVICES, id);
+  }
+
+  public List<CatalogItemPriceResponse> previewPrices(CatalogItemPricePreviewRequest request) {
+    return supportService.previewPrices(CatalogConfigurationType.SERVICES, request);
   }
 
   public CatalogItemResponse create(CatalogItemRequest request) {

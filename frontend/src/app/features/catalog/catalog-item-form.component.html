@@ -2,17 +2,15 @@
   <header class="page-header-sticky flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
     <div>
       <h1 class="m-0 text-lg font-bold">{{ cadastroTitle() }}</h1>
-      <p class="mt-1 text-xs text-[var(--muted)]">{{ subtitle() }}</p>
-      <p class="mt-1 text-sm font-semibold text-[var(--ink)]">
-        Nome: {{ form.get('nome')?.value || '-' }}
+      <p class="catalog-item-header-name">
+        {{ form.get('nome')?.value || '-' }}
       </p>
-      <p class="mt-1 text-xs text-[var(--muted)]">
-        Codigo: <strong>{{ form.value.codigo || codigoInfo }}</strong>
-        <span class="catalog-status-chip" [class.catalog-status-chip-inactive]="!form.value.ativo">
-          {{ ativoHeaderLabel() }}
-        </span>
+      <p class="catalog-item-header-meta" *ngIf="context?.vinculado">
+        Codigo: <strong>{{ form.value.codigo || codigoInfo }}</strong> |
+        Empresa: <strong>{{ context?.empresaNome }}</strong> |
+        Grupo: <strong>{{ context?.agrupadorNome || '-' }}</strong>
       </p>
-      <div class="mt-1">
+      <div class="catalog-item-header-toggle">
         <mat-slide-toggle
           class="catalog-header-status-toggle"
           [checked]="!!form.value.ativo"
@@ -21,11 +19,7 @@
           Ativo
         </mat-slide-toggle>
       </div>
-      <p class="mt-1 text-xs text-[var(--muted)]" *ngIf="context?.vinculado">
-        Empresa: <strong>{{ context?.empresaNome }}</strong> |
-        Grupo de Empresas: <strong>{{ context?.agrupadorNome || '-' }}</strong> |
-        Numeração: <strong>{{ context?.numberingMode === 'AUTOMATICA' ? 'Automatica' : 'Manual' }}</strong>
-      </p>
+      
     </div>
 
     <div class="catalog-item-form-header-actions flex flex-wrap gap-2">
@@ -53,20 +47,28 @@
   </section>
 
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-    <div class="catalog-item-tab-row">
+    <div class="catalog-item-tab-row app-tab-row">
       <button
         mat-stroked-button
         type="button"
-        class="catalog-item-tab-btn"
-        [ngClass]="isTabActive('GERAL') ? 'catalog-item-tab-active' : ''"
+        class="catalog-item-tab-btn app-tab-btn"
+        [ngClass]="isTabActive('GERAL') ? 'catalog-item-tab-active app-tab-active' : ''"
         (click)="setTab('GERAL')">
         Geral
       </button>
       <button
         mat-stroked-button
         type="button"
-        class="catalog-item-tab-btn"
-        [ngClass]="isTabActive('ESTOQUE') ? 'catalog-item-tab-active' : ''"
+        class="catalog-item-tab-btn app-tab-btn"
+        [ngClass]="isTabActive('PRECOS') ? 'catalog-item-tab-active app-tab-active' : ''"
+        (click)="setTab('PRECOS')">
+        Precos
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        class="catalog-item-tab-btn app-tab-btn"
+        [ngClass]="isTabActive('ESTOQUE') ? 'catalog-item-tab-active app-tab-active' : ''"
         [disabled]="!canOpenStockTab()"
         (click)="setTab('ESTOQUE')">
         Estoque
@@ -81,11 +83,16 @@
     <div class="mb-2 text-sm font-semibold">Dados do catálogo</div>
 
     <form [formGroup]="form" class="grid grid-cols-1 gap-2 md:grid-cols-3">
-      <mat-form-field appearance="outline">
+      <mat-form-field appearance="outline" class="catalog-codigo-field">
         <mat-label>Codigo</mat-label>
         <input matInput type="number" formControlName="codigo" />
-        <mat-hint>{{ codigoHint() }}</mat-hint>
         <mat-error *ngIf="form.get('codigo')?.hasError('required')">Informe o codigo.</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>Nome</mat-label>
+        <input matInput formControlName="nome" />
+        <mat-error *ngIf="form.get('nome')?.hasError('required')">Informe o nome.</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
@@ -98,31 +105,70 @@
         <mat-error *ngIf="form.get('tenantUnitId')?.hasError('required')">Informe a unidade.</mat-error>
       </mat-form-field>
 
-      <div class="catalog-group-readonly md:col-span-3">
-        Grupo atual: <strong>{{ catalogGroupNomeLocked || '-' }}</strong>
-      </div>
-
-      <mat-form-field appearance="outline" class="md:col-span-3">
-        <mat-label>Nome</mat-label>
-        <input matInput formControlName="nome" />
-        <mat-error *ngIf="form.get('nome')?.hasError('required')">Informe o nome.</mat-error>
-      </mat-form-field>
-
       <mat-form-field appearance="outline" class="md:col-span-3">
         <mat-label>Descricao</mat-label>
         <textarea matInput rows="3" formControlName="descricao"></textarea>
       </mat-form-field>
-
-      <div class="col-span-full flex justify-end" *ngIf="loading">
-        <app-inline-loader label="Carregando"></app-inline-loader>
-      </div>
-      <div class="col-span-full flex justify-end" *ngIf="saving">
-        <app-inline-loader label="Salvando"></app-inline-loader>
-      </div>
-      <div class="col-span-full flex justify-end" *ngIf="deleting">
-        <app-inline-loader label="Excluindo"></app-inline-loader>
-      </div>
     </form>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="isTabActive('PRECOS')">
+    <div class="mb-2 text-sm font-semibold">Precos do item</div>
+    <div class="catalog-price-rules-error" *ngIf="priceRulesError">{{ priceRulesError }}</div>
+    <div class="catalog-price-grid">
+      <article class="catalog-price-card" *ngFor="let row of itemPrices; let i = index">
+        <div class="catalog-price-card-title">{{ priceCardLabel(row.priceType) }}</div>
+        <div class="catalog-price-card-desc" *ngIf="priceCalculationDescription(row) as calculationDescription">
+          {{ calculationDescription }}
+        </div>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Valor final</mat-label>
+          <input
+            matInput
+            type="text"
+            inputmode="decimal"
+            class="app-money-input"
+            [disabled]="!canEditPrice(row)"
+            [value]="moneyInputValue(row.priceFinal)"
+            (blur)="onPriceFinalChanged(i, $any($event.target).value)" />
+          <span matTextPrefix>R$&nbsp;</span>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" *ngIf="showAdjustmentSection(row)">
+          <mat-label>Tipo de ajuste</mat-label>
+          <mat-select
+            [disabled]="!canEditAdjustmentKind(row)"
+            [value]="row.adjustmentKind"
+            (selectionChange)="onAdjustmentKindChanged(i, $event.value)">
+            <mat-option value="FIXED">Fixo</mat-option>
+            <mat-option value="PERCENT">Percentual</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" *ngIf="showAdjustmentSection(row)">
+          <mat-label>Valor do ajuste</mat-label>
+          <input
+            matInput
+            type="text"
+            inputmode="decimal"
+            [class.app-money-input]="row.adjustmentKind === 'FIXED'"
+            [class.app-qty-input]="row.adjustmentKind === 'PERCENT'"
+            [disabled]="!canEditAdjustment(row)"
+            [value]="adjustmentInputValue(row)"
+            (blur)="onAdjustmentChanged(i, $any($event.target).value)" />
+          <span matTextPrefix *ngIf="row.adjustmentKind === 'FIXED'">R$&nbsp;</span>
+          <span matTextSuffix *ngIf="row.adjustmentKind === 'PERCENT'">%</span>
+        </mat-form-field>
+
+        <div class="catalog-price-card-note" *ngIf="!showAdjustmentSection(row)">
+          Sem base de calculo: tipo/valor de ajuste nao se aplicam.
+        </div>
+        <div class="catalog-price-card-note" *ngIf="showAdjustmentSection(row) && !canEditAdjustment(row)">
+          Ajuste controlado pela regra do agrupador para este modo de edicao.
+        </div>
+      </article>
+    </div>
   </section>
 
   <ng-container *ngIf="isTabActive('ESTOQUE')">
@@ -232,4 +278,17 @@
       <div class="catalog-empty-mini">{{ stockTabDisabledLabel() }}</div>
     </section>
   </ng-template>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-xs)]" *ngIf="loading || saving || deleting">
+    <div class="flex justify-end" *ngIf="loading">
+      <app-inline-loader label="Carregando"></app-inline-loader>
+    </div>
+    <div class="flex justify-end" *ngIf="saving">
+      <app-inline-loader label="Salvando"></app-inline-loader>
+    </div>
+    <div class="flex justify-end" *ngIf="deleting">
+      <app-inline-loader label="Excluindo"></app-inline-loader>
+    </div>
+  </section>
 </div>
+

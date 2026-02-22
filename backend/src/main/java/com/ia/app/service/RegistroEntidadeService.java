@@ -8,6 +8,7 @@ import com.ia.app.dto.RegistroEntidadeRequest;
 import com.ia.app.dto.RegistroEntidadeResponse;
 import com.ia.app.repository.GrupoEntidadeRepository;
 import com.ia.app.repository.PessoaRepository;
+import com.ia.app.repository.PriceBookRepository;
 import com.ia.app.repository.RegistroEntidadeRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.HashMap;
@@ -29,6 +30,7 @@ public class RegistroEntidadeService {
   private final PessoaResolveService pessoaResolveService;
   private final PessoaRepository pessoaRepository;
   private final GrupoEntidadeRepository grupoRepository;
+  private final PriceBookRepository priceBookRepository;
   private final AuditService auditService;
 
   public RegistroEntidadeService(
@@ -38,6 +40,7 @@ public class RegistroEntidadeService {
       PessoaResolveService pessoaResolveService,
       PessoaRepository pessoaRepository,
       GrupoEntidadeRepository grupoRepository,
+      PriceBookRepository priceBookRepository,
       AuditService auditService) {
     this.repository = repository;
     this.contextoService = contextoService;
@@ -45,6 +48,7 @@ public class RegistroEntidadeService {
     this.pessoaResolveService = pessoaResolveService;
     this.pessoaRepository = pessoaRepository;
     this.grupoRepository = grupoRepository;
+    this.priceBookRepository = priceBookRepository;
     this.auditService = auditService;
   }
 
@@ -84,6 +88,7 @@ public class RegistroEntidadeService {
   public RegistroEntidadeResponse create(Long tipoEntidadeId, RegistroEntidadeRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     Long grupoId = validateGrupo(scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId(), request.grupoEntidadeId());
+    Long priceBookId = validatePriceBook(scope.tenantId(), request.priceBookId());
     Pessoa pessoa = pessoaResolveService.resolveOrCreate(scope.tenantId(), request.pessoa());
 
     RegistroEntidade entity = new RegistroEntidade();
@@ -92,6 +97,7 @@ public class RegistroEntidadeService {
     entity.setCodigo(codigoService.proximoCodigo(scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId()));
     entity.setPessoaId(pessoa.getId());
     entity.setGrupoEntidadeId(grupoId);
+    entity.setPriceBookId(priceBookId);
     entity.setAtivo(Boolean.TRUE.equals(request.ativo()));
 
     RegistroEntidade saved = saveWithIntegrityMap(entity);
@@ -110,9 +116,11 @@ public class RegistroEntidadeService {
       .orElseThrow(() -> new EntityNotFoundException("registro_entidade_not_found"));
 
     Long grupoId = validateGrupo(scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId(), request.grupoEntidadeId());
+    Long priceBookId = validatePriceBook(scope.tenantId(), request.priceBookId());
     Pessoa pessoa = pessoaResolveService.resolveOrCreate(scope.tenantId(), request.pessoa());
 
     entity.setGrupoEntidadeId(grupoId);
+    entity.setPriceBookId(priceBookId);
     entity.setPessoaId(pessoa.getId());
     entity.setAtivo(Boolean.TRUE.equals(request.ativo()));
 
@@ -143,6 +151,14 @@ public class RegistroEntidadeService {
       .findByIdAndTenantIdAndTipoEntidadeConfigAgrupadorIdAndAtivoTrue(grupoId, tenantId, configAgrupadorId)
       .orElseThrow(() -> new EntityNotFoundException("grupo_entidade_not_found"));
     return grupo.getId();
+  }
+
+  private Long validatePriceBook(Long tenantId, Long priceBookId) {
+    if (priceBookId == null) return null;
+    if (!priceBookRepository.existsByTenantIdAndId(tenantId, priceBookId)) {
+      throw new EntityNotFoundException("price_book_not_found");
+    }
+    return priceBookId;
   }
 
   private RegistroEntidade saveWithIntegrityMap(RegistroEntidade entity) {
@@ -177,6 +193,7 @@ public class RegistroEntidadeService {
       entity.getCodigo(),
       entity.getGrupoEntidadeId(),
       grupoNome,
+      entity.getPriceBookId(),
       entity.isAtivo(),
       new PessoaVinculoResponse(
         pessoa.getId(),

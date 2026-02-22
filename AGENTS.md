@@ -59,6 +59,11 @@
 - Em layout com padding superior no container, aplicar compensacao para evitar salto visual (`margin-top` negativo e `padding-top` equivalente).
 - O bloco sticky deve envolver cabecalho da lista e card de filtros.
 - Todo bloco de filtros de lista deve ter botao `Limpar`, visivel no desktop e no estado expandido do mobile, resetando filtros para o estado padrao da tela.
+- Estrutura obrigatoria do header de lista: 1a linha com titulo/contexto e acoes principais; 2a linha dedicada apenas aos filtros (`role='search'`).
+- Evitar filtros na mesma linha do titulo em desktop; o bloco de filtros deve ficar sempre abaixo do titulo/acoes.
+- Em listas paginadas por API, preferir scroll infinito ao inves de `mat-paginator`.
+- Scroll infinito obrigatorio em duas frentes: `scroll` do container da grade no desktop e `window:scroll` no mobile.
+- Exibir feedback de progresso da carga incremental no rodape da lista (ex.: `X de Y` e `Carregando mais...`).
 
 ### Coluna de acoes fixa em tabela
 
@@ -76,6 +81,12 @@
 - O botao deve exibir icone `tune` e indicador de expansao.
 - Em desktop/tablet (`md+`), filtros ficam sempre visiveis.
 - O comportamento mobile deve depender de regra explicita de viewport no componente.
+
+### Padrao global de abas (tabs de secao)
+
+- Tabs de secao devem usar altura compacta e consistente em todo o sistema (evitar botoes altos).
+- Padrao visual: fundo neutro, borda `var(--border)`, ativo com `background: var(--surface)` e destaque de borda/cor por `var(--brand)`.
+- Evitar criar variacoes locais sem necessidade; preferir classes globais reaproveitaveis em `frontend/src/styles.css`.
 
 ### Padrao especifico: lista de movimentos de estoque
 
@@ -126,6 +137,7 @@
 - Campos monetarios devem usar 2 casas decimais fixas na exibicao (`number:'1.2-2'`).
 - Inputs de quantidade devem usar `step="0.001"` e alinhamento a direita com classe `.app-qty-input`.
 - Inputs monetarios devem usar `step="0.01"` e alinhamento a direita com classe `.app-money-input`.
+- Inputs monetarios de ficha devem exibir 2 casas decimais na interacao de edicao (ao menos no blur) e manter parse consistente de locale antes do payload.
 - Valores renderizados em tabela/card devem usar alinhamento a direita com classes `.app-qty-value` e `.app-money-value`.
 - Ao montar payload de salvamento, normalizar quantidade para 3 casas e monetario para 2 casas para manter consistencia entre UI e API.
 

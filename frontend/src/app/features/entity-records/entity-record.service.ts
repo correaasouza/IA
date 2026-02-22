@@ -24,6 +24,7 @@ export interface PessoaVinculoPayload {
 
 export interface RegistroEntidadePayload {
   grupoEntidadeId?: number | null;
+  priceBookId?: number | null;
   ativo: boolean;
   pessoa: PessoaVinculoPayload;
 }
@@ -34,6 +35,7 @@ export interface RegistroEntidade {
   codigo: number;
   grupoEntidadeId?: number | null;
   grupoEntidadeNome?: string | null;
+  priceBookId?: number | null;
   ativo: boolean;
   pessoa: {
     id: number;

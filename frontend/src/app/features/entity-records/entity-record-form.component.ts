@@ -14,6 +14,7 @@ import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { EntityRecordService, RegistroEntidade, RegistroEntidadeContexto, RegistroEntidadePayload } from './entity-record.service';
 import { EntityTypeService } from '../entity-types/entity-type.service';
 import { EntityTypeAccessService } from './entity-type-access.service';
+import { CatalogPricingService, PriceBook } from '../catalog/catalog-pricing.service';
 
 @Component({
   selector: 'app-entity-record-form',
@@ -46,9 +47,11 @@ export class EntityRecordFormComponent implements OnInit {
   codigoInfo = 'Gerado ao salvar';
   selectedGrupoIdFromRoute: number | null = null;
   currentGrupoEntidadeId: number | null = null;
+  priceBooks: PriceBook[] = [];
 
   form = this.fb.group({
     ativo: [true, Validators.required],
+    priceBookId: [null as number | null],
     pessoaNome: ['', [Validators.required, Validators.maxLength(200)]],
     pessoaApelido: ['', [Validators.maxLength(200)]],
     tipoRegistro: ['CPF', Validators.required],
@@ -60,6 +63,7 @@ export class EntityRecordFormComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private service: EntityRecordService,
+    private pricingService: CatalogPricingService,
     private notify: NotificationService,
     private typeService: EntityTypeService,
     private typeAccess: EntityTypeAccessService
@@ -100,6 +104,7 @@ export class EntityRecordFormComponent implements OnInit {
     }
     const payload: RegistroEntidadePayload = {
       grupoEntidadeId: this.resolveGrupoEntidadeIdForSave(),
+      priceBookId: this.form.value.priceBookId ?? null,
       ativo: !!this.form.value.ativo,
       pessoa: {
         nome: (this.form.value.pessoaNome || '').trim(),
@@ -216,6 +221,7 @@ export class EntityRecordFormComponent implements OnInit {
     this.codigoInfo = String(entity.codigo || '');
     this.form.patchValue({
       ativo: entity.ativo,
+      priceBookId: entity.priceBookId ?? null,
       pessoaNome: entity.pessoa.nome,
       pessoaApelido: entity.pessoa.apelido || '',
       tipoRegistro: entity.pessoa.tipoRegistro,
@@ -248,6 +254,7 @@ export class EntityRecordFormComponent implements OnInit {
   }
 
   private loadTipoAndContinue(): void {
+    this.loadPriceBooks();
     this.typeService.get(this.tipoEntidadeId).subscribe({
       next: tipo => {
         this.tipoNome = (tipo?.nome || '').trim();
@@ -286,5 +293,16 @@ export class EntityRecordFormComponent implements OnInit {
 
   private hasEmpresaContext(): boolean {
     return !!(localStorage.getItem('empresaContextId') || '').trim();
+  }
+
+  private loadPriceBooks(): void {
+    this.pricingService.listBooks().subscribe({
+      next: rows => {
+        this.priceBooks = rows || [];
+      },
+      error: () => {
+        this.priceBooks = [];
+      }
+    });
   }
 }

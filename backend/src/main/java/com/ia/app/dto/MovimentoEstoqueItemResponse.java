@@ -2,6 +2,7 @@ package com.ia.app.dto;
 
 import com.ia.app.domain.CatalogConfigurationType;
 import com.ia.app.domain.ConversionFactorSource;
+import com.ia.app.domain.SalePriceSource;
 import java.math.BigDecimal;
 import java.util.UUID;
 
@@ -22,6 +23,11 @@ public record MovimentoEstoqueItemResponse(
   BigDecimal quantidadeConvertidaBase,
   BigDecimal fatorAplicado,
   ConversionFactorSource fatorFonte,
+  BigDecimal unitPriceApplied,
+  Long priceBookIdSnapshot,
+  Long variantIdSnapshot,
+  SalePriceSource salePriceSourceSnapshot,
+  Long salePriceIdSnapshot,
   BigDecimal valorUnitario,
   BigDecimal valorTotal,
   boolean cobrar,

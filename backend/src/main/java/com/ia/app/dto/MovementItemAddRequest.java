@@ -10,6 +10,8 @@ public record MovementItemAddRequest(
   @NotNull @Positive Long movementItemTypeId,
   @NotNull @Positive Long catalogItemId,
   UUID tenantUnitId,
+  @Positive Long priceBookId,
+  @Positive Long variantId,
   @NotNull @Positive BigDecimal quantidade,
   @PositiveOrZero BigDecimal valorUnitario,
   String observacao

@@ -10,12 +10,19 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTableModule } from '@angular/material/table';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { finalize } from 'rxjs';
+import { Observable, finalize, of } from 'rxjs';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { ConfigSectionShellComponent } from '../../shared/config-section-shell.component';
 import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 import { CompanyService, EmpresaResponse } from '../companies/company.service';
 import { AgrupadorEmpresa, AgrupadorEmpresaService } from './agrupador-empresa.service';
+
+export interface AgrupadorAfterSaveContext {
+  groupId: number;
+  isCreate: boolean;
+  nome: string;
+  empresaIds: number[];
+}
 
 @Component({
   selector: 'app-agrupadores-empresa',
@@ -44,6 +51,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   @Input() configId: number | null = null;
   @Input() configReferenceName = '';
   @Input() extraTabLabel = '';
+  @Input() secondaryExtraTabLabel = '';
   @Input() pickerMode = false;
   @Input() pickerEmpresas: EmpresaResponse[] = [];
   @Input() pickerEmpresaIds: number[] = [];
@@ -54,12 +62,14 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   @Input() pickerSelectedTitle = 'Empresas selecionadas';
   @Input() pickerEmptyAvailableLabel = 'Nenhuma empresa disponivel.';
   @Input() pickerEmptySelectedLabel = 'Nenhuma empresa selecionada.';
+  @Input() afterSave: ((context: AgrupadorAfterSaveContext) => Observable<unknown>) | null = null;
   @Output() changed = new EventEmitter<void>();
   @Output() groupEditStarted = new EventEmitter<AgrupadorEmpresa>();
   @Output() pickerEmpresaIdsChange = new EventEmitter<number[]>();
   @ViewChild('agrupadorFormDialog') formDialogTpl?: TemplateRef<unknown>;
   @ContentChild('agrupadorConfigTab', { read: TemplateRef }) configTabTpl?: TemplateRef<unknown>;
   @ContentChild('agrupadorExtraTab', { read: TemplateRef }) extraTabTpl?: TemplateRef<unknown>;
+  @ContentChild('agrupadorSecondaryExtraTab', { read: TemplateRef }) secondaryExtraTabTpl?: TemplateRef<unknown>;
 
   loading = false;
   saving = false;
@@ -77,7 +87,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   addedEmpresasForFormList: Array<{ id: number; label: string }> = [];
   selectedAvailableEmpresaIds: number[] = [];
   selectedAddedEmpresaIds: number[] = [];
-  activeFormTab: 'FILIAIS' | 'CONFIGURACOES' | 'EXTRA' = 'FILIAIS';
+  activeFormTab: 'FILIAIS' | 'CONFIGURACOES' | 'EXTRA' | 'EXTRA_SECONDARY' = 'FILIAIS';
   private dialogRef: MatDialogRef<unknown> | null = null;
   private originalNome = '';
   private originalEmpresaIds: number[] = [];
@@ -127,9 +137,14 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     return !!this.extraTabTpl && !!(this.extraTabLabel || '').trim();
   }
 
-  setFormTab(tab: 'FILIAIS' | 'CONFIGURACOES' | 'EXTRA'): void {
+  hasSecondaryExtraTab(): boolean {
+    return !!this.secondaryExtraTabTpl && !!(this.secondaryExtraTabLabel || '').trim();
+  }
+
+  setFormTab(tab: 'FILIAIS' | 'CONFIGURACOES' | 'EXTRA' | 'EXTRA_SECONDARY'): void {
     if (tab === 'CONFIGURACOES' && !this.hasConfigTab()) return;
     if (tab === 'EXTRA' && !this.hasExtraTab()) return;
+    if (tab === 'EXTRA_SECONDARY' && !this.hasSecondaryExtraTab()) return;
     this.activeFormTab = tab;
   }
 
@@ -213,20 +228,31 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
       this.agrupadorService.create(this.normalizedType(), this.configId!, nome).subscribe({
         next: created => {
           this.syncEmpresas(created.id, [], selectedEmpresaIds, () => {
-            this.notify.success('Agrupador criado.');
-            this.saving = false;
-            this.editingGroupId = created.id;
-            this.originalNome = nome;
-            this.originalEmpresaIds = [...selectedEmpresaIds];
-            this.activeFormTab = this.hasConfigTab() ? 'CONFIGURACOES' : (this.hasExtraTab() ? 'EXTRA' : 'FILIAIS');
-            this.groupEditStarted.emit({
-              id: created.id,
+            this.runAfterSaveHook({
+              groupId: created.id,
+              isCreate: true,
               nome,
-              ativo: created?.ativo ?? true,
-              empresas: this.addedEmpresasForForm().map(item => ({ empresaId: item.id, nome: item.label }))
+              empresaIds: selectedEmpresaIds
+            }, () => {
+              this.notify.success('Agrupador criado.');
+              this.saving = false;
+              this.editingGroupId = created.id;
+              this.originalNome = nome;
+              this.originalEmpresaIds = [...selectedEmpresaIds];
+              this.activeFormTab = this.hasConfigTab()
+                ? 'CONFIGURACOES'
+                : (this.hasExtraTab()
+                  ? 'EXTRA'
+                  : (this.hasSecondaryExtraTab() ? 'EXTRA_SECONDARY' : 'FILIAIS'));
+              this.groupEditStarted.emit({
+                id: created.id,
+                nome,
+                ativo: created?.ativo ?? true,
+                empresas: this.addedEmpresasForForm().map(item => ({ empresaId: item.id, nome: item.label }))
+              });
+              this.loadAgrupadores();
+              this.changed.emit();
             });
-            this.loadAgrupadores();
-            this.changed.emit();
           });
         },
         error: err => {
@@ -240,11 +266,18 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
     const groupId = this.editingGroupId;
     const afterRename = () => {
       this.syncEmpresas(groupId, this.originalEmpresaIds, selectedEmpresaIds, () => {
-        this.notify.success('Agrupador atualizado.');
-        this.saving = false;
-        this.cancelForm();
-        this.loadAgrupadores();
-        this.changed.emit();
+        this.runAfterSaveHook({
+          groupId,
+          isCreate: false,
+          nome,
+          empresaIds: selectedEmpresaIds
+        }, () => {
+          this.notify.success('Agrupador atualizado.');
+          this.saving = false;
+          this.cancelForm();
+          this.loadAgrupadores();
+          this.changed.emit();
+        });
       });
     };
 
@@ -421,7 +454,13 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
   }
 
   editingModeLabel(): string {
-    return this.editingGroupId ? 'Ficha do agrupador' : 'Novo agrupador';
+    if (!this.editingGroupId) {
+      return 'Novo agrupador';
+    }
+    if (this.normalizedType() === 'CATALOGO') {
+      return `Configuracao do Catalogo por Grupo Empresa - ${this.catalogCompaniesTitleSuffix()}`;
+    }
+    return 'Ficha do agrupador';
   }
 
   isGroupBeingEdited(groupId: number): boolean {
@@ -696,5 +735,53 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
       .filter(id => id > 0))];
     this.formEmpresaIds = normalizedIds;
     this.pickerEmpresaIdsChange.emit(normalizedIds);
+  }
+
+  private catalogCompaniesTitleSuffix(): string {
+    const companies = this.addedEmpresasForForm()
+      .map(item => this.companyNameOnly(item.label))
+      .filter(label => !!label);
+    if (!companies.length) {
+      return '-';
+    }
+    return companies.join(', ');
+  }
+
+  private companyNameOnly(label: string): string {
+    const normalized = (label || '').trim();
+    if (!normalized) {
+      return '';
+    }
+    const marker = ' - ';
+    const idx = normalized.indexOf(marker);
+    if (idx < 0) {
+      return normalized;
+    }
+    return normalized.substring(idx + marker.length).trim() || normalized;
+  }
+
+  private runAfterSaveHook(context: AgrupadorAfterSaveContext, onDone: () => void): void {
+    const hook = this.afterSave;
+    if (!hook) {
+      onDone();
+      return;
+    }
+
+    let request$ = of(null as unknown);
+    try {
+      request$ = hook(context) || of(null as unknown);
+    } catch (err: any) {
+      this.saving = false;
+      this.notify.error(this.errorMessage(err, 'Nao foi possivel salvar configuracoes adicionais do agrupador.'));
+      return;
+    }
+
+    request$.subscribe({
+      next: () => onDone(),
+      error: err => {
+        this.saving = false;
+        this.notify.error(this.errorMessage(err, 'Nao foi possivel salvar configuracoes adicionais do agrupador.'));
+      }
+    });
   }
 }

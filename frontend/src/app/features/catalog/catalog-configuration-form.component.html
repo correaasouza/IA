@@ -1,21 +1,37 @@
 <div class="page-form-shell grid gap-3">
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-    <div class="catalog-tab-row">
+    <div class="catalog-tab-row app-tab-row">
       <button
         mat-stroked-button
         type="button"
-        class="catalog-tab-btn"
-        [ngClass]="isTabActive('GROUP_CONFIG') ? 'catalog-tab-active' : ''"
+        class="catalog-tab-btn app-tab-btn"
+        [ngClass]="isTabActive('GROUP_CONFIG') ? 'catalog-tab-active app-tab-active' : ''"
         (click)="setTab('GROUP_CONFIG')">
         Configuracoes por Grupo de Empresas
       </button>
       <button
         mat-stroked-button
         type="button"
-        class="catalog-tab-btn"
-        [ngClass]="isTabActive('STOCK_ADJUSTMENT_TYPES') ? 'catalog-tab-active' : ''"
+        class="catalog-tab-btn app-tab-btn"
+        [ngClass]="isTabActive('STOCK_ADJUSTMENT_TYPES') ? 'catalog-tab-active app-tab-active' : ''"
         (click)="setTab('STOCK_ADJUSTMENT_TYPES')">
         Tipos de ajustes de estoque
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        class="catalog-tab-btn app-tab-btn"
+        [ngClass]="isTabActive('PRICE_BOOKS') ? 'catalog-tab-active app-tab-active' : ''"
+        (click)="setTab('PRICE_BOOKS')">
+        Tabelas de Preços
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        class="catalog-tab-btn app-tab-btn"
+        [ngClass]="isTabActive('PRICE_VARIANTS') ? 'catalog-tab-active app-tab-active' : ''"
+        (click)="setTab('PRICE_VARIANTS')">
+        Variações de preços
       </button>
     </div>
   </section>
@@ -23,7 +39,7 @@
   <div class="catalog-step-content" *ngIf="isTabActive('GROUP_CONFIG')">
     <app-config-section-shell
       [title]="'Configuracoes por Grupo de Empresas - ' + typeLabel()"
-      subtitle="Use a ficha do agrupador com guias de Empresas, Configuracoes e Tipos de Estoque."
+      subtitle="Configuracao por grupo de empresas."
       [hasActions]="true">
       <div shell-actions>
         <span class="inline-flex items-center rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--muted-strong)]">
@@ -51,14 +67,15 @@
         *ngIf="!loading && config?.id && !error"
         [configType]="'CATALOGO'"
         [configId]="config.id"
-        [extraTabLabel]="'Tipos de Estoque'"
+        [extraTabLabel]="'Regras de Preco'"
+        [secondaryExtraTabLabel]="'Tipos de Estoque'"
         [configReferenceName]="configReferenceName()"
+        [afterSave]="saveGroupCatalogSettings"
         (groupEditStarted)="onGroupEditStarted($event)"
         (changed)="onGroupsChanged()">
 
-        <ng-template #agrupadorConfigTab let-group="group">
+        <ng-template #agrupadorConfigTab>
           <section class="catalog-config-tab-shell">
-            <div class="catalog-config-group-ref">Grupo em edicao: <strong>{{ group?.nome || currentGroupNome || '-' }}</strong></div>
             <div class="catalog-config-card">
               <div class="catalog-config-card-title">Numeracao do agrupador</div>
               <mat-radio-group
@@ -69,19 +86,126 @@
                 <mat-radio-button value="AUTOMATICA">Numeracao automatica</mat-radio-button>
                 <mat-radio-button value="MANUAL">Numeracao manual</mat-radio-button>
               </mat-radio-group>
-              <div class="catalog-config-actions">
-                <button mat-flat-button color="primary" type="button" (click)="saveCurrentGroupConfig()" [disabled]="currentGroupConfigSaving || !currentGroupId">
-                  <mat-icon>save</mat-icon>
-                  Salvar configuracao
-                </button>
-              </div>
             </div>
+
           </section>
         </ng-template>
 
         <ng-template #agrupadorExtraTab>
           <section class="catalog-config-tab-shell">
-            <div class="catalog-config-group-ref">Grupo em edicao: <strong>{{ currentGroupNome || '-' }}</strong></div>
+            <div class="catalog-config-card">
+              <div class="catalog-config-card-title">Regras de Preco</div>
+
+              <div class="rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] p-2.5 text-xs text-[var(--muted)]" *ngIf="groupPriceRulesLoading">
+                Carregando regras de preco...
+              </div>
+
+              <div class="rounded-lg border border-dashed border-[#fda29b] bg-[#fef3f2] p-2.5 text-xs text-[#b42318]" *ngIf="!groupPriceRulesLoading && groupPriceRulesError">
+                {{ groupPriceRulesError }}
+              </div>
+
+              <div class="catalog-price-rules-grid erp-form-dialog-dense" *ngIf="!groupPriceRulesLoading && !groupPriceRulesError && groupPriceRules.length > 0">
+                <article class="catalog-price-rule-card" *ngFor="let row of groupPriceRules">
+                  <header class="catalog-price-rule-head">
+                    <div class="catalog-price-rule-type">{{ priceTypeLabel(row.priceType) }}</div>
+                    <mat-checkbox
+                      [(ngModel)]="row.active"
+                      [ngModelOptions]="{ standalone: true }"
+                      [disabled]="currentGroupConfigSaving || groupPriceRulesSaving">
+                      Ativo
+                    </mat-checkbox>
+                  </header>
+
+                  <div class="catalog-price-rule-fields">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Nome customizado</mat-label>
+                      <input
+                        matInput
+                        type="text"
+                        [(ngModel)]="row.customName"
+                        [ngModelOptions]="{ standalone: true }"
+                        [disabled]="currentGroupConfigSaving || groupPriceRulesSaving"
+                        placeholder="Opcional" />
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Base de calculo</mat-label>
+                      <mat-select
+                        [(ngModel)]="row.baseMode"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="onBaseModeChanged(row)"
+                        [disabled]="currentGroupConfigSaving || groupPriceRulesSaving">
+                        <mat-option value="NONE">Sem base</mat-option>
+                        <mat-option value="BASE_PRICE">Baseado em outro preco</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" *ngIf="row.baseMode === 'BASE_PRICE'">
+                      <mat-label>Preco base</mat-label>
+                      <mat-select
+                        [(ngModel)]="row.basePriceType"
+                        [ngModelOptions]="{ standalone: true }"
+                        [disabled]="currentGroupConfigSaving || groupPriceRulesSaving">
+                        <mat-option *ngFor="let option of baseOptionsFor(row)" [value]="option">{{ priceTypeLabel(option) }}</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" *ngIf="row.baseMode === 'BASE_PRICE'">
+                      <mat-label>Tipo de ajuste</mat-label>
+                      <mat-select
+                        [(ngModel)]="row.adjustmentKindDefault"
+                        [ngModelOptions]="{ standalone: true }"
+                        [disabled]="currentGroupConfigSaving || groupPriceRulesSaving">
+                        <mat-option value="FIXED">{{ adjustmentKindLabel('FIXED') }}</mat-option>
+                        <mat-option value="PERCENT">{{ adjustmentKindLabel('PERCENT') }}</mat-option>
+                      </mat-select>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" *ngIf="row.baseMode === 'BASE_PRICE'">
+                      <mat-label>{{ adjustmentValueLabel(row.adjustmentKindDefault) }}</mat-label>
+                      <input
+                        matInput
+                        type="number"
+                        [step]="adjustmentValueStep(row.adjustmentKindDefault)"
+                        [class.app-money-input]="row.adjustmentKindDefault === 'FIXED'"
+                        [class.app-qty-input]="row.adjustmentKindDefault === 'PERCENT'"
+                        [(ngModel)]="row.adjustmentDefault"
+                        [ngModelOptions]="{ standalone: true }"
+                        [disabled]="currentGroupConfigSaving || groupPriceRulesSaving" />
+                      <span matTextSuffix *ngIf="row.adjustmentKindDefault === 'PERCENT'">%</span>
+                      <span matTextPrefix *ngIf="row.adjustmentKindDefault === 'FIXED'">R$&nbsp;</span>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline" class="catalog-price-lock-field">
+                      <mat-label>Modo de edicao</mat-label>
+                      <mat-select
+                        [(ngModel)]="row.uiLockMode"
+                        [ngModelOptions]="{ standalone: true }"
+                        [disabled]="currentGroupConfigSaving || groupPriceRulesSaving">
+                        <ng-container *ngIf="row.baseMode === 'NONE'; else basePriceModeOptions">
+                          <mat-option value="II">{{ uiLockModeLabel('II') }}</mat-option>
+                        </ng-container>
+                        <ng-template #basePriceModeOptions>
+                          <mat-option value="I">{{ uiLockModeLabel('I') }}</mat-option>
+                          <mat-option value="II">{{ uiLockModeLabel('II') }}</mat-option>
+                          <mat-option value="III">{{ uiLockModeLabel('III') }}</mat-option>
+                          <mat-option value="IV">{{ uiLockModeLabel('IV') }}</mat-option>
+                        </ng-template>
+                      </mat-select>
+                    </mat-form-field>
+                  </div>
+                </article>
+              </div>
+
+              <div class="mt-1 flex justify-end" *ngIf="currentGroupConfigSaving || groupPriceRulesSaving">
+                <app-inline-loader label="Salvando configuracoes de preco do agrupador"></app-inline-loader>
+              </div>
+            </div>
+          </section>
+        </ng-template>
+
+        <ng-template #agrupadorSecondaryExtraTab>
+          <section class="catalog-config-tab-shell">
             <div class="catalog-config-card">
               <div class="catalog-config-card-head">
                 <div class="catalog-config-card-title">Tipos de Estoque</div>
@@ -151,6 +275,18 @@
         </ng-template>
       </app-agrupadores-empresa>
     </app-config-section-shell>
+  </div>
+
+  <div class="catalog-step-content" *ngIf="isTabActive('PRICE_BOOKS')">
+    <section class="catalog-config-card">
+      <app-price-books-list></app-price-books-list>
+    </section>
+  </div>
+
+  <div class="catalog-step-content" *ngIf="isTabActive('PRICE_VARIANTS')">
+    <section class="catalog-config-card">
+      <app-price-variants-list></app-price-variants-list>
+    </section>
   </div>
 
   <div class="catalog-step-content" *ngIf="isTabActive('STOCK_ADJUSTMENT_TYPES')">

@@ -37,6 +37,9 @@ public class RegistroEntidade extends AuditableEntity {
   @Column(name = "grupo_entidade_id")
   private Long grupoEntidadeId;
 
+  @Column(name = "price_book_id")
+  private Long priceBookId;
+
   @Column(name = "ativo", nullable = false)
   private boolean ativo = true;
 
@@ -82,6 +85,14 @@ public class RegistroEntidade extends AuditableEntity {
 
   public void setGrupoEntidadeId(Long grupoEntidadeId) {
     this.grupoEntidadeId = grupoEntidadeId;
+  }
+
+  public Long getPriceBookId() {
+    return priceBookId;
+  }
+
+  public void setPriceBookId(Long priceBookId) {
+    this.priceBookId = priceBookId;
   }
 
   public boolean isAtivo() {

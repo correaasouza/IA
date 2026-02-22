@@ -1,0 +1,103 @@
+﻿<div class="grid gap-3">
+  <div class="page-list-sticky grid gap-2">
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-xs)]">
+      <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div class="min-w-0">
+          <h1 class="m-0 text-base font-bold">Variacoes de Preco</h1>
+          <p class="mt-0.5 text-[11px] text-[var(--muted)]">Cadastre variacoes para preco de venda por book.</p>
+        </div>
+
+        <div class="flex items-center justify-between gap-2 md:justify-end">
+          <div class="hidden text-xs text-[var(--muted)] md:block">{{ filteredRows.length }} registro(s)</div>
+          <button mat-flat-button color="primary" routerLink="/catalog/pricing/variants/new" appAccessControl="catalog.pricing.variants.create" [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+            <mat-icon>add</mat-icon>
+            Nova variacao
+          </button>
+          <button mat-stroked-button type="button" (click)="load()">
+            <mat-icon>refresh</mat-icon>
+            Atualizar
+          </button>
+        </div>
+      </div>
+
+      <div class="grid gap-1.5 min-w-0 mt-2">
+        <div class="flex items-center justify-between gap-2 md:hidden">
+          <button mat-button type="button" class="mobile-filter-toggle" (click)="toggleMobileFilters()">
+            <mat-icon>tune</mat-icon>
+            Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
+            <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
+          </button>
+          <div class="text-xs text-[var(--muted)]">{{ filteredRows.length }} registro(s)</div>
+        </div>
+
+        <form [formGroup]="filters" class="grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_180px_auto]" *ngIf="!isMobile || mobileFiltersOpen" role="search">
+          <div class="min-w-0">
+            <app-field-search
+              [options]="searchOptions"
+              [defaultFields]="searchFields"
+              [showActions]="false"
+              placeholder="Digite e selecione os campos"
+              (searchChange)="onSearchChange($event)">
+            </app-field-search>
+          </div>
+          <div class="status-search-like">
+            <select class="status-native-select" formControlName="active" (change)="applyFilters()" aria-label="Status">
+              <option value="">Status: Todos</option>
+              <option value="true">Ativo</option>
+              <option value="false">Inativo</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-end gap-2">
+            <button mat-stroked-button type="button" (click)="clearFilters()">Limpar</button>
+          </div>
+        </form>
+      </div>
+    </section>
+  </div>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="filteredRows.length > 0">
+    <div class="table-sticky-actions hidden overflow-auto border-b border-[var(--border-light)] md:block">
+      <table mat-table [dataSource]="filteredRows" class="w-full">
+        <ng-container matColumnDef="name">
+          <th mat-header-cell *matHeaderCellDef>Nome</th>
+          <td mat-cell *matCellDef="let row">{{ row.name }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let row">{{ row.active ? 'Ativo' : 'Inativo' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="acoes" stickyEnd>
+          <th mat-header-cell *matHeaderCellDef class="acoes-header"><span class="acoes-label">Acoes</span></th>
+          <td mat-cell *matCellDef="let row" class="acoes-cell">
+            <div class="role-actions flex-nowrap">
+              <button mat-icon-button matTooltip="Consultar" (click)="view(row)"><mat-icon>visibility</mat-icon></button>
+              <button mat-icon-button matTooltip="Alterar" (click)="edit(row)" appAccessControl="catalog.pricing.variants.update" [appAccessFallbackRoles]="['MASTER', 'ADMIN']"><mat-icon>edit</mat-icon></button>
+              <button mat-icon-button color="warn" matTooltip="Excluir" (click)="remove(row)" appAccessControl="catalog.pricing.variants.delete" [appAccessFallbackRoles]="['MASTER', 'ADMIN']"><mat-icon>delete</mat-icon></button>
+            </div>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns"></tr>
+      </table>
+    </div>
+
+    <div class="grid gap-2.5 p-3 pt-2.5 md:hidden">
+      <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]" *ngFor="let row of filteredRows">
+        <div class="text-sm font-semibold">{{ row.name }}</div>
+        <div class="text-xs text-[var(--muted)]">{{ row.active ? 'Ativo' : 'Inativo' }}</div>
+        <div class="flex justify-end gap-1.5">
+          <button mat-icon-button (click)="view(row)" aria-label="Consultar"><mat-icon>visibility</mat-icon></button>
+          <button mat-icon-button (click)="edit(row)" aria-label="Alterar" appAccessControl="catalog.pricing.variants.update" [appAccessFallbackRoles]="['MASTER', 'ADMIN']"><mat-icon>edit</mat-icon></button>
+          <button mat-icon-button color="warn" (click)="remove(row)" aria-label="Excluir" appAccessControl="catalog.pricing.variants.delete" [appAccessFallbackRoles]="['MASTER', 'ADMIN']"><mat-icon>delete</mat-icon></button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="px-3 py-2.5 text-sm text-[var(--muted)] rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)]" *ngIf="!loading && filteredRows.length === 0">
+    Nenhuma variacao de preco cadastrada.
+  </section>
+</div>

@@ -3,9 +3,27 @@
   min-width: 0;
 }
 
-.header-context-line {
-  margin-top: -2px;
-  padding: 0 2px 2px;
+.table-sticky-actions {
+  --actions-col-width: 190px;
+}
+
+.catalog-list-header-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.catalog-list-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.catalog-list-header-filters-row {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .filters-group-toggle {
@@ -146,6 +164,10 @@
   min-width: 0;
 }
 
+.catalog-items-pane {
+  max-height: 56vh;
+}
+
 .catalog-row-draggable {
   cursor: grab;
 }
@@ -215,6 +237,14 @@
 }
 
 @media (max-width: 899px) {
+  .catalog-list-header-actions {
+    width: 100%;
+  }
+
+  .catalog-list-header-actions .mat-mdc-button-base {
+    flex: 1 1 auto;
+  }
+
   .filters-group-row {
     gap: 8px;
     align-items: flex-start;
@@ -234,9 +264,12 @@
   .catalog-main-layout-groups-open {
     grid-template-columns: 1fr;
   }
+}
 
-  :host ::ng-deep .mat-mdc-paginator-container {
-    justify-content: flex-start;
-    row-gap: 8px;
+@media (min-width: 900px) {
+  .catalog-list-header-top {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
   }
 }

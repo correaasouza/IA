@@ -24,7 +24,7 @@ public class PapelSeedService {
         Papel p = new Papel();
         p.setTenantId(tenantId);
         p.setNome("ADMIN");
-        p.setDescricao("Administrador do locatário");
+        p.setDescricao("Administrador do locatÃƒÂ¡rio");
         p.setAtivo(true);
         return papelRepository.save(p);
       });
@@ -49,6 +49,8 @@ public class PapelSeedService {
       "MOVIMENTO_ITEM_CONFIGURAR",
       "MOVIMENTO_ESTOQUE_ITEM_OPERAR",
       "MOVIMENTO_ESTOQUE_DESFAZER",
+      "CATALOG_PRICES_VIEW",
+      "CATALOG_PRICES_MANAGE",
       "WORKFLOW_CONFIGURAR",
       "WORKFLOW_TRANSICIONAR"
     );

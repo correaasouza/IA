@@ -1,59 +1,60 @@
 <div class="grid gap-3">
-  <div class="page-list-sticky grid gap-3">
-    <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
-      <div>
-        <h1 class="m-0 text-lg font-bold">Tipos de entidade</h1>
-        <p class="mt-1 text-xs text-[var(--muted)]">Gerencie tipos customizados e padrao por locatario.</p>
-      </div>
-      <div class="flex flex-wrap gap-2">
-        <a mat-flat-button color="primary" routerLink="/entity-types/new">
-          <mat-icon>add</mat-icon>
-          Novo tipo
-        </a>
-      </div>
-    </header>
+  <div class="page-list-sticky grid gap-2">
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-xs)]">
+      <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div class="min-w-0">
+          <h1 class="m-0 text-base font-bold">Tipos de entidade</h1>
+          <p class="mt-0.5 text-[11px] text-[var(--muted)]">Gerencie tipos customizados e padrao por locatario.</p>
+        </div>
 
-    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-      <div class="mb-2 flex items-center justify-between gap-2">
-        <div class="text-sm font-semibold">Filtros</div>
-        <div class="flex items-center gap-2">
-          <button mat-button type="button" class="mobile-filter-toggle md:!hidden" (click)="toggleMobileFilters()">
+        <div class="flex items-center justify-between gap-2 md:justify-end">
+          <div class="hidden text-xs text-[var(--muted)] md:block">{{ totalElements }} registro(s)</div>
+          <a mat-flat-button color="primary" routerLink="/entity-types/new">
+            <mat-icon>add</mat-icon>
+            Novo tipo
+          </a>
+        </div>
+      </div>
+
+      <div class="grid gap-1.5 min-w-0 mt-2">
+        <div class="flex items-center justify-between gap-2 md:hidden">
+          <button mat-button type="button" class="mobile-filter-toggle" (click)="toggleMobileFilters()">
             <mat-icon>tune</mat-icon>
             Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
             <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
           </button>
           <div class="text-xs text-[var(--muted)]">{{ totalElements }} registro(s)</div>
         </div>
+
+        <form
+          *ngIf="!isMobile || mobileFiltersOpen"
+          [formGroup]="filters"
+          class="grid grid-cols-1 items-start gap-2 md:grid-cols-[minmax(0,1.4fr)_220px_auto]"
+          role="search">
+          <div class="min-w-0">
+            <app-field-search
+              [options]="searchOptions"
+              [defaultFields]="searchFields"
+              [showActions]="false"
+              placeholder="Pesquisar tipo de entidade"
+              (searchChange)="onSearchChange($event)">
+            </app-field-search>
+          </div>
+
+          <div class="status-search-like">
+            <select class="status-native-select" formControlName="status" (change)="applyFilters()" aria-label="Status">
+              <option value="">Status: Todos</option>
+              <option value="ativo">Status: Ativo</option>
+              <option value="inativo">Status: Inativo</option>
+            </select>
+          </div>
+          <div class="flex items-center justify-end gap-2">
+            <button mat-stroked-button type="button" (click)="clearFilters()">
+              Limpar
+            </button>
+          </div>
+        </form>
       </div>
-
-      <form
-        *ngIf="!isMobile || mobileFiltersOpen"
-        [formGroup]="filters"
-        class="grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1.4fr)_220px_auto]"
-        role="search">
-        <div class="min-w-0">
-          <app-field-search
-            [options]="searchOptions"
-            [defaultFields]="searchFields"
-            [showActions]="false"
-            placeholder="Pesquisar tipo de entidade"
-            (searchChange)="onSearchChange($event)">
-          </app-field-search>
-        </div>
-
-        <div class="status-search-like">
-          <select class="status-native-select" formControlName="status" (change)="applyFilters()" aria-label="Status">
-            <option value="">Status: Todos</option>
-            <option value="ativo">Status: Ativo</option>
-            <option value="inativo">Status: Inativo</option>
-          </select>
-        </div>
-        <div class="flex items-center justify-end gap-2">
-          <button mat-stroked-button type="button" (click)="clearFilters()">
-            Limpar
-          </button>
-        </div>
-      </form>
     </section>
   </div>
 

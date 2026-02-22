@@ -24,6 +24,11 @@ import { CatalogConfigurationPageComponent } from './features/catalog/catalog-co
 import { CatalogItemsListComponent } from './features/catalog/catalog-items-list.component';
 import { CatalogItemFormComponent } from './features/catalog/catalog-item-form.component';
 import { CatalogGroupsPageComponent } from './features/catalog/catalog-groups-page.component';
+import { PriceBooksListComponent } from './features/catalog/price-books-list.component';
+import { PriceBookFormComponent } from './features/catalog/price-book-form.component';
+import { PriceVariantsListComponent } from './features/catalog/price-variants-list.component';
+import { PriceVariantFormComponent } from './features/catalog/price-variant-form.component';
+import { SalePriceGridComponent } from './features/catalog/sale-price-grid.component';
 import { MovementConfigsPageComponent } from './features/movement-configs/movement-configs-page.component';
 import { MovimentoEstoqueListComponent } from './features/movements/movimento-estoque-list.component';
 import { MovimentoEstoqueFormComponent } from './features/movements/movimento-estoque-form.component';
@@ -79,6 +84,15 @@ export const routes: Routes = [
   { path: 'movimentos/estoque/:id', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard] },
   { path: 'movimentos/estoque/:id/edit', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard] },
   { path: 'catalog/configuration', component: CatalogConfigurationPageComponent, canActivate: [AuthGuard] },
+  { path: 'catalog/pricing/books', component: PriceBooksListComponent, canActivate: [AuthGuard] },
+  { path: 'catalog/pricing/books/new', component: PriceBookFormComponent, canActivate: [AuthGuard] },
+  { path: 'catalog/pricing/books/:id', component: PriceBookFormComponent, canActivate: [AuthGuard] },
+  { path: 'catalog/pricing/books/:id/edit', component: PriceBookFormComponent, canActivate: [AuthGuard] },
+  { path: 'catalog/pricing/variants', component: PriceVariantsListComponent, canActivate: [AuthGuard] },
+  { path: 'catalog/pricing/variants/new', component: PriceVariantFormComponent, canActivate: [AuthGuard] },
+  { path: 'catalog/pricing/variants/:id', component: PriceVariantFormComponent, canActivate: [AuthGuard] },
+  { path: 'catalog/pricing/variants/:id/edit', component: PriceVariantFormComponent, canActivate: [AuthGuard] },
+  { path: 'catalog/pricing/sale-prices', component: SalePriceGridComponent, canActivate: [AuthGuard] },
   {
     path: 'catalog/products',
     component: CatalogItemsListComponent,

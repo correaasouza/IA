@@ -60,7 +60,14 @@ export class MenuService {
           icon: 'groups',
           roles: ['MASTER', 'ADMIN'],
           perms: ['ENTIDADE_EDIT']
-        },
+        }
+      ]
+    },
+    {
+      id: 'group-stock',
+      label: 'Estoque',
+      icon: 'inventory',
+      children: [
         {
           id: 'catalog-products',
           label: 'Produtos',
@@ -78,6 +85,24 @@ export class MenuService {
           icon: 'design_services',
           roles: ['MASTER', 'ADMIN'],
           perms: ['CONFIG_EDITOR']
+        },
+        {
+          id: 'stock-movements',
+          label: 'Movimento de Estoque',
+          route: '/movimentos/estoque',
+          accessKey: 'menu.movement.action.movimento_estoque',
+          icon: 'sync_alt',
+          roles: ['MASTER', 'ADMIN'],
+          perms: ['MOVIMENTO_ESTOQUE_OPERAR']
+        },
+        {
+          id: 'catalog-sale-prices',
+          label: 'Preços Venda',
+          route: '/catalog/pricing/sale-prices',
+          accessKey: 'menu.catalog-sale-prices',
+          icon: 'table_chart',
+          roles: ['MASTER', 'ADMIN'],
+          perms: ['CATALOG_PRICES_VIEW']
         }
       ]
     },

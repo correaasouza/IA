@@ -68,6 +68,16 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline">
+        <mat-label>Tabela de preco</mat-label>
+        <mat-select formControlName="priceBookId">
+          <mat-option [value]="null">Sem tabela</mat-option>
+          <mat-option *ngFor="let book of priceBooks" [value]="book.id">
+            {{ book.name }}{{ book.defaultBook ? ' (Padrao)' : '' }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
         <mat-label>Nome da pessoa</mat-label>
         <input matInput formControlName="pessoaNome" />
         <mat-error *ngIf="form.get('pessoaNome')?.hasError('required')">Informe o nome.</mat-error>

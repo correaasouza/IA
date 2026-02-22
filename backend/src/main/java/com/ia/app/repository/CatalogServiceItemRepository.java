@@ -108,4 +108,18 @@ public interface CatalogServiceItemRepository extends JpaRepository<CatalogServi
   int markHasStockMovements(
     @Param("tenantId") Long tenantId,
     @Param("itemId") Long itemId);
+
+  @Query("""
+    select cs.id
+    from CatalogServiceItem cs
+    where cs.tenantId = :tenantId
+      and cs.catalogConfigurationId = :catalogConfigurationId
+      and cs.catalogGroupId in :catalogGroupIds
+      and cs.ativo = true
+    order by cs.id
+    """)
+  List<Long> findAtivoIdsByTenantIdAndCatalogConfigurationIdAndCatalogGroupIdIn(
+    @Param("tenantId") Long tenantId,
+    @Param("catalogConfigurationId") Long catalogConfigurationId,
+    @Param("catalogGroupIds") Collection<Long> catalogGroupIds);
 }
