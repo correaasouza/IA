@@ -20,7 +20,9 @@ import com.ia.app.repository.CatalogMovementLineRepository;
 import com.ia.app.repository.CatalogMovementRepository;
 import com.ia.app.repository.CatalogStockBalanceRepository;
 import com.ia.app.repository.EmpresaRepository;
+import com.ia.app.repository.CatalogItemPriceRepository;
 import com.ia.app.repository.MovimentoConfigRepository;
+import com.ia.app.repository.SalePriceRepository;
 import com.ia.app.repository.TipoEntidadeRepository;
 import java.math.BigDecimal;
 import java.util.List;
@@ -68,6 +70,12 @@ class CatalogMovementEngineTest {
   @Autowired
   private TipoEntidadeRepository tipoEntidadeRepository;
 
+  @Autowired
+  private SalePriceRepository salePriceRepository;
+
+  @Autowired
+  private CatalogItemPriceRepository catalogItemPriceRepository;
+
   @Test
   void shouldBeIdempotentForSameMovementCommand() {
     Long tenantId = 401L;
@@ -85,7 +93,12 @@ class CatalogMovementEngineTest {
       agrupador.getId(),
       CatalogMovementOriginType.SYSTEM,
       "SEED",
+      null,
+      null,
       "ITEM:1001",
+      null,
+      null,
+      null,
       "Carga inicial",
       "idem-engine-401",
       null,
@@ -146,7 +159,12 @@ class CatalogMovementEngineTest {
       agrupador.getId(),
       CatalogMovementOriginType.SYSTEM,
       "MOV-SNAPSHOT",
+      null,
+      null,
       "ITEM-SNAPSHOT",
+      null,
+      null,
+      null,
       "Teste snapshot unidade",
       "idem-engine-402",
       null,
@@ -173,6 +191,54 @@ class CatalogMovementEngineTest {
     assertThat(saved.getQuantidadeConvertidaBase()).isEqualByComparingTo(quantidadeConvertidaBase);
     assertThat(saved.getFatorAplicado()).isEqualByComparingTo(fatorAplicado);
     assertThat(saved.getFatorFonte()).isEqualTo(ConversionFactorSource.TENANT_CONVERSION);
+  }
+
+  @Test
+  void shouldNotChangeCommercialPriceTablesWhenApplyingStockMovement() {
+    Long tenantId = 403L;
+    CatalogConfiguration config = createCatalogConfig(tenantId, CatalogConfigurationType.PRODUCTS);
+    AgrupadorEmpresa agrupador = createCatalogGroup(tenantId, config.getId(), "Grupo Sem Preco");
+    Empresa filial = createEmpresa(tenantId, "40300000000001");
+    CatalogStockType stockType = stockTypeSyncService.ensureDefaultForGroup(tenantId, config.getId(), agrupador.getId());
+    createMovimentoConfigEstoqueGlobal(tenantId, filial.getId());
+
+    long salePriceBefore = salePriceRepository.count();
+    long catalogItemPriceBefore = catalogItemPriceRepository.count();
+
+    CatalogMovementEngine.Command command = new CatalogMovementEngine.Command(
+      tenantId,
+      CatalogConfigurationType.PRODUCTS,
+      3003L,
+      config.getId(),
+      agrupador.getId(),
+      CatalogMovementOriginType.SYSTEM,
+      "NO_PRICE_UPDATE",
+      null,
+      null,
+      "ITEM:3003",
+      null,
+      null,
+      null,
+      "Movimento de estoque sem alterar tabelas comerciais",
+      "idem-engine-403",
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      List.of(new CatalogMovementEngine.Impact(
+        agrupador.getId(),
+        CatalogMovementMetricType.QUANTIDADE,
+        stockType.getId(),
+        filial.getId(),
+        new BigDecimal("1.000000"))));
+
+    engine.apply(command);
+
+    assertThat(salePriceRepository.count()).isEqualTo(salePriceBefore);
+    assertThat(catalogItemPriceRepository.count()).isEqualTo(catalogItemPriceBefore);
   }
 
   private CatalogConfiguration createCatalogConfig(Long tenantId, CatalogConfigurationType type) {

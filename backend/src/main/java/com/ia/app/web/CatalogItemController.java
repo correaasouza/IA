@@ -1,15 +1,22 @@
 package com.ia.app.web;
 
 import com.ia.app.domain.CatalogConfigurationType;
+import com.ia.app.domain.CatalogPriceType;
+import com.ia.app.domain.PriceChangeSourceType;
 import com.ia.app.dto.CatalogItemContextResponse;
 import com.ia.app.dto.CatalogItemPricePreviewRequest;
 import com.ia.app.dto.CatalogItemPriceResponse;
+import com.ia.app.dto.CatalogPriceHistoryResponse;
 import com.ia.app.dto.CatalogItemRequest;
 import com.ia.app.dto.CatalogItemResponse;
 import com.ia.app.service.CatalogItemContextService;
+import com.ia.app.service.CatalogPriceHistoryService;
 import com.ia.app.service.CatalogProductService;
 import com.ia.app.service.CatalogServiceCrudService;
 import jakarta.validation.Valid;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -32,14 +39,17 @@ public class CatalogItemController {
   private final CatalogItemContextService contextService;
   private final CatalogProductService productService;
   private final CatalogServiceCrudService serviceCrudService;
+  private final CatalogPriceHistoryService catalogPriceHistoryService;
 
   public CatalogItemController(
       CatalogItemContextService contextService,
       CatalogProductService productService,
-      CatalogServiceCrudService serviceCrudService) {
+      CatalogServiceCrudService serviceCrudService,
+      CatalogPriceHistoryService catalogPriceHistoryService) {
     this.contextService = contextService;
     this.productService = productService;
     this.serviceCrudService = serviceCrudService;
+    this.catalogPriceHistoryService = catalogPriceHistoryService;
   }
 
   @GetMapping("/contexto-empresa")
@@ -90,6 +100,36 @@ public class CatalogItemController {
     });
   }
 
+  @GetMapping("/items/{id}/price/history")
+  @PreAuthorize("@permissaoGuard.hasPermissao('CATALOG_PRICES_VIEW')")
+  public ResponseEntity<Page<CatalogPriceHistoryResponse>> priceHistory(
+      @PathVariable String type,
+      @PathVariable Long id,
+      @RequestParam(required = false) String sourceType,
+      @RequestParam(required = false) String priceType,
+      @RequestParam(required = false) Long priceBookId,
+      @RequestParam(required = false) String text,
+      @RequestParam(required = false) String fromDate,
+      @RequestParam(required = false) String toDate,
+      @RequestParam(required = false) Integer tzOffsetMinutes,
+      Pageable pageable) {
+    CatalogConfigurationType parsedType = CatalogConfigurationType.from(type);
+    PriceChangeSourceType parsedSourceType = PriceChangeSourceType.fromNullable(sourceType);
+    CatalogPriceType parsedPriceType = CatalogPriceType.fromNullable(priceType);
+    Instant parsedFrom = parseFromDate(fromDate, tzOffsetMinutes);
+    Instant parsedTo = parseToDate(toDate, tzOffsetMinutes);
+    return ResponseEntity.ok(catalogPriceHistoryService.listByItem(
+      parsedType,
+      id,
+      parsedSourceType,
+      parsedPriceType,
+      priceBookId,
+      text,
+      parsedFrom,
+      parsedTo,
+      pageable));
+  }
+
   @PostMapping("/items")
   @PreAuthorize("@permissaoGuard.hasPermissao('CONFIG_EDITOR')")
   public ResponseEntity<CatalogItemResponse> create(
@@ -127,5 +167,40 @@ public class CatalogItemController {
       serviceCrudService.delete(id);
     }
     return ResponseEntity.noContent().build();
+  }
+
+  private Instant parseFromDate(String raw, Integer tzOffsetMinutes) {
+    if (raw == null || raw.isBlank()) {
+      return null;
+    }
+    String normalized = raw.trim();
+    if (normalized.length() == 10) {
+      LocalDate date = LocalDate.parse(normalized);
+      return date.atStartOfDay(resolveZoneOffset(tzOffsetMinutes)).toInstant();
+    }
+    return Instant.parse(normalized);
+  }
+
+  private Instant parseToDate(String raw, Integer tzOffsetMinutes) {
+    if (raw == null || raw.isBlank()) {
+      return null;
+    }
+    String normalized = raw.trim();
+    if (normalized.length() == 10) {
+      LocalDate date = LocalDate.parse(normalized);
+      return date.plusDays(1L)
+        .atStartOfDay(resolveZoneOffset(tzOffsetMinutes))
+        .toInstant()
+        .minusNanos(1L);
+    }
+    return Instant.parse(normalized);
+  }
+
+  private ZoneOffset resolveZoneOffset(Integer tzOffsetMinutes) {
+    int minutes = tzOffsetMinutes == null ? 0 : tzOffsetMinutes;
+    if (minutes < -1080 || minutes > 1080) {
+      throw new IllegalArgumentException("catalog_stock_timezone_invalid");
+    }
+    return ZoneOffset.ofTotalSeconds(-minutes * 60);
   }
 }

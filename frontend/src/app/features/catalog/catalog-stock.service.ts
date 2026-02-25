@@ -5,7 +5,7 @@ import { environment } from '../../../environments/environment';
 import { CatalogCrudType } from './catalog-item.service';
 
 export type CatalogMovementMetricType = 'QUANTIDADE' | 'PRECO';
-export type CatalogMovementOriginType = 'MUDANCA_GRUPO' | 'SYSTEM';
+export type CatalogMovementOriginType = 'MUDANCA_GRUPO' | 'MOVIMENTO_ESTOQUE' | 'SYSTEM' | 'WORKFLOW_ACTION';
 
 export interface CatalogStockBalanceRow {
   estoqueTipoId: number;
@@ -52,7 +52,12 @@ export interface CatalogMovement {
   agrupadorEmpresaId: number;
   origemMovimentacaoTipo: CatalogMovementOriginType;
   origemMovimentacaoCodigo?: string | null;
+  origemMovimentacaoId?: number | null;
+  movimentoTipo?: string | null;
   origemMovimentoItemCodigo?: string | null;
+  workflowOrigin?: string | null;
+  workflowEntityId?: number | null;
+  workflowTransitionKey?: string | null;
   dataHoraMovimentacao: string;
   observacao?: string | null;
   lines: CatalogMovementLine[];
@@ -97,11 +102,16 @@ export class CatalogStockService {
       size?: number;
       agrupadorId?: number | null;
       origemTipo?: CatalogMovementOriginType | '';
+      origemCodigo?: string;
+      origemId?: number | null;
+      movimentoTipo?: string;
+      usuario?: string;
       metricType?: CatalogMovementMetricType | '';
       estoqueTipoId?: number | null;
       filialId?: number | null;
       fromDate?: string;
       toDate?: string;
+      tzOffsetMinutes?: number | null;
     }
   ): Observable<CatalogLedgerResponse> {
     const query = new URLSearchParams();

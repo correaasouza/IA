@@ -113,16 +113,19 @@ public class LocatarioService {
     if (authentication == null || !authentication.isAuthenticated()) {
       return List.of();
     }
-    boolean isMaster = authentication.getAuthorities().stream()
-      .anyMatch(a -> a.getAuthority().equals("ROLE_MASTER"));
-    if (isMaster) {
-      return repository.findAll().stream().map(LocatarioMapper::toResponse).toList();
-    }
     String keycloakId = authentication.getName();
     String preferredUsername = null;
     if (authentication instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken jwtAuth) {
       keycloakId = jwtAuth.getToken().getSubject();
       preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");
+    }
+    boolean isMaster = authentication.getAuthorities().stream()
+      .anyMatch(a -> a.getAuthority().equals("ROLE_MASTER"));
+    boolean isGlobalMaster = isMaster
+      && ((preferredUsername != null && preferredUsername.equalsIgnoreCase("master"))
+        || "master".equalsIgnoreCase(keycloakId));
+    if (isGlobalMaster) {
+      return repository.findAll().stream().map(LocatarioMapper::toResponse).toList();
     }
     if (preferredUsername != null && preferredUsername.equalsIgnoreCase("master")) {
       return repository.findById(1L).stream()

@@ -32,6 +32,7 @@ import org.springframework.data.domain.PageRequest;
 @DataJpaTest
 @Import({
   AuditingConfig.class,
+  PriceChangeLogService.class,
   SalePriceService.class
 })
 class SalePriceApplyByGroupServiceTest {

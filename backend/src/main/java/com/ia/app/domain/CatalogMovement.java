@@ -47,8 +47,23 @@ public class CatalogMovement extends AuditableEntity {
   @Column(name = "origem_movimentacao_codigo", length = 120)
   private String origemMovimentacaoCodigo;
 
+  @Column(name = "origem_movimentacao_id")
+  private Long origemMovimentacaoId;
+
+  @Column(name = "movimento_tipo", length = 40)
+  private String movimentoTipo;
+
   @Column(name = "origem_movimento_item_codigo", length = 120)
   private String origemMovimentoItemCodigo;
+
+  @Column(name = "workflow_origin", length = 60)
+  private String workflowOrigin;
+
+  @Column(name = "workflow_entity_id")
+  private Long workflowEntityId;
+
+  @Column(name = "workflow_transition_key", length = 80)
+  private String workflowTransitionKey;
 
   @Column(name = "data_hora_movimentacao", nullable = false)
   private java.time.Instant dataHoraMovimentacao;
@@ -138,12 +153,52 @@ public class CatalogMovement extends AuditableEntity {
     this.origemMovimentacaoCodigo = origemMovimentacaoCodigo;
   }
 
+  public Long getOrigemMovimentacaoId() {
+    return origemMovimentacaoId;
+  }
+
+  public void setOrigemMovimentacaoId(Long origemMovimentacaoId) {
+    this.origemMovimentacaoId = origemMovimentacaoId;
+  }
+
+  public String getMovimentoTipo() {
+    return movimentoTipo;
+  }
+
+  public void setMovimentoTipo(String movimentoTipo) {
+    this.movimentoTipo = movimentoTipo;
+  }
+
   public String getOrigemMovimentoItemCodigo() {
     return origemMovimentoItemCodigo;
   }
 
   public void setOrigemMovimentoItemCodigo(String origemMovimentoItemCodigo) {
     this.origemMovimentoItemCodigo = origemMovimentoItemCodigo;
+  }
+
+  public String getWorkflowOrigin() {
+    return workflowOrigin;
+  }
+
+  public void setWorkflowOrigin(String workflowOrigin) {
+    this.workflowOrigin = workflowOrigin;
+  }
+
+  public Long getWorkflowEntityId() {
+    return workflowEntityId;
+  }
+
+  public void setWorkflowEntityId(Long workflowEntityId) {
+    this.workflowEntityId = workflowEntityId;
+  }
+
+  public String getWorkflowTransitionKey() {
+    return workflowTransitionKey;
+  }
+
+  public void setWorkflowTransitionKey(String workflowTransitionKey) {
+    this.workflowTransitionKey = workflowTransitionKey;
   }
 
   public java.time.Instant getDataHoraMovimentacao() {

@@ -4,6 +4,7 @@ import java.util.Locale;
 
 public enum CatalogMovementOriginType {
   MUDANCA_GRUPO,
+  MOVIMENTO_ESTOQUE,
   SYSTEM,
   WORKFLOW_ACTION;
 

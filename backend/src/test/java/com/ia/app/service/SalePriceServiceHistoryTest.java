@@ -7,6 +7,8 @@ import com.ia.app.domain.CatalogConfigurationType;
 import com.ia.app.domain.CatalogProduct;
 import com.ia.app.domain.PriceBook;
 import com.ia.app.domain.PriceChangeAction;
+import com.ia.app.domain.PriceChangeOriginType;
+import com.ia.app.domain.PriceChangeSourceType;
 import com.ia.app.dto.SalePriceBulkItemRequest;
 import com.ia.app.dto.SalePriceBulkUpsertRequest;
 import com.ia.app.repository.CatalogProductRepository;
@@ -24,6 +26,7 @@ import org.springframework.context.annotation.Import;
 @DataJpaTest
 @Import({
   AuditingConfig.class,
+  PriceChangeLogService.class,
   SalePriceService.class
 })
 class SalePriceServiceHistoryTest {
@@ -87,11 +90,51 @@ class SalePriceServiceHistoryTest {
     assertThat(logs).hasSize(3);
     assertThat(logs).extracting(item -> item.getAction())
       .containsExactly(PriceChangeAction.DELETE, PriceChangeAction.UPDATE, PriceChangeAction.CREATE);
+    assertThat(logs).extracting(item -> item.getSourceType())
+      .containsOnly(PriceChangeSourceType.SALE_PRICE);
+    assertThat(logs).extracting(item -> item.getOriginType())
+      .containsOnly(PriceChangeOriginType.ALTERACAO_TABELA_PRECO);
+    assertThat(logs).extracting(item -> item.getPriceBookName())
+      .containsOnly("Padrao");
     assertThat(logs.get(2).getNewPriceFinal()).isEqualByComparingTo("10.000000");
     assertThat(logs.get(1).getOldPriceFinal()).isEqualByComparingTo("10.000000");
     assertThat(logs.get(1).getNewPriceFinal()).isEqualByComparingTo("12.500000");
     assertThat(logs.get(0).getOldPriceFinal()).isEqualByComparingTo("12.500000");
     assertThat(logs.get(0).getNewPriceFinal()).isNull();
+  }
+
+  @Test
+  void shouldNotCreateHistoryWhenPriceDidNotChange() {
+    TenantContext.setTenantId(702L);
+
+    PriceBook book = createBook(702L);
+    CatalogProduct product = createProduct(702L, 9982L);
+
+    service.bulkUpsert(new SalePriceBulkUpsertRequest(
+      book.getId(),
+      null,
+      List.of(new SalePriceBulkItemRequest(
+        CatalogConfigurationType.PRODUCTS,
+        product.getId(),
+        null,
+        new BigDecimal("15.000000")))));
+
+    service.bulkUpsert(new SalePriceBulkUpsertRequest(
+      book.getId(),
+      null,
+      List.of(new SalePriceBulkItemRequest(
+        CatalogConfigurationType.PRODUCTS,
+        product.getId(),
+        null,
+        new BigDecimal("15.000000")))));
+
+    var logs = logRepository.findAllByTenantIdAndCatalogTypeAndCatalogItemIdOrderByChangedAtDesc(
+      702L,
+      CatalogConfigurationType.PRODUCTS,
+      product.getId());
+
+    assertThat(logs).hasSize(1);
+    assertThat(logs.get(0).getAction()).isEqualTo(PriceChangeAction.CREATE);
   }
 
   private PriceBook createBook(Long tenantId) {

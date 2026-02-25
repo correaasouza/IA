@@ -34,7 +34,7 @@ public class LocatarioController {
   }
 
   @GetMapping
-  @PreAuthorize("hasRole('MASTER')")
+  @PreAuthorize("@globalScopeGuard.isMasterInMasterTenant()")
   public Page<LocatarioResponse> list(
       @RequestParam(required = false) String nome,
       @RequestParam(required = false) Boolean ativo,
@@ -44,7 +44,7 @@ public class LocatarioController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("hasRole('MASTER')")
+  @PreAuthorize("@globalScopeGuard.isMasterInMasterTenant()")
   public ResponseEntity<LocatarioResponse> get(@PathVariable Long id) {
     return ResponseEntity.ok(LocatarioMapper.toResponse(service.getById(id)));
   }
@@ -56,20 +56,20 @@ public class LocatarioController {
   }
 
   @PostMapping
-  @PreAuthorize("hasRole('MASTER')")
+  @PreAuthorize("@globalScopeGuard.isMasterInMasterTenant()")
   public ResponseEntity<LocatarioResponse> create(@Valid @RequestBody LocatarioRequest request) {
     return ResponseEntity.ok(LocatarioMapper.toResponse(service.create(request)));
   }
 
   @PutMapping("/{id}")
-  @PreAuthorize("hasRole('MASTER')")
+  @PreAuthorize("@globalScopeGuard.isMasterInMasterTenant()")
   public ResponseEntity<LocatarioResponse> update(@PathVariable Long id,
       @Valid @RequestBody LocatarioRequest request) {
     return ResponseEntity.ok(LocatarioMapper.toResponse(service.update(id, request)));
   }
 
   @PatchMapping("/{id}/data-limite")
-  @PreAuthorize("hasRole('MASTER')")
+  @PreAuthorize("@globalScopeGuard.isMasterInMasterTenant()")
   public ResponseEntity<LocatarioResponse> updateAccessLimit(@PathVariable Long id,
       @RequestBody Map<String, String> body) {
     LocalDate dataLimite = LocalDate.parse(body.get("dataLimiteAcesso"));
@@ -77,7 +77,7 @@ public class LocatarioController {
   }
 
   @PatchMapping("/{id}/status")
-  @PreAuthorize("hasRole('MASTER')")
+  @PreAuthorize("@globalScopeGuard.isMasterInMasterTenant()")
   public ResponseEntity<LocatarioResponse> updateStatus(@PathVariable Long id,
       @RequestBody Map<String, Boolean> body) {
     boolean ativo = body.getOrDefault("ativo", Boolean.TRUE);
@@ -85,7 +85,7 @@ public class LocatarioController {
   }
 
   @DeleteMapping("/{id}")
-  @PreAuthorize("hasRole('MASTER')")
+  @PreAuthorize("@globalScopeGuard.isMasterInMasterTenant()")
   public ResponseEntity<Void> delete(@PathVariable Long id) {
     service.delete(id);
     return ResponseEntity.noContent().build();

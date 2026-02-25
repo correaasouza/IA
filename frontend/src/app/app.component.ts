@@ -324,6 +324,10 @@ export class AppComponent {
     if (!tenantId && item.id !== 'home') {
       return false;
     }
+    // Hard rule: "Locatários" is visible only for MASTER inside master tenant.
+    if (item.id === 'tenants') {
+      return this.isMasterTenantContext() && this.hasMasterRole();
+    }
     const controlKey = item.accessKey || `menu.${item.id}`;
     if (item.id === 'movement-configs' && !this.isFeatureEnabled('movementConfigEnabled', true)) {
       return false;
@@ -628,6 +632,16 @@ export class AppComponent {
 
   private isMasterTenantContext(): boolean {
     return this.getTenantId() === '1';
+  }
+
+  private hasMasterRole(): boolean {
+    const normalize = (role: string) => {
+      const value = (role || '').trim().toUpperCase();
+      return value.startsWith('ROLE_') ? value.substring(5) : value;
+    };
+    const tokenRoles = (this.auth.getUserRoles() || []).map(normalize);
+    const tenantRoles = (this.tenantRoles || []).map(normalize);
+    return Array.from(new Set([...tokenRoles, ...tenantRoles])).includes('MASTER');
   }
 
   private isStaleTenantRequest(requestTenantId: string): boolean {

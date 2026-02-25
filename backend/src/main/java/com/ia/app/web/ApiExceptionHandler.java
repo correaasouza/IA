@@ -251,6 +251,8 @@ public class ApiExceptionHandler {
       pd.setDetail("Metrica de movimentacao invalida. Use QUANTIDADE ou PRECO.");
     } else if (message.startsWith("catalog_stock_origin_invalid")) {
       pd.setDetail("Origem de movimentacao invalida.");
+    } else if (message.startsWith("catalog_stock_timezone_invalid")) {
+      pd.setDetail("Timezone de filtro invalido.");
     } else if (message.startsWith("catalog_stock_type_not_found")) {
       pd.setDetail("Tipo de estoque nao encontrado para o agrupador informado.");
     } else if (message.startsWith("catalog_stock_filial_not_found")) {
@@ -307,6 +309,10 @@ public class ApiExceptionHandler {
       pd.setDetail("Identificador do ajuste de estoque invalido.");
     } else if (message.startsWith("catalog_stock_adjustment_codigo_auto_fail")) {
       pd.setDetail("Nao foi possivel gerar codigo automatico para o ajuste de estoque.");
+    } else if (message.startsWith("price_change_source_invalid")) {
+      pd.setDetail("Origem do historico de preco invalida.");
+    } else if (message.startsWith("price_change_origin_invalid")) {
+      pd.setDetail("Tipo de origem do historico de preco invalido.");
     } else if (message.startsWith("movimento_empresa_id_required")) {
       pd.setDetail("Informe a empresa do movimento.");
     } else if (message.startsWith("movimento_empresa_context_required")) {

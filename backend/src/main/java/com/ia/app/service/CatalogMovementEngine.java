@@ -49,7 +49,12 @@ public class CatalogMovementEngine {
     Long agrupadorEmpresaId,
     CatalogMovementOriginType origemTipo,
     String origemCodigo,
+    Long origemId,
+    String movimentoTipo,
     String origemItemCodigo,
+    String workflowOrigin,
+    Long workflowEntityId,
+    String workflowTransitionKey,
     String observacao,
     String idempotencyKey,
     Instant dataHoraMovimentacao,
@@ -216,7 +221,12 @@ public class CatalogMovementEngine {
       raw.agrupadorEmpresaId(),
       raw.origemTipo(),
       normalizeOptional(raw.origemCodigo(), 120),
+      normalizeOptionalPositive(raw.origemId()),
+      normalizeOptional(raw.movimentoTipo(), 40),
       normalizeOptional(raw.origemItemCodigo(), 120),
+      normalizeOptional(raw.workflowOrigin(), 60),
+      normalizeOptionalPositive(raw.workflowEntityId()),
+      normalizeOptional(raw.workflowTransitionKey(), 80),
       normalizeOptional(raw.observacao(), 255),
       idempotencyKey,
       raw.dataHoraMovimentacao() == null ? Instant.now() : raw.dataHoraMovimentacao(),
@@ -276,6 +286,16 @@ public class CatalogMovementEngine {
     return normalized;
   }
 
+  private Long normalizeOptionalPositive(Long value) {
+    if (value == null) {
+      return null;
+    }
+    if (value <= 0) {
+      throw new IllegalArgumentException("catalog_stock_origin_invalid");
+    }
+    return value;
+  }
+
   private BigDecimal normalizeOptionalNonNegative(BigDecimal value) {
     if (value == null) {
       return null;
@@ -316,7 +336,12 @@ public class CatalogMovementEngine {
     movement.setAgrupadorEmpresaId(command.agrupadorEmpresaId());
     movement.setOrigemMovimentacaoTipo(command.origemTipo());
     movement.setOrigemMovimentacaoCodigo(command.origemCodigo());
+    movement.setOrigemMovimentacaoId(command.origemId());
+    movement.setMovimentoTipo(command.movimentoTipo());
     movement.setOrigemMovimentoItemCodigo(command.origemItemCodigo());
+    movement.setWorkflowOrigin(command.workflowOrigin());
+    movement.setWorkflowEntityId(command.workflowEntityId());
+    movement.setWorkflowTransitionKey(command.workflowTransitionKey());
     movement.setDataHoraMovimentacao(command.dataHoraMovimentacao());
     movement.setObservacao(command.observacao());
     movement.setIdempotencyKey(command.idempotencyKey());

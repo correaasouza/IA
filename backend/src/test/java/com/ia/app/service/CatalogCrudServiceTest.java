@@ -7,6 +7,10 @@ import com.ia.app.config.AuditingConfig;
 import com.ia.app.domain.AgrupadorEmpresa;
 import com.ia.app.domain.AgrupadorEmpresaItem;
 import com.ia.app.domain.CatalogConfigurationType;
+import com.ia.app.domain.CatalogMovement;
+import com.ia.app.domain.CatalogMovementLine;
+import com.ia.app.domain.CatalogMovementMetricType;
+import com.ia.app.domain.CatalogMovementOriginType;
 import com.ia.app.domain.CatalogNumberingMode;
 import com.ia.app.domain.CatalogStockType;
 import com.ia.app.domain.Empresa;
@@ -18,6 +22,8 @@ import com.ia.app.dto.CatalogItemRequest;
 import com.ia.app.dto.CatalogItemResponse;
 import com.ia.app.repository.AgrupadorEmpresaItemRepository;
 import com.ia.app.repository.AgrupadorEmpresaRepository;
+import com.ia.app.repository.CatalogMovementLineRepository;
+import com.ia.app.repository.CatalogMovementRepository;
 import com.ia.app.repository.CatalogStockTypeRepository;
 import com.ia.app.repository.EmpresaRepository;
 import com.ia.app.repository.OfficialUnitRepository;
@@ -40,6 +46,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,6 +64,7 @@ import org.springframework.transaction.annotation.Transactional;
   CatalogItemCrudSupportService.class,
   CatalogPriceRuleService.class,
   CatalogItemPriceService.class,
+  PriceChangeLogService.class,
   CatalogUnitLockService.class,
   CatalogProductService.class,
   CatalogServiceCrudService.class,
@@ -85,6 +94,12 @@ class CatalogCrudServiceTest {
 
   @Autowired
   private CatalogStockTypeRepository stockTypeRepository;
+
+  @Autowired
+  private CatalogMovementRepository movementRepository;
+
+  @Autowired
+  private CatalogMovementLineRepository movementLineRepository;
 
   @Autowired
   private AgrupadorEmpresaRepository agrupadorRepository;
@@ -273,6 +288,10 @@ class CatalogCrudServiceTest {
       null,
       null,
       null,
+      null,
+      null,
+      null,
+      null,
       PageRequest.of(0, 10));
 
     assertThat(page.getTotalElements()).isZero();
@@ -351,6 +370,111 @@ class CatalogCrudServiceTest {
     });
   }
 
+  @Test
+  void shouldApplyLedgerFiltersIsolatedAndCombined() {
+    Long tenantId = 111L;
+    Long empresaId = createEmpresa(tenantId, "11100000000001");
+    var scope = setupCatalogGroupLink(tenantId, empresaId, CatalogConfigurationType.PRODUCTS, "Grupo Base");
+    UUID tenantUnitId = createTenantUnit(tenantId);
+    TenantContext.setTenantId(tenantId);
+    EmpresaContext.setEmpresaId(empresaId);
+
+    CatalogItemResponse created = productService.create(new CatalogItemRequest(null, "ITEM FILTROS", null, null, tenantUnitId, null, null, true));
+    CatalogStockType stockType = stockTypeRepository
+      .findAllByTenantIdAndCatalogConfigurationIdAndAgrupadorEmpresaIdAndActiveTrueOrderByOrdemAscNomeAsc(
+        tenantId,
+        scope.catalogConfigurationId(),
+        scope.agrupadorId())
+      .stream()
+      .findFirst()
+      .orElseThrow();
+
+    saveMovementWithLine(
+      tenantId,
+      created.id(),
+      scope.catalogConfigurationId(),
+      scope.agrupadorId(),
+      empresaId,
+      CatalogMovementOriginType.MOVIMENTO_ESTOQUE,
+      "MV-1001",
+      1001L,
+      "ENTRADA",
+      "user-a",
+      CatalogMovementMetricType.QUANTIDADE,
+      new BigDecimal("3.000000"));
+
+    saveMovementWithLine(
+      tenantId,
+      created.id(),
+      scope.catalogConfigurationId(),
+      scope.agrupadorId(),
+      empresaId,
+      CatalogMovementOriginType.SYSTEM,
+      "SYS-2001",
+      null,
+      "AJUSTE",
+      "user-b",
+      CatalogMovementMetricType.PRECO,
+      new BigDecimal("9.000000"));
+
+    var byOriginCode = stockQueryService.loadLedger(
+      CatalogConfigurationType.PRODUCTS,
+      created.id(),
+      null,
+      null,
+      "MV-1001",
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      PageRequest.of(0, 20));
+    assertThat(byOriginCode.getTotalElements()).isEqualTo(1);
+    assertThat(byOriginCode.getContent().get(0).origemMovimentacaoCodigo()).isEqualTo("MV-1001");
+
+    var byUser = stockQueryService.loadLedger(
+      CatalogConfigurationType.PRODUCTS,
+      created.id(),
+      null,
+      null,
+      null,
+      null,
+      null,
+      "user-b",
+      null,
+      null,
+      null,
+      null,
+      null,
+      PageRequest.of(0, 20));
+    assertThat(byUser.getTotalElements()).isEqualTo(1);
+    assertThat(byUser.getContent().get(0).origemMovimentacaoCodigo()).isEqualTo("SYS-2001");
+
+    var combined = stockQueryService.loadLedger(
+      CatalogConfigurationType.PRODUCTS,
+      created.id(),
+      null,
+      CatalogMovementOriginType.MOVIMENTO_ESTOQUE,
+      "MV",
+      1001L,
+      "ENTRADA",
+      "user-a",
+      null,
+      null,
+      CatalogMovementMetricType.QUANTIDADE,
+      stockType.getId(),
+      empresaId,
+      PageRequest.of(0, 20));
+    assertThat(combined.getTotalElements()).isEqualTo(1);
+    assertThat(combined.getContent().get(0).origemMovimentacaoId()).isEqualTo(1001L);
+    assertThat(combined.getContent().get(0).lines())
+      .extracting(line -> line.metricType())
+      .containsOnly(CatalogMovementMetricType.QUANTIDADE);
+  }
+
   private Long createProductWithSync(
       Long tenantId,
       Long empresaId,
@@ -368,6 +492,61 @@ class CatalogCrudServiceTest {
     } finally {
       EmpresaContext.clear();
       TenantContext.clear();
+    }
+  }
+
+  private void saveMovementWithLine(
+      Long tenantId,
+      Long catalogItemId,
+      Long catalogConfigurationId,
+      Long agrupadorId,
+      Long filialId,
+      CatalogMovementOriginType originType,
+      String originCode,
+      Long originId,
+      String movimentoTipo,
+      String username,
+      CatalogMovementMetricType metricType,
+      BigDecimal delta) {
+    SecurityContextHolder.getContext().setAuthentication(
+      new UsernamePasswordAuthenticationToken(username, "n/a", java.util.List.of()));
+    try {
+      CatalogMovement movement = new CatalogMovement();
+      movement.setTenantId(tenantId);
+      movement.setCatalogType(CatalogConfigurationType.PRODUCTS);
+      movement.setCatalogoId(catalogItemId);
+      movement.setCatalogConfigurationId(catalogConfigurationId);
+      movement.setAgrupadorEmpresaId(agrupadorId);
+      movement.setOrigemMovimentacaoTipo(originType);
+      movement.setOrigemMovimentacaoCodigo(originCode);
+      movement.setOrigemMovimentacaoId(originId);
+      movement.setMovimentoTipo(movimentoTipo);
+      movement.setOrigemMovimentoItemCodigo("ITEM:" + catalogItemId);
+      movement.setIdempotencyKey("test-ledger:" + originCode + ":" + metricType);
+      movement.setDataHoraMovimentacao(java.time.Instant.now());
+      movement = movementRepository.saveAndFlush(movement);
+
+      CatalogMovementLine line = new CatalogMovementLine();
+      line.setTenantId(tenantId);
+      line.setMovementId(movement.getId());
+      line.setAgrupadorEmpresaId(agrupadorId);
+      line.setMetricType(metricType);
+      line.setEstoqueTipoId(stockTypeRepository
+        .findAllByTenantIdAndCatalogConfigurationIdAndAgrupadorEmpresaIdAndActiveTrueOrderByOrdemAscNomeAsc(
+          tenantId,
+          catalogConfigurationId,
+          agrupadorId)
+        .stream()
+        .findFirst()
+        .orElseThrow()
+        .getId());
+      line.setFilialId(filialId);
+      line.setBeforeValue(BigDecimal.ZERO.setScale(6, java.math.RoundingMode.HALF_UP));
+      line.setDelta(delta.setScale(6, java.math.RoundingMode.HALF_UP));
+      line.setAfterValue(delta.setScale(6, java.math.RoundingMode.HALF_UP));
+      movementLineRepository.saveAndFlush(line);
+    } finally {
+      SecurityContextHolder.clearContext();
     }
   }
 

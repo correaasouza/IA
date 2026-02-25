@@ -124,9 +124,11 @@ export class AccessControlService {
   }
 
   private isMasterTenantContext(): boolean {
-    const username = (this.auth.getUsername() || '').trim().toLowerCase();
     const tenantId = (localStorage.getItem('tenantId') || '').trim();
-    return username === 'master' && tenantId === '1';
+    if (tenantId !== '1') {
+      return false;
+    }
+    return this.currentRoles().includes('MASTER');
   }
 
   private normalize(values: string[]): string[] {

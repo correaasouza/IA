@@ -26,6 +26,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    ignore-migration-patterns: "*:missing"
     connect-retries: 10
     connect-retries-interval: 5s
   security:

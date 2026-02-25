@@ -6,7 +6,6 @@ import com.ia.app.domain.CatalogItemPrice;
 import com.ia.app.domain.CatalogPriceType;
 import com.ia.app.domain.PriceBook;
 import com.ia.app.domain.PriceChangeAction;
-import com.ia.app.domain.PriceChangeLog;
 import com.ia.app.domain.PriceAdjustmentKind;
 import com.ia.app.domain.PriceVariant;
 import com.ia.app.domain.SalePrice;
@@ -22,7 +21,6 @@ import com.ia.app.repository.CatalogItemPriceRepository;
 import com.ia.app.repository.CatalogProductRepository;
 import com.ia.app.repository.CatalogServiceItemRepository;
 import com.ia.app.repository.PriceBookRepository;
-import com.ia.app.repository.PriceChangeLogRepository;
 import com.ia.app.repository.PriceVariantRepository;
 import com.ia.app.repository.SalePriceRepository;
 import com.ia.app.tenant.TenantContext;
@@ -42,8 +40,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,7 +54,7 @@ public class SalePriceService {
   private final CatalogItemPriceRepository catalogItemPriceRepository;
   private final CatalogProductRepository productRepository;
   private final CatalogServiceItemRepository serviceItemRepository;
-  private final PriceChangeLogRepository priceChangeLogRepository;
+  private final PriceChangeLogService priceChangeLogService;
 
   public SalePriceService(
       SalePriceRepository repository,
@@ -69,7 +65,7 @@ public class SalePriceService {
       CatalogItemPriceRepository catalogItemPriceRepository,
       CatalogProductRepository productRepository,
       CatalogServiceItemRepository serviceItemRepository,
-      PriceChangeLogRepository priceChangeLogRepository) {
+      PriceChangeLogService priceChangeLogService) {
     this.repository = repository;
     this.priceBookRepository = priceBookRepository;
     this.priceVariantRepository = priceVariantRepository;
@@ -78,7 +74,7 @@ public class SalePriceService {
     this.catalogItemPriceRepository = catalogItemPriceRepository;
     this.productRepository = productRepository;
     this.serviceItemRepository = serviceItemRepository;
-    this.priceChangeLogRepository = priceChangeLogRepository;
+    this.priceChangeLogService = priceChangeLogService;
   }
 
   @Transactional(readOnly = true)
@@ -429,7 +425,12 @@ public class SalePriceService {
     if (normalized == null) {
       existingOpt.ifPresent(existing -> {
         repository.delete(existing);
-        logChange(tenantId, existing, PriceChangeAction.DELETE, existing.getPriceFinal(), null);
+        priceChangeLogService.logSalePriceChange(
+          tenantId,
+          existing,
+          PriceChangeAction.DELETE,
+          existing.getPriceFinal(),
+          null);
       });
       return Optional.empty();
     }
@@ -446,46 +447,19 @@ public class SalePriceService {
     });
 
     BigDecimal oldValue = entity.getId() == null ? null : entity.getPriceFinal();
+    if (oldValue != null && oldValue.compareTo(normalized) == 0) {
+      return existingOpt;
+    }
+
     entity.setPriceFinal(normalized);
     SalePrice saved = save(entity);
-    logChange(
+    priceChangeLogService.logSalePriceChange(
       tenantId,
       saved,
       oldValue == null ? PriceChangeAction.CREATE : PriceChangeAction.UPDATE,
       oldValue,
       saved.getPriceFinal());
     return Optional.of(saved);
-  }
-
-  private void logChange(
-      Long tenantId,
-      SalePrice source,
-      PriceChangeAction action,
-      BigDecimal oldValue,
-      BigDecimal newValue) {
-    PriceChangeLog log = new PriceChangeLog();
-    log.setTenantId(tenantId);
-    log.setSalePriceId(source.getId());
-    log.setAction(action);
-    log.setOldPriceFinal(oldValue == null ? null : normalizePrice(oldValue));
-    log.setNewPriceFinal(newValue == null ? null : normalizePrice(newValue));
-    log.setPriceBookId(source.getPriceBookId());
-    log.setVariantId(source.getVariantId());
-    log.setCatalogType(source.getCatalogType());
-    log.setCatalogItemId(source.getCatalogItemId());
-    log.setTenantUnitId(source.getTenantUnitId());
-    log.setChangedBy(resolveUserId());
-    log.setChangedAt(Instant.now());
-    priceChangeLogRepository.save(log);
-  }
-
-  private String resolveUserId() {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    if (auth == null) {
-      return "system";
-    }
-    String name = auth.getName();
-    return name == null || name.isBlank() ? "system" : name;
   }
 
   private SalePriceGridRowResponse toGridRow(SalePrice row) {

@@ -30,6 +30,17 @@ public class PriceChangeLog extends AuditableEntity {
   @Column(name = "action", nullable = false, length = 20)
   private PriceChangeAction action;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "source_type", length = 40)
+  private PriceChangeSourceType sourceType;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "origin_type", length = 40)
+  private PriceChangeOriginType originType;
+
+  @Column(name = "origin_id")
+  private Long originId;
+
   @Column(name = "old_price_final", precision = 19, scale = 6)
   private BigDecimal oldPriceFinal;
 
@@ -39,8 +50,15 @@ public class PriceChangeLog extends AuditableEntity {
   @Column(name = "price_book_id")
   private Long priceBookId;
 
+  @Column(name = "price_book_name", length = 120)
+  private String priceBookName;
+
   @Column(name = "variant_id")
   private Long variantId;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "price_type", length = 20)
+  private CatalogPriceType priceType;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "catalog_type", nullable = false, length = 20)
@@ -86,6 +104,30 @@ public class PriceChangeLog extends AuditableEntity {
     this.action = action;
   }
 
+  public PriceChangeSourceType getSourceType() {
+    return sourceType;
+  }
+
+  public void setSourceType(PriceChangeSourceType sourceType) {
+    this.sourceType = sourceType;
+  }
+
+  public PriceChangeOriginType getOriginType() {
+    return originType;
+  }
+
+  public void setOriginType(PriceChangeOriginType originType) {
+    this.originType = originType;
+  }
+
+  public Long getOriginId() {
+    return originId;
+  }
+
+  public void setOriginId(Long originId) {
+    this.originId = originId;
+  }
+
   public BigDecimal getOldPriceFinal() {
     return oldPriceFinal;
   }
@@ -110,12 +152,28 @@ public class PriceChangeLog extends AuditableEntity {
     this.priceBookId = priceBookId;
   }
 
+  public String getPriceBookName() {
+    return priceBookName;
+  }
+
+  public void setPriceBookName(String priceBookName) {
+    this.priceBookName = priceBookName;
+  }
+
   public Long getVariantId() {
     return variantId;
   }
 
   public void setVariantId(Long variantId) {
     this.variantId = variantId;
+  }
+
+  public CatalogPriceType getPriceType() {
+    return priceType;
+  }
+
+  public void setPriceType(CatalogPriceType priceType) {
+    this.priceType = priceType;
   }
 
   public CatalogConfigurationType getCatalogType() {

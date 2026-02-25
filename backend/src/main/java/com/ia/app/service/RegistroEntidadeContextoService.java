@@ -14,6 +14,7 @@ import com.ia.app.tenant.EmpresaContext;
 import com.ia.app.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -49,7 +50,7 @@ public class RegistroEntidadeContextoService {
     this.syncService = syncService;
   }
 
-  @Transactional(readOnly = true)
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public RegistroEntidadeEmpresaContextoResponse contexto(Long tipoEntidadeId) {
     Long tenantId = requireTenant();
     Long empresaId = requireEmpresaContext();
@@ -100,7 +101,7 @@ public class RegistroEntidadeContextoService {
       null);
   }
 
-  @Transactional(readOnly = true)
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public RegistroEntidadeScope resolveObrigatorio(Long tipoEntidadeId) {
     RegistroEntidadeEmpresaContextoResponse contexto = contexto(tipoEntidadeId);
     if (!contexto.vinculado()) {

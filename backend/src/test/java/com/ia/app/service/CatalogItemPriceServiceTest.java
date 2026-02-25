@@ -7,6 +7,8 @@ import com.ia.app.domain.CatalogConfigurationByGroup;
 import com.ia.app.domain.CatalogConfigurationType;
 import com.ia.app.domain.CatalogPriceRuleByGroup;
 import com.ia.app.domain.CatalogPriceType;
+import com.ia.app.domain.PriceChangeAction;
+import com.ia.app.domain.PriceChangeSourceType;
 import com.ia.app.domain.PriceAdjustmentKind;
 import com.ia.app.domain.PriceBaseMode;
 import com.ia.app.domain.PriceUiLockMode;
@@ -15,6 +17,7 @@ import com.ia.app.dto.CatalogItemPriceResponse;
 import com.ia.app.repository.CatalogConfigurationByGroupRepository;
 import com.ia.app.repository.CatalogItemPriceRepository;
 import com.ia.app.repository.CatalogPriceRuleByGroupRepository;
+import com.ia.app.repository.PriceChangeLogRepository;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -27,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Import({
   AuditingConfig.class,
   CatalogPriceRuleService.class,
+  PriceChangeLogService.class,
   CatalogItemPriceService.class,
   CatalogConfigurationService.class,
   CatalogConfigurationGroupSyncService.class,
@@ -46,6 +50,9 @@ class CatalogItemPriceServiceTest {
 
   @Autowired
   private CatalogItemPriceRepository itemPriceRepository;
+
+  @Autowired
+  private PriceChangeLogRepository priceChangeLogRepository;
 
   @Test
   void shouldSyncAdjustmentWhenModeThreeUsesLastEditedPrice() {
@@ -253,6 +260,52 @@ class CatalogItemPriceServiceTest {
     assertThat(sale.priceFinal()).isEqualByComparingTo("126.000000");
     assertThat(sale.adjustmentKind()).isEqualTo(PriceAdjustmentKind.PERCENT);
     assertThat(sale.adjustmentValue()).isEqualByComparingTo("20.000000");
+  }
+
+  @Test
+  void shouldLogCatalogBaseHistoryOnlyWhenPriceChanges() {
+    Long tenantId = 606L;
+    Long byGroupId = createByGroup(tenantId, 1006L, 506L);
+    seedRulesForModeFour(tenantId, byGroupId);
+
+    itemPriceService.upsertForItem(
+      tenantId,
+      CatalogConfigurationType.PRODUCTS,
+      83001L,
+      byGroupId,
+      List.of(new CatalogItemPriceInput(CatalogPriceType.PURCHASE, new BigDecimal("100.000000"), null, null, null)));
+
+    long logsAfterCreate = priceChangeLogRepository
+      .findAllByTenantIdAndCatalogTypeAndCatalogItemIdOrderByChangedAtDesc(tenantId, CatalogConfigurationType.PRODUCTS, 83001L)
+      .size();
+    assertThat(logsAfterCreate).isGreaterThan(0);
+
+    itemPriceService.upsertForItem(
+      tenantId,
+      CatalogConfigurationType.PRODUCTS,
+      83001L,
+      byGroupId,
+      List.of(new CatalogItemPriceInput(CatalogPriceType.PURCHASE, new BigDecimal("100.000000"), null, null, null)));
+
+    long logsAfterSameValue = priceChangeLogRepository
+      .findAllByTenantIdAndCatalogTypeAndCatalogItemIdOrderByChangedAtDesc(tenantId, CatalogConfigurationType.PRODUCTS, 83001L)
+      .size();
+    assertThat(logsAfterSameValue).isEqualTo(logsAfterCreate);
+
+    itemPriceService.upsertForItem(
+      tenantId,
+      CatalogConfigurationType.PRODUCTS,
+      83001L,
+      byGroupId,
+      List.of(new CatalogItemPriceInput(CatalogPriceType.PURCHASE, new BigDecimal("110.000000"), null, null, null)));
+
+    var logsAfterChange = priceChangeLogRepository
+      .findAllByTenantIdAndCatalogTypeAndCatalogItemIdOrderByChangedAtDesc(tenantId, CatalogConfigurationType.PRODUCTS, 83001L);
+    assertThat(logsAfterChange.size()).isGreaterThan((int) logsAfterSameValue);
+    assertThat(logsAfterChange).extracting(item -> item.getSourceType())
+      .containsOnly(PriceChangeSourceType.CATALOG_ITEM_PRICE);
+    assertThat(logsAfterChange.get(0).getAction())
+      .isIn(PriceChangeAction.UPDATE, PriceChangeAction.CREATE);
   }
 
   private Long createByGroup(Long tenantId, Long configId, Long agrupadorId) {

@@ -29,6 +29,7 @@ import org.springframework.context.annotation.Import;
 @DataJpaTest
 @Import({
   AuditingConfig.class,
+  PriceChangeLogService.class,
   SalePriceService.class,
   SalePriceResolverService.class
 })

@@ -56,4 +56,26 @@ describe('CatalogStockService', () => {
       totalElements: 0
     });
   });
+
+  it('should load ledger with extended movement filters and timezone offset', () => {
+    service.getLedger('PRODUCTS', 33, {
+      origemTipo: 'MOVIMENTO_ESTOQUE',
+      origemCodigo: 'MV-120',
+      origemId: 120,
+      movimentoTipo: 'ENTRADA',
+      usuario: 'joao',
+      fromDate: '2026-02-01',
+      toDate: '2026-02-29',
+      tzOffsetMinutes: 180
+    }).subscribe();
+
+    const req = httpMock.expectOne(
+      `${environment.apiBaseUrl}/api/catalog/PRODUCTS/items/33/stock/ledger?origemTipo=MOVIMENTO_ESTOQUE&origemCodigo=MV-120&origemId=120&movimentoTipo=ENTRADA&usuario=joao&fromDate=2026-02-01&toDate=2026-02-29&tzOffsetMinutes=180`
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      content: [],
+      totalElements: 0
+    });
+  });
 });

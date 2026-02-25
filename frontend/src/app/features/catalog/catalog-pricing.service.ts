@@ -135,6 +135,29 @@ export interface SalePriceApplyByGroupResponse {
   skippedExisting: number;
 }
 
+export type PriceHistorySourceType = 'SALE_PRICE' | 'CATALOG_ITEM_PRICE';
+
+export interface CatalogPriceHistoryEntry {
+  id: number;
+  action: 'CREATE' | 'UPDATE' | 'DELETE';
+  sourceType?: PriceHistorySourceType | null;
+  originType?: 'ALTERACAO_TABELA_PRECO' | 'ALTERACAO_PRECO_BASE' | null;
+  originId?: number | null;
+  priceType?: CatalogPriceType | null;
+  oldPriceFinal?: number | null;
+  newPriceFinal?: number | null;
+  priceBookId?: number | null;
+  priceBookName?: string | null;
+  variantId?: number | null;
+  changedBy?: string | null;
+  changedAt: string;
+}
+
+export interface CatalogPriceHistoryPage {
+  content: CatalogPriceHistoryEntry[];
+  totalElements: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class CatalogPricingService {
   private readonly baseUrl = `${environment.apiBaseUrl}/api/catalog/pricing`;
@@ -252,5 +275,29 @@ export class CatalogPricingService {
       params.set('tenantUnitId', `${tenantUnitId}`.trim());
     }
     return this.http.get<SalePriceByItemRow[]>(`${this.baseUrl}/sale-prices/by-item?${params.toString()}`);
+  }
+
+  getPriceHistory(
+    catalogType: CatalogConfigurationType,
+    catalogItemId: number,
+    params?: {
+      sourceType?: PriceHistorySourceType | '';
+      priceType?: CatalogPriceType | '';
+      priceBookId?: number | null;
+      text?: string;
+      fromDate?: string;
+      toDate?: string;
+      tzOffsetMinutes?: number | null;
+      page?: number;
+      size?: number;
+    }
+  ): Observable<CatalogPriceHistoryPage> {
+    const query = new URLSearchParams();
+    Object.entries(params || {}).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && `${value}` !== '') query.set(key, `${value}`);
+    });
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return this.http.get<CatalogPriceHistoryPage>(
+      `${environment.apiBaseUrl}/api/catalog/${catalogType}/items/${catalogItemId}/price/history${suffix}`);
   }
 }

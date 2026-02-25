@@ -8,11 +8,19 @@
   overflow: auto;
   display: grid;
   gap: 12px;
+  background: var(--surface);
+  padding-bottom: 10px;
+  position: relative;
 }
 
 .history-list-sticky {
+  position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 40;
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--border-light);
+  padding-bottom: 8px;
+  isolation: isolate;
 }
 
 .catalog-filters-head {
@@ -36,18 +44,26 @@
 .catalog-ledger-filters {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 8px;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.catalog-price-filters {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 6px;
 }
 
 .catalog-filter-field {
   min-width: 0;
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .catalog-filter-label {
-  font-size: 12px;
+  font-size: 11px;
+  line-height: 1.2;
   color: var(--muted);
   font-weight: 600;
   padding: 0 2px;
@@ -55,27 +71,33 @@
 
 .catalog-filter-control {
   width: 100%;
-  height: 52px;
+  height: 36px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: #ededed;
   color: var(--ink);
-  font-size: 16px;
-  line-height: 1;
-  padding: 0 38px 0 16px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  padding: 0 30px 0 10px;
   appearance: none;
   outline: none;
   background-image:
     linear-gradient(45deg, transparent 50%, #6b7280 50%),
     linear-gradient(135deg, #6b7280 50%, transparent 50%);
   background-position:
-    calc(100% - 16px) calc(50% - 3px),
-    calc(100% - 10px) calc(50% - 3px);
-  background-size: 6px 6px, 6px 6px;
+    calc(100% - 13px) calc(50% - 2px),
+    calc(100% - 8px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
 }
 
 .catalog-filter-control[type='date'] {
+  background-image: none;
+  padding-right: 12px;
+}
+
+.catalog-filter-control[type='text'],
+.catalog-filter-control[type='number'] {
   background-image: none;
   padding-right: 12px;
 }
@@ -170,6 +192,10 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .catalog-price-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .catalog-ledger-filter-actions {
     grid-column: 1 / -1;
     justify-content: flex-start;
@@ -194,6 +220,10 @@
   }
 
   .catalog-ledger-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .catalog-price-filters {
     grid-template-columns: minmax(0, 1fr);
   }
 

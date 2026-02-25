@@ -37,9 +37,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -149,6 +152,10 @@ public class CatalogStockQueryService {
       Long catalogoId,
       Long agrupadorEmpresaId,
       CatalogMovementOriginType origemTipo,
+      String origemCodigo,
+      Long origemId,
+      String movimentoTipo,
+      String usuario,
       Instant fromDate,
       Instant toDate,
       CatalogMovementMetricType metricType,
@@ -161,40 +168,52 @@ public class CatalogStockQueryService {
     Long effectiveAgrupadorId = normalizeAgrupador(scope, agrupadorEmpresaId);
     Instant effectiveFromDate = fromDate == null ? MIN_LEDGER_DATE : fromDate;
     Instant effectiveToDate = toDate == null ? MAX_LEDGER_DATE : toDate;
+    String effectiveOrigemCodigo = normalizeOptionalText(origemCodigo);
+    String effectiveMovimentoTipo = normalizeOptionalText(movimentoTipo);
+    String effectiveUsuario = normalizeOptionalText(usuario);
+    Pageable effectivePageable = normalizeLedgerPageable(pageable);
 
-    Page<CatalogMovement> page = movementRepository.search(
+    Specification<CatalogMovement> spec = buildLedgerSpecification(
       scope.tenantId(),
       type,
       catalogoId,
       effectiveAgrupadorId,
       origemTipo,
+      effectiveOrigemCodigo,
+      origemId,
+      effectiveMovimentoTipo,
+      effectiveUsuario,
       effectiveFromDate,
       effectiveToDate,
       metricType,
       estoqueTipoId,
-      filialId,
-      pageable);
+      filialId);
+
+    Page<CatalogMovement> page = movementRepository.findAll(spec, effectivePageable);
 
     if (page.isEmpty()) {
-      return new PageImpl<>(List.of(), pageable, 0);
+      return new PageImpl<>(List.of(), effectivePageable, 0);
     }
 
     List<Long> movementIds = page.getContent().stream().map(CatalogMovement::getId).toList();
     List<CatalogMovementLine> lines = lineRepository.findAllByTenantIdAndMovementIdInOrderByMovementIdAscIdAsc(
       scope.tenantId(),
       movementIds);
+    List<CatalogMovementLine> filteredLines = lines.stream()
+      .filter(line -> matchesLedgerLineFilters(line, metricType, estoqueTipoId, filialId))
+      .toList();
 
     Map<Long, List<CatalogMovementLine>> linesByMovementId = new LinkedHashMap<>();
-    Set<Long> stockTypeIds = lines.stream()
+    Set<Long> stockTypeIds = filteredLines.stream()
       .map(CatalogMovementLine::getEstoqueTipoId)
       .filter(Objects::nonNull)
       .collect(Collectors.toSet());
-    Set<Long> filialIds = lines.stream()
+    Set<Long> filialIds = filteredLines.stream()
       .map(CatalogMovementLine::getFilialId)
       .filter(Objects::nonNull)
       .collect(Collectors.toSet());
 
-    for (CatalogMovementLine line : lines) {
+    for (CatalogMovementLine line : filteredLines) {
       linesByMovementId.computeIfAbsent(line.getMovementId(), ignored -> new ArrayList<>()).add(line);
     }
 
@@ -228,7 +247,12 @@ public class CatalogStockQueryService {
         movement.getAgrupadorEmpresaId(),
         movement.getOrigemMovimentacaoTipo(),
         movement.getOrigemMovimentacaoCodigo(),
+        movement.getOrigemMovimentacaoId(),
+        movement.getMovimentoTipo(),
         movement.getOrigemMovimentoItemCodigo(),
+        movement.getWorkflowOrigin(),
+        movement.getWorkflowEntityId(),
+        movement.getWorkflowTransitionKey(),
         movement.getDataHoraMovimentacao(),
         movement.getObservacao(),
         movement.getTenantUnitId(),
@@ -239,6 +263,95 @@ public class CatalogStockQueryService {
         movement.getFatorFonte(),
         lineResponses);
     });
+  }
+
+  private Specification<CatalogMovement> buildLedgerSpecification(
+      Long tenantId,
+      CatalogConfigurationType type,
+      Long catalogoId,
+      Long agrupadorEmpresaId,
+      CatalogMovementOriginType origemTipo,
+      String origemCodigo,
+      Long origemId,
+      String movimentoTipo,
+      String usuario,
+      Instant fromDate,
+      Instant toDate,
+      CatalogMovementMetricType metricType,
+      Long estoqueTipoId,
+      Long filialId) {
+    return (root, query, cb) -> {
+      List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+      predicates.add(cb.equal(root.get("tenantId"), tenantId));
+      predicates.add(cb.equal(root.get("catalogType"), type));
+      predicates.add(cb.equal(root.get("catalogoId"), catalogoId));
+
+      if (agrupadorEmpresaId != null) {
+        var sub = query.subquery(Long.class);
+        var line = sub.from(CatalogMovementLine.class);
+        sub.select(line.get("id"));
+        sub.where(
+          cb.equal(line.get("tenantId"), tenantId),
+          cb.equal(line.get("movementId"), root.get("id")),
+          cb.equal(line.get("agrupadorEmpresaId"), agrupadorEmpresaId));
+        predicates.add(cb.exists(sub));
+      }
+
+      if (origemTipo != null) {
+        predicates.add(cb.equal(root.get("origemMovimentacaoTipo"), origemTipo));
+      }
+      if (origemCodigo != null) {
+        predicates.add(cb.like(
+          cb.lower(root.get("origemMovimentacaoCodigo")),
+          "%" + origemCodigo.toLowerCase() + "%"));
+      }
+      if (origemId != null && origemId > 0) {
+        predicates.add(cb.equal(root.get("origemMovimentacaoId"), origemId));
+      }
+      if (movimentoTipo != null) {
+        predicates.add(cb.equal(cb.upper(root.get("movimentoTipo")), movimentoTipo.toUpperCase()));
+      }
+      if (usuario != null) {
+        predicates.add(cb.like(
+          cb.lower(root.get("createdBy")),
+          "%" + usuario.toLowerCase() + "%"));
+      }
+
+      predicates.add(cb.greaterThanOrEqualTo(root.get("dataHoraMovimentacao"), fromDate));
+      predicates.add(cb.lessThanOrEqualTo(root.get("dataHoraMovimentacao"), toDate));
+
+      if (metricType != null || estoqueTipoId != null || filialId != null) {
+        var sub = query.subquery(Long.class);
+        var line = sub.from(CatalogMovementLine.class);
+        List<jakarta.persistence.criteria.Predicate> linePredicates = new ArrayList<>();
+        linePredicates.add(cb.equal(line.get("tenantId"), tenantId));
+        linePredicates.add(cb.equal(line.get("movementId"), root.get("id")));
+        if (metricType != null) {
+          linePredicates.add(cb.equal(line.get("metricType"), metricType));
+        }
+        if (estoqueTipoId != null && estoqueTipoId > 0) {
+          linePredicates.add(cb.equal(line.get("estoqueTipoId"), estoqueTipoId));
+        }
+        if (filialId != null && filialId > 0) {
+          linePredicates.add(cb.equal(line.get("filialId"), filialId));
+        }
+        sub.select(line.get("id"));
+        sub.where(linePredicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+        predicates.add(cb.exists(sub));
+      }
+
+      return cb.and(predicates.toArray(jakarta.persistence.criteria.Predicate[]::new));
+    };
+  }
+
+  private Pageable normalizeLedgerPageable(Pageable pageable) {
+    int pageNumber = pageable == null ? 0 : Math.max(pageable.getPageNumber(), 0);
+    int pageSize = pageable == null ? 20 : Math.min(Math.max(pageable.getPageSize(), 1), 200);
+    Sort defaultSort = Sort.by(Sort.Order.desc("dataHoraMovimentacao"), Sort.Order.desc("id"));
+    if (pageable == null || pageable.getSort().isUnsorted()) {
+      return PageRequest.of(pageNumber, pageSize, defaultSort);
+    }
+    return PageRequest.of(pageNumber, pageSize, pageable.getSort());
   }
 
   private void validateCatalogItem(CatalogItemContextService.CatalogItemScope scope, Long catalogoId) {
@@ -446,5 +559,33 @@ public class CatalogStockQueryService {
       return nomeFantasia;
     }
     return empresa.getRazaoSocial();
+  }
+
+  private String normalizeOptionalText(String value) {
+    if (value == null) {
+      return null;
+    }
+    String normalized = value.trim();
+    return normalized.isEmpty() ? null : normalized;
+  }
+
+  private boolean matchesLedgerLineFilters(
+      CatalogMovementLine line,
+      CatalogMovementMetricType metricType,
+      Long estoqueTipoId,
+      Long filialId) {
+    if (line == null) {
+      return false;
+    }
+    if (metricType != null && !Objects.equals(line.getMetricType(), metricType)) {
+      return false;
+    }
+    if (estoqueTipoId != null && estoqueTipoId > 0 && !Objects.equals(line.getEstoqueTipoId(), estoqueTipoId)) {
+      return false;
+    }
+    if (filialId != null && filialId > 0 && !Objects.equals(line.getFilialId(), filialId)) {
+      return false;
+    }
+    return true;
   }
 }

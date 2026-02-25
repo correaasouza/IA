@@ -4,6 +4,7 @@ import com.ia.app.domain.CatalogConfigurationType;
 import com.ia.app.domain.CatalogItemPrice;
 import com.ia.app.domain.CatalogPriceRuleByGroup;
 import com.ia.app.domain.CatalogPriceType;
+import com.ia.app.domain.PriceChangeAction;
 import com.ia.app.domain.PriceAdjustmentKind;
 import com.ia.app.domain.PriceBaseMode;
 import com.ia.app.domain.PriceUiLockMode;
@@ -28,12 +29,15 @@ public class CatalogItemPriceService {
 
   private final CatalogItemPriceRepository repository;
   private final CatalogPriceRuleService ruleService;
+  private final PriceChangeLogService priceChangeLogService;
 
   public CatalogItemPriceService(
       CatalogItemPriceRepository repository,
-      CatalogPriceRuleService ruleService) {
+      CatalogPriceRuleService ruleService,
+      PriceChangeLogService priceChangeLogService) {
     this.repository = repository;
     this.ruleService = ruleService;
+    this.priceChangeLogService = priceChangeLogService;
   }
 
   @Transactional
@@ -146,9 +150,11 @@ public class CatalogItemPriceService {
     }
 
     List<CatalogItemPrice> toSave = new ArrayList<>();
+    Map<CatalogPriceType, BigDecimal> oldValues = new EnumMap<>(CatalogPriceType.class);
     for (CatalogPriceType type : CatalogPriceType.values()) {
       MutablePriceState state = states.get(type);
       CatalogItemPrice row = existing.get(type);
+      oldValues.put(type, row == null ? null : normalizePrice(row.getPriceFinal()));
       if (row == null) {
         row = new CatalogItemPrice();
         row.setTenantId(tenantId);
@@ -163,6 +169,23 @@ public class CatalogItemPriceService {
     }
 
     List<CatalogItemPrice> saved = repository.saveAll(toSave);
+
+    if (applyInputs) {
+      for (CatalogItemPrice row : saved) {
+        BigDecimal oldValue = oldValues.get(row.getPriceType());
+        BigDecimal newValue = normalizePrice(row.getPriceFinal());
+        if (oldValue != null && oldValue.compareTo(newValue) == 0) {
+          continue;
+        }
+        priceChangeLogService.logCatalogItemPriceChange(
+          tenantId,
+          row,
+          oldValue == null ? PriceChangeAction.CREATE : PriceChangeAction.UPDATE,
+          oldValue,
+          newValue);
+      }
+    }
+
     return saved.stream()
       .sorted(Comparator.comparing(CatalogItemPrice::getPriceType))
       .map(this::toResponse)

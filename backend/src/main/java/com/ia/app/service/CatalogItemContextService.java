@@ -16,6 +16,7 @@ import com.ia.app.tenant.EmpresaContext;
 import com.ia.app.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -53,7 +54,7 @@ public class CatalogItemContextService {
     this.groupSyncService = groupSyncService;
   }
 
-  @Transactional(readOnly = true)
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public CatalogItemContextResponse contexto(CatalogConfigurationType type) {
     Long tenantId = requireTenant();
     Long empresaId = requireEmpresaContext();
@@ -108,7 +109,7 @@ public class CatalogItemContextService {
       null);
   }
 
-  @Transactional(readOnly = true)
+  @Transactional(propagation = Propagation.REQUIRES_NEW)
   public CatalogItemScope resolveObrigatorio(CatalogConfigurationType type) {
     CatalogItemContextResponse contexto = contexto(type);
     if (!contexto.vinculado()) {

@@ -54,11 +54,11 @@ describe('CatalogItemService', () => {
   });
 
   it('should update item', () => {
-    service.update('PRODUCTS', 7, { nome: 'Novo', ativo: true }).subscribe();
+    service.update('PRODUCTS', 7, { nome: 'Novo', tenantUnitId: 'unit-1', ativo: true }).subscribe();
 
     const req = httpMock.expectOne(`${environment.apiBaseUrl}/api/catalog/PRODUCTS/items/7`);
     expect(req.request.method).toBe('PUT');
-    expect(req.request.body).toEqual({ nome: 'Novo', ativo: true });
+    expect(req.request.body).toEqual({ nome: 'Novo', tenantUnitId: 'unit-1', ativo: true });
     req.flush({
       id: 7,
       type: 'PRODUCTS',
@@ -67,6 +67,7 @@ describe('CatalogItemService', () => {
       codigo: 10,
       nome: 'Novo',
       descricao: null,
+      tenantUnitId: 'unit-1',
       ativo: true
     });
   });
