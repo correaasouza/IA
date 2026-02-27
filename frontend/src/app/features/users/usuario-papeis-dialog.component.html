@@ -1,6 +1,9 @@
 ﻿<h2 mat-dialog-title>Papéis do usuário</h2>
 <mat-dialog-content class="w-full max-w-[92vw]">
   <div class="mb-2 text-xs text-[var(--muted)]">{{ data.username }}</div>
+  <div class="mb-2 rounded-lg border border-dashed px-2.5 py-2 text-xs app-warning-inline">
+    Somente o usuário "master" pode possuir o papel MASTER.
+  </div>
   <div class="grid gap-2">
     <app-inline-loader *ngIf="loading" label="Carregando papéis"></app-inline-loader>
     <mat-selection-list
@@ -9,7 +12,7 @@
       class="max-h-[260px] overflow-auto rounded-[10px] border border-[var(--border-light)]"
       (selectionChange)="onChange(papelList.selectedOptions.selected)"
       aria-label="Selecionar papéis do usuário">
-      <mat-list-option *ngFor="let p of papeis" [value]="p.id" [selected]="selected.has(p.id)">
+      <mat-list-option *ngFor="let p of papeis" [value]="p.id" [selected]="selected.has(p.id)" [disabled]="isMasterRoleDisabled(p)">
         {{ p.nome }}
       </mat-list-option>
     </mat-selection-list>

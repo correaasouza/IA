@@ -234,7 +234,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
               nome,
               empresaIds: selectedEmpresaIds
             }, () => {
-              this.notify.success('Agrupador criado.');
+              this.notify.success('Configuracao criada.');
               this.saving = false;
               this.editingGroupId = created.id;
               this.originalNome = nome;
@@ -257,7 +257,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
         },
         error: err => {
           this.saving = false;
-          this.notify.error(this.errorMessage(err, 'Nao foi possivel criar o agrupador.'));
+          this.notify.error(this.errorMessage(err, 'Nao foi possivel criar a configuracao.'));
         }
       });
       return;
@@ -272,7 +272,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
           nome,
           empresaIds: selectedEmpresaIds
         }, () => {
-          this.notify.success('Agrupador atualizado.');
+          this.notify.success('Configuracao atualizada.');
           this.saving = false;
           this.cancelForm();
           this.loadAgrupadores();
@@ -286,7 +286,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
         next: () => afterRename(),
         error: err => {
           this.saving = false;
-          this.notify.error(this.errorMessage(err, 'Nao foi possivel salvar o agrupador.'));
+          this.notify.error(this.errorMessage(err, 'Nao foi possivel salvar a configuracao.'));
         }
       });
       return;
@@ -302,14 +302,14 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
       .pipe(finalize(() => this.saving = false))
       .subscribe({
         next: () => {
-          this.notify.success('Agrupador removido.');
+          this.notify.success('Configuracao removida.');
           if (this.editingGroupId === group.id) {
             this.cancelForm();
           }
           this.loadAgrupadores();
           this.changed.emit();
         },
-        error: err => this.notify.error(this.errorMessage(err, 'Nao foi possivel remover o agrupador.'))
+        error: err => this.notify.error(this.errorMessage(err, 'Nao foi possivel remover a configuracao.'))
       });
   }
 
@@ -455,12 +455,22 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
 
   editingModeLabel(): string {
     if (!this.editingGroupId) {
-      return 'Novo agrupador';
+      return this.normalizedType() === 'CATALOGO'
+        ? `Nova Configuracao por Empresa - ${this.catalogLabel()}`
+        : 'Nova Configuracao';
     }
     if (this.normalizedType() === 'CATALOGO') {
-      return `Configuracao do Catalogo por Grupo Empresa - ${this.catalogCompaniesTitleSuffix()}`;
+      return `Configuracao do Catalogo por Empresa - ${this.catalogCompaniesTitleSuffix()}`;
     }
-    return 'Ficha do agrupador';
+    return 'Ficha da configuracao';
+  }
+
+  showCreateFlowWarning(): boolean {
+    return this.normalizedType() === 'CATALOGO' && !this.editingGroupId;
+  }
+
+  createFlowWarningMessage(): string {
+    return `Fluxo recomendado (${this.catalogLabel()}): 1) informe o nome e salve a configuracao; 2) atribua empresas e ajuste as demais configuracoes.`;
   }
 
   isGroupBeingEdited(groupId: number): boolean {
@@ -557,7 +567,7 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
         error: err => {
           this.agrupadores = [];
           this.empresaIdToGroup = {};
-          this.error = this.errorMessage(err, 'Nao foi possivel carregar os agrupadores.');
+          this.error = this.errorMessage(err, 'Nao foi possivel carregar as configuracoes por empresa.');
         }
       });
   }
@@ -745,6 +755,12 @@ export class AgrupadoresEmpresaComponent implements OnChanges {
       return '-';
     }
     return companies.join(', ');
+  }
+
+  private catalogLabel(): string {
+    const ref = (this.configReferenceName || '').toLowerCase();
+    if (ref.includes('servic')) return 'Servicos';
+    return 'Produtos';
   }
 
   private companyNameOnly(label: string): string {

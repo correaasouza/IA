@@ -40,6 +40,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -52,6 +54,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler {
+  private static final Logger LOG = LoggerFactory.getLogger(MovimentoEstoqueOperacaoHandler.class);
 
   private final MovimentoEstoqueRepository repository;
   private final MovimentoEstoqueItemRepository itemRepository;
@@ -113,20 +116,8 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
       empresaId,
       null);
 
-    List<MovimentoTipoItemTemplateResponse> tiposItens = List.of();
-    MovimentoConfigItemTipoService itemTipoService = movimentoConfigItemTipoServiceProvider.getIfAvailable();
-    if (itemTipoService != null) {
-      tiposItens = itemTipoService.listAtivosForConfig(resolver.configuracaoId())
-        .stream()
-        .map(item -> new MovimentoTipoItemTemplateResponse(
-          item.movimentoItemTipoId(),
-          item.nome(),
-          item.catalogType(),
-          item.cobrar()))
-        .toList();
-    }
-
-    List<MovimentoStockAdjustmentOptionResponse> adjustments = listStockAdjustments();
+    List<MovimentoTipoItemTemplateResponse> tiposItens = listTemplateItemTypesSafe(resolver.configuracaoId());
+    List<MovimentoStockAdjustmentOptionResponse> adjustments = listStockAdjustmentsSafe();
 
     return new MovimentoEstoqueTemplateResponse(
       MovimentoTipo.MOVIMENTO_ESTOQUE,
@@ -138,6 +129,26 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
       resolver.tiposEntidadePermitidos(),
       tiposItens,
       "");
+  }
+
+  private List<MovimentoTipoItemTemplateResponse> listTemplateItemTypesSafe(Long movimentoConfigId) {
+    MovimentoConfigItemTipoService itemTipoService = movimentoConfigItemTipoServiceProvider.getIfAvailable();
+    if (itemTipoService == null || movimentoConfigId == null || movimentoConfigId <= 0) {
+      return List.of();
+    }
+    try {
+      return itemTipoService.listAtivosForConfig(movimentoConfigId)
+        .stream()
+        .map(item -> new MovimentoTipoItemTemplateResponse(
+          item.movimentoItemTipoId(),
+          item.nome(),
+          item.catalogType(),
+          item.cobrar()))
+        .toList();
+    } catch (RuntimeException ex) {
+      LOG.warn("Falha ao carregar tipos de itens para template de movimento. configId={}", movimentoConfigId, ex);
+      return List.of();
+    }
   }
 
   @Override
@@ -491,28 +502,33 @@ public class MovimentoEstoqueOperacaoHandler implements MovimentoOperacaoHandler
     return service;
   }
 
-  private List<MovimentoStockAdjustmentOptionResponse> listStockAdjustments() {
+  private List<MovimentoStockAdjustmentOptionResponse> listStockAdjustmentsSafe() {
     CatalogStockAdjustmentConfigurationService stockAdjustmentConfigurationService = stockAdjustmentConfigurationServiceProvider.getIfAvailable();
     if (stockAdjustmentConfigurationService == null) {
       return List.of();
     }
-    List<CatalogStockAdjustmentResponse> products = stockAdjustmentConfigurationService.listByType(CatalogConfigurationType.PRODUCTS);
-    List<CatalogStockAdjustmentResponse> services = stockAdjustmentConfigurationService.listByType(CatalogConfigurationType.SERVICES);
-    return Stream.concat(
-      products.stream().map(item -> new MovimentoStockAdjustmentOptionResponse(
-        item.id(),
-        item.codigo(),
-        item.nome(),
-        item.tipo(),
-        CatalogConfigurationType.PRODUCTS.name())),
-      services.stream().map(item -> new MovimentoStockAdjustmentOptionResponse(
-        item.id(),
-        item.codigo(),
-        item.nome(),
-        item.tipo(),
-        CatalogConfigurationType.SERVICES.name())))
-      .distinct()
-      .toList();
+    try {
+      List<CatalogStockAdjustmentResponse> products = stockAdjustmentConfigurationService.listByType(CatalogConfigurationType.PRODUCTS);
+      List<CatalogStockAdjustmentResponse> services = stockAdjustmentConfigurationService.listByType(CatalogConfigurationType.SERVICES);
+      return Stream.concat(
+        products.stream().map(item -> new MovimentoStockAdjustmentOptionResponse(
+          item.id(),
+          item.codigo(),
+          item.nome(),
+          item.tipo(),
+          CatalogConfigurationType.PRODUCTS.name())),
+        services.stream().map(item -> new MovimentoStockAdjustmentOptionResponse(
+          item.id(),
+          item.codigo(),
+          item.nome(),
+          item.tipo(),
+          CatalogConfigurationType.SERVICES.name())))
+        .distinct()
+        .toList();
+    } catch (RuntimeException ex) {
+      LOG.warn("Falha ao carregar ajustes de estoque no template de movimento.", ex);
+      return List.of();
+    }
   }
 
   private Long resolveStockAdjustmentId(Long tenantId, Long requestedStockAdjustmentId) {

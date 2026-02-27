@@ -52,7 +52,7 @@ public class UsuarioLocatarioAcessoService {
   }
 
   private Usuario getUsuarioDoTenantAtual(Long usuarioLocalId) {
-    if (isLocatarioMaster() || isUsuarioMaster()) {
+    if (isGlobalMaster()) {
       return usuarioRepository.findById(usuarioLocalId)
         .orElseThrow(() -> new EntityNotFoundException("usuario_not_found"));
     }
@@ -64,15 +64,15 @@ public class UsuarioLocatarioAcessoService {
       .orElseThrow(() -> new EntityNotFoundException("usuario_not_found"));
   }
 
-  private boolean isLocatarioMaster() {
-    Long tenantId = TenantContext.getTenantId();
-    return tenantId != null && tenantId == 1L;
-  }
-
-  private boolean isUsuarioMaster() {
+  private boolean isGlobalMaster() {
     Authentication auth = SecurityContextHolder.getContext().getAuthentication();
     if (auth == null || !auth.isAuthenticated()) {
       return false;
+    }
+    boolean hasMasterRole = auth.getAuthorities().stream()
+      .anyMatch(a -> "ROLE_MASTER".equals(a.getAuthority()));
+    if (hasMasterRole) {
+      return true;
     }
     if (auth instanceof JwtAuthenticationToken jwtAuth) {
       String preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");

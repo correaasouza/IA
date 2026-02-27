@@ -15,6 +15,7 @@ import { EntityRecordService, RegistroEntidade, RegistroEntidadeContexto, Regist
 import { EntityTypeService } from '../entity-types/entity-type.service';
 import { EntityTypeAccessService } from './entity-type-access.service';
 import { CatalogPricingService, PriceBook } from '../catalog/catalog-pricing.service';
+import { normalizeCpfCnpj } from '../../shared/cpf-cnpj.validator';
 
 @Component({
   selector: 'app-entity-record-form',
@@ -102,6 +103,7 @@ export class EntityRecordFormComponent implements OnInit {
       this.form.markAllAsTouched();
       return;
     }
+    const tipoRegistro = (this.form.value.tipoRegistro || 'CPF') as 'CPF' | 'CNPJ' | 'ID_ESTRANGEIRO';
     const payload: RegistroEntidadePayload = {
       grupoEntidadeId: this.resolveGrupoEntidadeIdForSave(),
       priceBookId: this.form.value.priceBookId ?? null,
@@ -109,8 +111,8 @@ export class EntityRecordFormComponent implements OnInit {
       pessoa: {
         nome: (this.form.value.pessoaNome || '').trim(),
         apelido: (this.form.value.pessoaApelido || '').trim() || undefined,
-        tipoRegistro: (this.form.value.tipoRegistro || 'CPF') as 'CPF' | 'CNPJ' | 'ID_ESTRANGEIRO',
-        registroFederal: (this.form.value.registroFederal || '').trim()
+        tipoRegistro,
+        registroFederal: this.normalizeRegistroFederal(tipoRegistro, this.form.value.registroFederal || '')
       }
     };
     this.saving = true;
@@ -304,5 +306,13 @@ export class EntityRecordFormComponent implements OnInit {
         this.priceBooks = [];
       }
     });
+  }
+
+  private normalizeRegistroFederal(tipoRegistro: 'CPF' | 'CNPJ' | 'ID_ESTRANGEIRO', value: string): string {
+    const trimmed = (value || '').toString().trim();
+    if (tipoRegistro === 'CPF' || tipoRegistro === 'CNPJ') {
+      return normalizeCpfCnpj(trimmed);
+    }
+    return trimmed;
   }
 }

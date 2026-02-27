@@ -6,6 +6,7 @@ import com.ia.app.domain.CatalogNumberingMode;
 import com.ia.app.dto.CatalogConfigurationResponse;
 import com.ia.app.repository.CatalogConfigurationRepository;
 import com.ia.app.tenant.TenantContext;
+import java.util.Optional;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -71,6 +72,12 @@ public class CatalogConfigurationService {
     Long tenantId = requireTenant();
     return repository.findByTenantIdAndType(tenantId, type)
       .orElseGet(() -> createDefault(tenantId, type));
+  }
+
+  @Transactional(readOnly = true)
+  Optional<CatalogConfiguration> findEntity(CatalogConfigurationType type) {
+    Long tenantId = requireTenant();
+    return repository.findByTenantIdAndType(tenantId, type);
   }
 
   private CatalogConfigurationResponse toResponse(CatalogConfiguration entity) {

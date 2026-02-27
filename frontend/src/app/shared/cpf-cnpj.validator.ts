@@ -1,6 +1,6 @@
 ﻿import { AbstractControl, ValidationErrors } from '@angular/forms';
 
-function onlyDigits(value: string): string {
+export function onlyDigits(value: string): string {
   return value.replace(/\D/g, '');
 }
 
@@ -55,4 +55,8 @@ export function formatCpfCnpj(value: string): string {
     .replace(/(\d{3})(\d)/, '$1.$2')
     .replace(/(\d{3})(\d)/, '$1/$2')
     .replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+}
+
+export function normalizeCpfCnpj(value: string): string {
+  return onlyDigits((value || '').toString().trim());
 }

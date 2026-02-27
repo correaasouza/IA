@@ -41,7 +41,7 @@ public class EmpresaController {
   }
 
   @GetMapping
-  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW')")
+  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW') or @permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
   public ResponseEntity<Page<EmpresaResponse>> list(
       Authentication authentication,
       @RequestParam(required = false) String nome,
@@ -60,13 +60,13 @@ public class EmpresaController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW')")
+  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW') or @permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
   public ResponseEntity<EmpresaResponse> get(@PathVariable Long id) {
     return ResponseEntity.ok(EmpresaMapper.toResponse(service.getById(id)));
   }
 
   @GetMapping("/{id}/filiais")
-  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW')")
+  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW') or @permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
   public ResponseEntity<java.util.List<EmpresaResponse>> listFiliais(@PathVariable Long id) {
     return ResponseEntity.ok(service.listFiliais(id).stream().map(EmpresaMapper::toResponse).toList());
   }

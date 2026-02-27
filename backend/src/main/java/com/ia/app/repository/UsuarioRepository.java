@@ -33,6 +33,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
   Page<Usuario> findAllAccessibleByTenantId(@Param("tenantId") Long tenantId, Pageable pageable);
   Optional<Usuario> findByIdAndTenantId(Long id, Long tenantId);
   Optional<Usuario> findByTenantIdAndUsername(Long tenantId, String username);
+  boolean existsByUsernameIgnoreCase(String username);
+  boolean existsByEmailIgnoreCase(String email);
   Optional<Usuario> findByKeycloakIdAndTenantId(String keycloakId, Long tenantId);
   Optional<Usuario> findByKeycloakId(String keycloakId);
 }

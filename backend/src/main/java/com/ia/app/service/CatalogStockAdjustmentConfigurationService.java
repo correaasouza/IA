@@ -59,7 +59,10 @@ public class CatalogStockAdjustmentConfigurationService {
 
   @Transactional
   public List<CatalogStockAdjustmentResponse> listByType(CatalogConfigurationType type) {
-    Scope scope = resolveScope(type);
+    Scope scope = resolveScopeForRead(type);
+    if (scope == null) {
+      return List.of();
+    }
     return repository
       .findAllByTenantIdAndCatalogConfigurationIdOrderByOrdemAscNomeAsc(
         scope.tenantId(),
@@ -349,6 +352,16 @@ public class CatalogStockAdjustmentConfigurationService {
     }
     CatalogConfiguration config = catalogConfigurationService.getEntityOrCreate(type);
     return new Scope(tenantId, config.getId());
+  }
+
+  private Scope resolveScopeForRead(CatalogConfigurationType type) {
+    Long tenantId = TenantContext.getTenantId();
+    if (tenantId == null) {
+      throw new IllegalStateException("tenant_required");
+    }
+    return catalogConfigurationService.findEntity(type)
+      .map(config -> new Scope(tenantId, config.getId()))
+      .orElse(null);
   }
 
   private String normalizeNome(String value) {

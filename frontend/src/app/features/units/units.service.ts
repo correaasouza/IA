@@ -31,6 +31,7 @@ export interface TenantUnit {
   nome: string;
   fatorParaOficial: number;
   systemMirror: boolean;
+  padrao: boolean;
 }
 
 export interface TenantUnitPayload {
@@ -38,6 +39,7 @@ export interface TenantUnitPayload {
   sigla: string;
   nome: string;
   fatorParaOficial: number;
+  padrao?: boolean;
 }
 
 export interface TenantUnitReconcileResult {
@@ -144,4 +146,3 @@ export class UnitsService {
     return this.http.delete<void>(`${this.baseUrl}/api/tenant/unit-conversions/${id}`);
   }
 }
-

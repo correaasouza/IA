@@ -11,10 +11,8 @@ import { DateMaskDirective } from '../../shared/date-mask.directive';
 import { isValidDateInput, toDisplayDate, toIsoDate } from '../../shared/date-utils';
 import { CatalogCrudType } from './catalog-item.service';
 import {
-  CatalogPriceType,
   CatalogPriceHistoryEntry,
-  CatalogPricingService,
-  PriceHistorySourceType
+  CatalogPricingService
 } from './catalog-pricing.service';
 import {
   CatalogMovement,
@@ -59,7 +57,7 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
   stockConsolidatedRows: CatalogStockConsolidatedRow[] = [];
   ledgerEntries: CatalogMovement[] = [];
   ledgerDisplayEntries: CatalogMovement[] = [];
-  ledgerDisplayLines: CatalogLedgerLineRow[] = [];
+  historyDisplayLines: CatalogHistoryLineRow[] = [];
   ledgerPageSize = 20;
   ledgerTotalElements = 0;
   ledgerHasMore = true;
@@ -74,9 +72,10 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     { value: 'WORKFLOW_ACTION', label: 'Workflow (legado)' },
     { value: 'SYSTEM', label: 'Sistema' }
   ];
-  ledgerMetrics: Array<{ value: CatalogMovementMetricType; label: string }> = [
+  ledgerMetrics: Array<{ value: CatalogMovementMetricType | 'PRECO_TABELA'; label: string }> = [
     { value: 'QUANTIDADE', label: 'Quantidade' },
-    { value: 'PRECO', label: 'Preco' }
+    { value: 'PRECO', label: 'Preco' },
+    { value: 'PRECO_TABELA', label: 'Historico tabela preco' }
   ];
 
   ledgerFilters = this.fb.group({
@@ -101,27 +100,6 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
   priceHistoryLoadingMore = false;
   private priceHistoryNextPage = 0;
   private priceHistoryLoadRevision = 0;
-
-  priceSourceOptions: Array<{ value: PriceHistorySourceType; label: string }> = [
-    { value: 'SALE_PRICE', label: 'Tabela de preco' },
-    { value: 'CATALOG_ITEM_PRICE', label: 'Preco base' }
-  ];
-
-  priceTypeOptions: Array<{ value: CatalogPriceType; label: string }> = [
-    { value: 'PURCHASE', label: 'Compra' },
-    { value: 'COST', label: 'Custo' },
-    { value: 'AVERAGE_COST', label: 'Custo medio' },
-    { value: 'SALE_BASE', label: 'Venda base' }
-  ];
-
-  priceFilters = this.fb.group({
-    sourceType: [''],
-    priceType: [''],
-    priceBookId: [''],
-    text: [''],
-    fromDate: [''],
-    toDate: ['']
-  });
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: CatalogItemHistoryDialogData,
@@ -156,6 +134,8 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
   applyLedgerFilters(): void {
     this.resetLedgerPagination();
     this.loadLedger(false);
+    this.resetPriceHistoryPagination();
+    this.loadPriceHistory(false);
   }
 
   toggleMobileFilters(): void {
@@ -322,7 +302,10 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     return value || '-';
   }
 
-  originSummary(row: CatalogLedgerLineRow): string {
+  originSummary(row: CatalogHistoryLineRow): string {
+    if (row.entryType === 'PRICE_HISTORY') {
+      return 'Historico de tabela de preco';
+    }
     const baseLabel = this.originLabel(row.origemMovimentacaoTipo);
     const idLabel = row.origemMovimentacaoId || row.movementId;
     const codeLabel = (row.origemMovimentacaoCodigo || '').trim();
@@ -339,6 +322,7 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
   }
 
   metricLabel(value: string): string {
+    if (value === 'PRECO_TABELA') return 'Historico tabela preco';
     return value === 'PRECO' ? 'Preco' : 'Quantidade';
   }
 
@@ -355,53 +339,25 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     return metricType === 'PRECO' ? 'app-money-value' : 'app-qty-value';
   }
 
-  priceActionLabel(value?: string | null): string {
+  private priceActionLabel(value?: string | null): string {
     if (value === 'CREATE') return 'Criacao';
     if (value === 'UPDATE') return 'Atualizacao';
     if (value === 'DELETE') return 'Exclusao';
     return value || '-';
   }
 
-  priceSourceLabel(value?: string | null): string {
+  private priceSourceLabel(value?: string | null): string {
     if (value === 'SALE_PRICE') return 'Tabela de preco';
     if (value === 'CATALOG_ITEM_PRICE') return 'Preco base';
     return value || '-';
   }
 
-  priceTypeLabel(value?: string | null): string {
+  private priceTypeLabel(value?: string | null): string {
     if (value === 'PURCHASE') return 'Compra';
     if (value === 'COST') return 'Custo';
     if (value === 'AVERAGE_COST') return 'Custo medio';
     if (value === 'SALE_BASE') return 'Venda base';
     return value || '-';
-  }
-
-  applyPriceFilters(): void {
-    this.resetPriceHistoryPagination();
-    this.loadPriceHistory();
-  }
-
-  clearPriceFilters(): void {
-    this.priceFilters.patchValue({
-      sourceType: '',
-      priceType: '',
-      priceBookId: '',
-      text: '',
-      fromDate: '',
-      toDate: ''
-    });
-    this.resetPriceHistoryPagination();
-    this.loadPriceHistory();
-  }
-
-  hasPriceFiltersActive(): boolean {
-    const value = this.priceFilters.value;
-    return !!((value.sourceType || '').trim()
-      || (value.priceType || '').trim()
-      || `${value.priceBookId || ''}`.trim()
-      || (value.text || '').trim()
-      || (value.fromDate || '').trim()
-      || (value.toDate || '').trim());
   }
 
   private loadBalancesAndLedger(): void {
@@ -422,7 +378,7 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
           this.stockConsolidatedRows = [];
           this.ledgerEntries = [];
           this.ledgerDisplayEntries = [];
-          this.ledgerDisplayLines = [];
+          this.historyDisplayLines = [];
           this.ledgerTotalElements = 0;
           this.ledgerHasMore = false;
           this.priceHistoryEntries = [];
@@ -441,6 +397,11 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
       return;
     }
     const filters = this.ledgerFilters.value;
+    const selectedMetric = (filters.metricType || '').trim();
+    const ledgerMetricType: CatalogMovementMetricType | '' =
+      selectedMetric === 'QUANTIDADE' || selectedMetric === 'PRECO'
+        ? selectedMetric
+        : '';
     const currentPage = append ? this.ledgerNextPage : 0;
     const currentRevision = this.ledgerLoadRevision;
     this.loading = !append;
@@ -454,7 +415,7 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
       origemId: this.toPositive((filters.origemId || '').trim()),
       movimentoTipo: (filters.movimentoTipo || '').trim(),
       usuario: (filters.usuario || '').trim(),
-      metricType: (filters.metricType || '').trim() as CatalogMovementMetricType | '',
+      metricType: ledgerMetricType,
       estoqueTipoId: this.toPositive((filters.estoqueTipoId || '').trim()),
       filialId: this.toPositive((filters.filialId || '').trim()),
       fromDate: this.normalizeDateInput((filters.fromDate || '').trim()),
@@ -487,7 +448,7 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
           }
           this.ledgerEntries = [];
           this.ledgerDisplayEntries = [];
-          this.ledgerDisplayLines = [];
+          this.historyDisplayLines = [];
           this.ledgerTotalElements = 0;
           this.ledgerHasMore = false;
           this.error = err?.error?.detail || 'Nao foi possivel carregar historico do item.';
@@ -502,17 +463,13 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     if (append && !this.priceHistoryHasMore) {
       return;
     }
-    const filters = this.priceFilters.value;
+    const filters = this.ledgerFilters.value;
     const currentPage = append ? this.priceHistoryNextPage : 0;
     const currentRevision = this.priceHistoryLoadRevision;
     this.priceHistoryLoading = !append;
     this.priceHistoryLoadingMore = true;
     this.priceHistoryError = '';
     this.pricingService.getPriceHistory(this.data.type, this.data.itemId, {
-      sourceType: (filters.sourceType || '').trim() as PriceHistorySourceType | '',
-      priceType: (filters.priceType || '').trim() as CatalogPriceType | '',
-      priceBookId: this.toPositive((filters.priceBookId || '').trim()),
-      text: this.normalizeText((filters.text || '').trim()),
       fromDate: this.normalizeDateInput((filters.fromDate || '').trim()),
       toDate: this.normalizeDateInput((filters.toDate || '').trim()),
       tzOffsetMinutes: this.timezoneOffsetMinutes(),
@@ -539,6 +496,7 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
             : this.priceHistoryEntries.length;
           this.priceHistoryNextPage = currentPage + 1;
           this.priceHistoryHasMore = this.computePriceHistoryHasMore(incoming.length);
+          this.applyLedgerSort();
         },
         error: err => {
           if (currentRevision !== this.priceHistoryLoadRevision) {
@@ -548,6 +506,7 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
           this.priceHistoryTotalElements = 0;
           this.priceHistoryHasMore = false;
           this.priceHistoryError = err?.error?.detail || 'Nao foi possivel carregar historico de preco.';
+          this.applyLedgerSort();
         }
       });
   }
@@ -581,14 +540,15 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
   }
 
   private syncLedgerDisplayLines(): void {
-    const flattened: CatalogLedgerLineRow[] = [];
+    const flattened: CatalogHistoryLineRow[] = [];
     const lineFilters = this.currentLedgerLineFilters();
     for (const movement of this.ledgerDisplayEntries || []) {
       if (!movement?.lines?.length) {
-        if (lineFilters.hasActiveLineFilter) {
+        if (lineFilters.hasLineFilter || lineFilters.metricType === 'PRECO_TABELA') {
           continue;
         }
         flattened.push({
+          entryType: 'MOVEMENT',
           movementId: movement.id,
           origemMovimentacaoTipo: movement.origemMovimentacaoTipo,
           origemMovimentacaoCodigo: movement.origemMovimentacaoCodigo || null,
@@ -611,6 +571,7 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
           continue;
         }
         flattened.push({
+          entryType: 'MOVEMENT',
           movementId: movement.id,
           origemMovimentacaoTipo: movement.origemMovimentacaoTipo,
           origemMovimentacaoCodigo: movement.origemMovimentacaoCodigo || null,
@@ -627,7 +588,42 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
         });
       }
     }
-    this.ledgerDisplayLines = flattened;
+
+    for (const priceEntry of this.priceHistoryEntries || []) {
+      if (lineFilters.metricType && lineFilters.metricType !== 'PRECO_TABELA') {
+        continue;
+      }
+      const before = priceEntry.oldPriceFinal ?? null;
+      const after = priceEntry.newPriceFinal ?? null;
+      const delta = before === null || after === null ? null : Number(after) - Number(before);
+      flattened.push({
+        entryType: 'PRICE_HISTORY',
+        movementId: Number(priceEntry.id || 0),
+        origemMovimentacaoTipo: 'SYSTEM',
+        origemMovimentacaoCodigo: null,
+        origemMovimentacaoId: priceEntry.originId || null,
+        movimentoTipo: null,
+        dataHoraMovimentacao: priceEntry.changedAt,
+        observacao: this.priceRowObservation(priceEntry),
+        metricType: 'PRECO_TABELA',
+        estoqueTipoNome: '-',
+        filialNome: '-',
+        beforeValue: before,
+        delta,
+        afterValue: after
+      });
+    }
+
+    this.historyDisplayLines = flattened.sort((a, b) => {
+      const aTime = new Date(a?.dataHoraMovimentacao || 0).getTime();
+      const bTime = new Date(b?.dataHoraMovimentacao || 0).getTime();
+      if (aTime !== bTime) {
+        return this.ledgerSortOrder === 'OLDEST' ? aTime - bTime : bTime - aTime;
+      }
+      const aid = Number(a?.movementId || 0);
+      const bid = Number(b?.movementId || 0);
+      return this.ledgerSortOrder === 'OLDEST' ? aid - bid : bid - aid;
+    });
   }
 
   private extractTotalElements(payload: any): number {
@@ -643,7 +639,7 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     this.ledgerHasMore = true;
     this.ledgerEntries = [];
     this.ledgerDisplayEntries = [];
-    this.ledgerDisplayLines = [];
+    this.historyDisplayLines = [];
     this.ledgerLoadingMore = false;
   }
 
@@ -709,20 +705,20 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
   }
 
   private currentLedgerLineFilters(): {
-    metricType: CatalogMovementMetricType | '';
+    metricType: CatalogMovementMetricType | 'PRECO_TABELA' | '';
     estoqueTipoId: number | null;
     filialId: number | null;
-    hasActiveLineFilter: boolean;
+    hasLineFilter: boolean;
   } {
     const value = this.ledgerFilters.value;
-    const metricType = (value.metricType || '').trim() as CatalogMovementMetricType | '';
+    const metricType = (value.metricType || '').trim() as CatalogMovementMetricType | 'PRECO_TABELA' | '';
     const estoqueTipoId = this.toPositive((value.estoqueTipoId || '').trim());
     const filialId = this.toPositive((value.filialId || '').trim());
     return {
       metricType,
       estoqueTipoId,
       filialId,
-      hasActiveLineFilter: !!(metricType || estoqueTipoId || filialId)
+      hasLineFilter: !!(estoqueTipoId || filialId)
     };
   }
 
@@ -733,11 +729,14 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
       filialId?: number | null;
     },
     filters: {
-      metricType: CatalogMovementMetricType | '';
+      metricType: CatalogMovementMetricType | 'PRECO_TABELA' | '';
       estoqueTipoId: number | null;
       filialId: number | null;
     }
   ): boolean {
+    if (filters.metricType === 'PRECO_TABELA') {
+      return false;
+    }
     if (filters.metricType && line.metricType !== filters.metricType) {
       return false;
     }
@@ -767,16 +766,23 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     }, 0);
   }
 
+  totalHistoryElements(): number {
+    return (this.ledgerTotalElements || 0) + (this.priceHistoryTotalElements || 0);
+  }
+
+  private priceRowObservation(row: CatalogPriceHistoryEntry): string {
+    const action = this.priceActionLabel(row.action);
+    const source = this.priceSourceLabel(row.sourceType);
+    const priceType = this.priceTypeLabel(row.priceType);
+    const table = row.priceBookId ? `Tabela #${row.priceBookId}${row.priceBookName ? ` - ${row.priceBookName}` : ''}` : 'Sem tabela';
+    const user = (row.changedBy || '').trim() || '-';
+    return `${action} | ${source} | ${priceType} | ${table} | Usuario: ${user}`;
+  }
+
   private toPositive(value: unknown): number | null {
     const parsed = Number(value || 0);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
   }
-
-  private normalizeText(value: string): string | undefined {
-    const normalized = (value || '').trim();
-    return normalized || undefined;
-  }
-
   private normalizeDateInput(value: string): string | undefined {
     const normalized = (value || '').trim();
     if (!normalized) {
@@ -808,7 +814,8 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
   }
 }
 
-interface CatalogLedgerLineRow {
+interface CatalogHistoryLineRow {
+  entryType: 'MOVEMENT' | 'PRICE_HISTORY';
   movementId: number;
   origemMovimentacaoTipo: CatalogMovementOriginType;
   origemMovimentacaoCodigo?: string | null;
@@ -816,7 +823,7 @@ interface CatalogLedgerLineRow {
   movimentoTipo?: string | null;
   dataHoraMovimentacao: string;
   observacao: string;
-  metricType: CatalogMovementMetricType | '';
+  metricType: CatalogMovementMetricType | 'PRECO_TABELA' | '';
   estoqueTipoNome: string;
   filialNome: string;
   beforeValue: number | null;

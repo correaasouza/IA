@@ -33,7 +33,7 @@ import { NotificationService } from '../../core/notifications/notification.servi
 export class AccessControlFormComponent implements OnInit {
   mode: 'new' | 'view' | 'edit' = 'new';
   title = 'Nova regra de acesso';
-  roleOptions: string[] = ['MASTER'];
+  roleOptions: string[] = ['MASTER', 'USER'];
   currentKey: string | null = null;
   private fallbackRolesByKey: Record<string, string[]> = {};
 
@@ -150,10 +150,10 @@ export class AccessControlFormComponent implements OnInit {
           .filter(r => r?.ativo !== false)
           .map(r => (r?.nome || '').trim().toUpperCase())
           .filter(r => r.length > 0);
-        this.roleOptions = Array.from(new Set(['MASTER', ...roles])).sort((a, b) => a.localeCompare(b));
+        this.roleOptions = Array.from(new Set(['MASTER', 'USER', ...roles])).sort((a, b) => a.localeCompare(b));
       },
       error: () => {
-        this.roleOptions = ['MASTER'];
+        this.roleOptions = ['MASTER', 'USER'];
       }
     });
   }
@@ -165,9 +165,24 @@ export class AccessControlFormComponent implements OnInit {
 
   private normalizeRoles(values: string[]): string[] {
     return Array.from(new Set((values || [])
-      .map(v => (v || '').trim().toUpperCase())
+      .map(v => this.normalizeRole(v || ''))
       .filter(v => v.length > 0)
       .concat(['MASTER'])));
+  }
+
+  private normalizeRole(value: string): string {
+    let role = (value || '').trim().toUpperCase();
+    if (!role) {
+      return '';
+    }
+    const sepIdx = role.lastIndexOf(':');
+    if (sepIdx >= 0 && sepIdx < role.length - 1) {
+      role = role.substring(sepIdx + 1);
+    }
+    if (role.startsWith('ROLE_')) {
+      role = role.substring(5);
+    }
+    return role;
   }
 
   private buildFallbackRolesByKey(items: MenuItem[]): Record<string, string[]> {

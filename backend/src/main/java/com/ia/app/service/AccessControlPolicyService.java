@@ -61,7 +61,7 @@ public class AccessControlPolicyService {
 
   private List<String> normalizeRoles(List<String> roles) {
     return (roles == null ? List.<String>of() : roles).stream()
-      .map(r -> r == null ? "" : r.trim().toUpperCase(Locale.ROOT))
+      .map(this::normalizeRole)
       .filter(r -> !r.isBlank())
       .distinct()
       .toList();
@@ -70,10 +70,25 @@ public class AccessControlPolicyService {
   private List<String> parseCsv(String csv) {
     if (csv == null || csv.isBlank()) return List.of();
     return Arrays.stream(csv.split(","))
-      .map(String::trim)
+      .map(this::normalizeRole)
       .filter(s -> !s.isBlank())
       .distinct()
       .toList();
+  }
+
+  private String normalizeRole(String role) {
+    String normalized = role == null ? "" : role.trim().toUpperCase(Locale.ROOT);
+    if (normalized.isBlank()) {
+      return "";
+    }
+    int sepIdx = normalized.lastIndexOf(':');
+    if (sepIdx >= 0 && sepIdx < normalized.length() - 1) {
+      normalized = normalized.substring(sepIdx + 1);
+    }
+    if (normalized.startsWith("ROLE_") && normalized.length() > 5) {
+      normalized = normalized.substring(5);
+    }
+    return normalized;
   }
 
   private String normalizeKey(String key) {

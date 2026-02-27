@@ -48,13 +48,6 @@
   margin-bottom: 6px;
 }
 
-.catalog-price-filters {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin-bottom: 6px;
-}
-
 .catalog-filter-field {
   min-width: 0;
   display: grid;
@@ -192,10 +185,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .catalog-price-filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .catalog-ledger-filter-actions {
     grid-column: 1 / -1;
     justify-content: flex-start;
@@ -220,10 +209,6 @@
   }
 
   .catalog-ledger-filters {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .catalog-price-filters {
     grid-template-columns: minmax(0, 1fr);
   }
 

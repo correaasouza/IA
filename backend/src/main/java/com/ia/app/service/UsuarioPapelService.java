@@ -49,7 +49,6 @@ public class UsuarioPapelService {
     Long tenantId = requireTenant();
     Usuario usuario = usuarioRepository.findByIdAndTenantId(usuarioLocalId, tenantId).orElseThrow();
     String keycloakId = usuario.getKeycloakId();
-    repository.deleteAllByTenantIdAndUsuarioId(tenantId, keycloakId);
     List<Long> uniquePapelIds = papelIds == null
       ? List.of()
       : papelIds.stream()
@@ -57,18 +56,24 @@ public class UsuarioPapelService {
         .distinct()
         .toList();
     for (Long papelId : uniquePapelIds) {
-        Papel papel = papelRepository.findById(papelId).orElseThrow();
-        if (!papel.getTenantId().equals(tenantId)) {
-          throw new IllegalStateException("papel_forbidden");
-        }
-        if (repository.existsByTenantIdAndUsuarioIdAndPapelId(tenantId, keycloakId, papelId)) {
-          continue;
-        }
-        UsuarioPapel up = new UsuarioPapel();
-        up.setTenantId(tenantId);
-        up.setUsuarioId(keycloakId);
-        up.setPapelId(papelId);
-        repository.save(up);
+      Papel papel = papelRepository.findById(papelId).orElseThrow();
+      if (!papel.getTenantId().equals(tenantId)) {
+        throw new IllegalStateException("papel_forbidden");
+      }
+      if (isMasterRole(papel.getNome()) && !isMasterUsername(usuario.getUsername())) {
+        throw new IllegalArgumentException("usuario_master_role_restrito");
+      }
+    }
+    repository.deleteAllByTenantIdAndUsuarioId(tenantId, keycloakId);
+    for (Long papelId : uniquePapelIds) {
+      if (repository.existsByTenantIdAndUsuarioIdAndPapelId(tenantId, keycloakId, papelId)) {
+        continue;
+      }
+      UsuarioPapel up = new UsuarioPapel();
+      up.setTenantId(tenantId);
+      up.setUsuarioId(keycloakId);
+      up.setPapelId(papelId);
+      repository.save(up);
     }
     auditService.log(tenantId, "USUARIO_PAPEIS_ATUALIZADOS", "usuario", String.valueOf(usuarioLocalId),
       "papeis=" + uniquePapelIds.stream().map(String::valueOf).collect(java.util.stream.Collectors.joining(",")));
@@ -79,5 +84,13 @@ public class UsuarioPapelService {
     Long tenantId = TenantContext.getTenantId();
     if (tenantId == null) throw new IllegalStateException("tenant_required");
     return tenantId;
+  }
+
+  private boolean isMasterRole(String roleName) {
+    return roleName != null && roleName.trim().equalsIgnoreCase("MASTER");
+  }
+
+  private boolean isMasterUsername(String username) {
+    return username != null && username.trim().equalsIgnoreCase("master");
   }
 }

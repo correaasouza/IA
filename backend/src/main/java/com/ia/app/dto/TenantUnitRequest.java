@@ -11,5 +11,6 @@ public record TenantUnitRequest(
   @NotNull UUID unidadeOficialId,
   @NotBlank @Size(max = 20) String sigla,
   @NotBlank @Size(max = 160) String nome,
-  @NotNull @DecimalMin(value = "0.0", inclusive = true) BigDecimal fatorParaOficial
+  @NotNull @DecimalMin(value = "0.0", inclusive = true) BigDecimal fatorParaOficial,
+  Boolean padrao
 ) {}

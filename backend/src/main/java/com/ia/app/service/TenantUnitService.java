@@ -81,8 +81,14 @@ public class TenantUnitService {
     unit.setNome(normalizeNome(request.nome()));
     unit.setFatorParaOficial(normalizeFactor(request.fatorParaOficial()));
     unit.setSystemMirror(false);
+    unit.setPadrao(Boolean.TRUE.equals(request.padrao()));
+
+    if (unit.isPadrao()) {
+      tenantUnitRepository.clearDefaultByTenantId(tenantId, null);
+    }
 
     TenantUnit saved = tenantUnitRepository.save(unit);
+    ensureDefaultUnitForTenant(tenantId, saved.getId());
     return toResponse(saved, official);
   }
 
@@ -98,8 +104,14 @@ public class TenantUnitService {
     unit.setSigla(sigla);
     unit.setNome(normalizeNome(request.nome()));
     unit.setFatorParaOficial(normalizeFactor(request.fatorParaOficial()));
+    unit.setPadrao(Boolean.TRUE.equals(request.padrao()));
+
+    if (unit.isPadrao()) {
+      tenantUnitRepository.clearDefaultByTenantId(tenantId, unit.getId());
+    }
 
     TenantUnit saved = tenantUnitRepository.save(unit);
+    ensureDefaultUnitForTenant(tenantId, saved.getId());
     return toResponse(saved, official);
   }
 
@@ -111,8 +123,12 @@ public class TenantUnitService {
       throw new IllegalArgumentException("tenant_unit_mirror_delete_not_allowed");
     }
     try {
+      boolean deletedWasDefault = unit.isPadrao();
       tenantUnitRepository.delete(unit);
       tenantUnitRepository.flush();
+      if (deletedWasDefault) {
+        ensureDefaultUnitForTenant(tenantId, null);
+      }
     } catch (DataIntegrityViolationException ex) {
       throw new IllegalArgumentException("tenant_unit_in_use");
     }
@@ -152,7 +168,8 @@ public class TenantUnitService {
       unit.getSigla(),
       unit.getNome(),
       unit.getFatorParaOficial(),
-      unit.isSystemMirror());
+      unit.isSystemMirror(),
+      unit.isPadrao());
   }
 
   private void validateSiglaUniqueness(Long tenantId, String sigla, UUID currentId) {
@@ -222,5 +239,28 @@ public class TenantUnitService {
       return null;
     }
     return value.trim().toLowerCase(Locale.ROOT);
+  }
+
+  private void ensureDefaultUnitForTenant(Long tenantId, UUID preferredId) {
+    if (tenantUnitRepository.existsByTenantIdAndPadraoTrue(tenantId)) {
+      return;
+    }
+
+    TenantUnit selected = null;
+    if (preferredId != null) {
+      selected = tenantUnitRepository.findByIdAndTenantId(preferredId, tenantId).orElse(null);
+    }
+    if (selected == null) {
+      selected = tenantUnitRepository.findByTenantIdAndSiglaIgnoreCase(tenantId, "UN").orElse(null);
+    }
+    if (selected == null) {
+      selected = tenantUnitRepository.findAllByTenantIdOrderBySiglaAsc(tenantId).stream().findFirst().orElse(null);
+    }
+    if (selected == null) {
+      return;
+    }
+
+    selected.setPadrao(true);
+    tenantUnitRepository.save(selected);
   }
 }

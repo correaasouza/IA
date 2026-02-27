@@ -20,6 +20,7 @@ import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { AccessControlDirective } from '../../shared/access-control.directive';
 import { AccessControlService } from '../../core/access/access-control.service';
+import { RolesService } from '../roles/roles.service';
 
 @Component({
   selector: 'app-user-form',
@@ -54,12 +55,13 @@ export class UserFormComponent implements OnInit {
   locatariosLoading = false;
   locatariosDisponiveis: LocatarioResponse[] = [];
   canCreateUser = false;
+  roleOptions: string[] = ['USER'];
 
   form = this.fb.group({
     username: ['', Validators.required],
     email: [''],
     password: ['', Validators.required],
-    roles: ['USER'],
+    roles: this.fb.control<string[]>(['USER'], Validators.required),
     ativo: [true]
   });
   locatariosAcessoForm = this.fb.group({
@@ -69,6 +71,7 @@ export class UserFormComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private service: UsuarioService,
+    private rolesService: RolesService,
     private tenantService: TenantService,
     private accessControl: AccessControlService,
     private route: ActivatedRoute,
@@ -78,6 +81,7 @@ export class UserFormComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loadRoleOptions();
     this.canCreateUser = this.accessControl.can('users.create', ['MASTER']);
     const id = this.route.snapshot.paramMap.get('id');
     const isEdit = this.route.snapshot.url.some(s => s.path === 'edit');
@@ -139,10 +143,7 @@ export class UserFormComponent implements OnInit {
     }
     this.saving = true;
     if (this.mode === 'new') {
-      const roles = (this.form.value.roles || '')
-        .split(',')
-        .map(r => r.trim())
-        .filter(r => r.length > 0);
+      const roles = this.normalizeRoles(this.form.get('roles')?.value || []);
       this.service.create({
         username: this.form.value.username!,
         email: this.form.value.email || undefined,
@@ -284,6 +285,60 @@ export class UserFormComponent implements OnInit {
       return detail;
     }
     return fallback;
+  }
+
+  onRolesChange(): void {
+    this.enforceMasterRoleConstraint();
+  }
+
+  onUsernameChange(): void {
+    this.enforceMasterRoleConstraint();
+  }
+
+  isRoleDisabled(role: string): boolean {
+    return this.isMasterRole(role) && !this.isMasterUser();
+  }
+
+  private loadRoleOptions(): void {
+    this.rolesService.list().subscribe({
+      next: (items) => {
+        const roles = (items || [])
+          .filter(r => r?.ativo !== false)
+          .map(r => (r?.nome || '').trim().toUpperCase())
+          .filter(r => r.length > 0);
+        this.roleOptions = Array.from(new Set(['USER', ...roles])).sort((a, b) => a.localeCompare(b));
+        this.enforceMasterRoleConstraint();
+      },
+      error: () => {
+        this.roleOptions = ['USER'];
+      }
+    });
+  }
+
+  private enforceMasterRoleConstraint(): void {
+    const roles = this.normalizeRoles(this.form.get('roles')?.value || [])
+      .filter(role => !this.isMasterRole(role) || this.isMasterUser());
+    this.form.patchValue({
+      roles: roles.length > 0 ? roles : ['USER']
+    }, { emitEvent: false });
+  }
+
+  private isMasterRole(role: string): boolean {
+    return (role || '').trim().toUpperCase() === 'MASTER';
+  }
+
+  private isMasterUser(): boolean {
+    return this.isMasterUsername(this.form.get('username')?.value || '');
+  }
+
+  private isMasterUsername(username: string): boolean {
+    return (username || '').trim().toLowerCase() === 'master';
+  }
+
+  private normalizeRoles(values: string[]): string[] {
+    return Array.from(new Set((values || [])
+      .map(v => (v || '').trim().toUpperCase())
+      .filter(v => v.length > 0)));
   }
 
 }

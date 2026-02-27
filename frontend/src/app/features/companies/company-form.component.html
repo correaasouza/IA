@@ -27,7 +27,7 @@
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
     <form [formGroup]="form" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
       <mat-form-field appearance="outline">
-        <mat-label>CNPJ (somente números)</mat-label>
+        <mat-label>CNPJ</mat-label>
         <input matInput formControlName="cnpj" [attr.autofocus]="mode !== 'view' ? '' : null" />
         <mat-error *ngIf="form.get('cnpj')?.hasError('pattern')">Use 14 dígitos.</mat-error>
       </mat-form-field>

@@ -25,7 +25,7 @@ export interface AccessControlConfigDialogData {
 })
 export class AccessControlConfigDialogComponent implements OnInit {
   selectedRoles: string[] = [];
-  roleOptions: string[] = [];
+  roleOptions: string[] = ['MASTER', 'USER'];
 
   constructor(
     @Inject(MAT_DIALOG_DATA) public data: AccessControlConfigDialogData,
@@ -43,13 +43,13 @@ export class AccessControlConfigDialogComponent implements OnInit {
           .filter(r => r?.ativo !== false)
           .map(r => (r?.nome || '').trim().toUpperCase())
           .filter(r => r.length > 0);
-        this.roleOptions = this.mergeRoles(fromApi, this.data?.fallbackRoles || [], this.selectedRoles, ['MASTER']);
+        this.roleOptions = this.mergeRoles(fromApi, this.data?.fallbackRoles || [], this.selectedRoles, ['MASTER', 'USER']);
       },
       error: () => {
         const fromToken = (this.auth.getUserRoles() || [])
           .map(r => (r || '').trim().toUpperCase())
           .filter(r => r.length > 0);
-        this.roleOptions = this.mergeRoles(fromToken, this.data?.fallbackRoles || [], this.selectedRoles, ['MASTER']);
+        this.roleOptions = this.mergeRoles(fromToken, this.data?.fallbackRoles || [], this.selectedRoles, ['MASTER', 'USER']);
       }
     });
   }
@@ -76,9 +76,24 @@ export class AccessControlConfigDialogComponent implements OnInit {
 
   private normalize(values: string[]): string[] {
     return Array.from(new Set((values || [])
-      .map(v => (v || '').trim().toUpperCase())
+      .map(v => this.normalizeRole(v || ''))
       .filter(v => v.length > 0)
       .concat(['MASTER'])))
       .sort((a, b) => a.localeCompare(b));
+  }
+
+  private normalizeRole(value: string): string {
+    let role = (value || '').trim().toUpperCase();
+    if (!role) {
+      return '';
+    }
+    const sepIdx = role.lastIndexOf(':');
+    if (sepIdx >= 0 && sepIdx < role.length - 1) {
+      role = role.substring(sepIdx + 1);
+    }
+    if (role.startsWith('ROLE_')) {
+      role = role.substring(5);
+    }
+    return role;
   }
 }

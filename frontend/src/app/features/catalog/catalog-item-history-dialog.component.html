@@ -4,7 +4,7 @@
       <header class="flex flex-col items-start justify-between gap-3 md:flex-row md:items-end">
         <div class="min-w-0">
           <h1 class="m-0 text-lg font-bold">Historico do item #{{ data.itemCodigo }} - {{ data.itemNome }}</h1>
-          <p class="mt-1 text-xs text-[var(--muted)]">Movimentacoes de estoque e preco registradas para este item.</p>
+          <p class="mt-1 text-sm text-[var(--muted)]">Movimentacoes de estoque e historicos de tabelas de preco registrados para este item.</p>
         </div>
         <div class="flex flex-wrap gap-2">
           <button mat-stroked-button type="button" (click)="refresh(true)" [disabled]="loading">
@@ -28,7 +28,7 @@
             Filtros{{ activeFiltersCount() > 0 ? ' (' + activeFiltersCount() + ')' : '' }}
             <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
           </button>
-          <div class="catalog-filters-count text-xs text-[var(--muted)]">{{ ledgerTotalElements }} registro(s)</div>
+          <div class="catalog-filters-count text-xs text-[var(--muted)]">{{ totalHistoryElements() }} registro(s)</div>
         </div>
       </div>
 
@@ -137,8 +137,8 @@
 
     <div class="catalog-stock-error m-3 mb-0" *ngIf="error">{{ error }}</div>
 
-    <div class="hidden overflow-auto border-b border-[var(--border-light)] md:block" *ngIf="ledgerDisplayLines.length > 0">
-      <table mat-table [dataSource]="ledgerDisplayLines" class="w-full">
+    <div class="hidden overflow-auto border-b border-[var(--border-light)] md:block" *ngIf="historyDisplayLines.length > 0">
+      <table mat-table [dataSource]="historyDisplayLines" class="w-full">
         <ng-container matColumnDef="dataHora">
           <th mat-header-cell *matHeaderCellDef>Data/Hora</th>
           <td mat-cell *matCellDef="let row">{{ row.dataHoraMovimentacao | date:'dd/MM/yyyy HH:mm' }}</td>
@@ -189,8 +189,8 @@
       </table>
     </div>
 
-    <div class="grid gap-2.5 p-3 pt-2.5 md:hidden" *ngIf="ledgerDisplayLines.length > 0">
-      <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]" *ngFor="let row of ledgerDisplayLines">
+    <div class="grid gap-2.5 p-3 pt-2.5 md:hidden" *ngIf="historyDisplayLines.length > 0">
+      <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]" *ngFor="let row of historyDisplayLines">
         <div class="flex items-center justify-between gap-2">
           <div class="text-sm font-semibold">{{ originSummary(row) }}</div>
           <span class="text-xs text-[var(--muted)]">{{ row.dataHoraMovimentacao | date:'dd/MM/yyyy HH:mm' }}</span>
@@ -220,159 +220,14 @@
       </article>
     </div>
 
-    <div class="catalog-empty m-3 mt-2.5" *ngIf="!loading && ledgerDisplayLines.length === 0">
+    <div class="catalog-empty m-3 mt-2.5" *ngIf="!loading && !priceHistoryLoading && historyDisplayLines.length === 0">
       Nenhuma movimentacao encontrada para os filtros atuais.
     </div>
 
-    <div class="flex justify-center px-3 pb-3" *ngIf="ledgerLoadingMore && ledgerDisplayLines.length > 0">
+    <div class="flex justify-center px-3 pb-3" *ngIf="(ledgerLoadingMore || priceHistoryLoadingMore) && historyDisplayLines.length > 0">
       <app-inline-loader label="Carregando mais registros"></app-inline-loader>
     </div>
-  </section>
 
-  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
-    <div class="catalog-filters-head mb-2">
-      <div class="text-sm font-semibold">Historico de preco</div>
-      <div class="catalog-filters-head-right">
-        <div class="catalog-filters-count text-xs text-[var(--muted)]">{{ priceHistoryTotalElements }} registro(s)</div>
-      </div>
-    </div>
-
-    <form class="catalog-price-filters" [formGroup]="priceFilters" role="search">
-      <label class="catalog-filter-field">
-        <span class="catalog-filter-label">Fonte</span>
-        <select class="catalog-filter-control" formControlName="sourceType" (change)="applyPriceFilters()">
-          <option value="">Todas</option>
-          <option *ngFor="let source of priceSourceOptions" [value]="source.value">{{ source.label }}</option>
-        </select>
-      </label>
-
-      <label class="catalog-filter-field">
-        <span class="catalog-filter-label">Tipo base</span>
-        <select class="catalog-filter-control" formControlName="priceType" (change)="applyPriceFilters()">
-          <option value="">Todos</option>
-          <option *ngFor="let type of priceTypeOptions" [value]="type.value">{{ type.label }}</option>
-        </select>
-      </label>
-
-      <label class="catalog-filter-field">
-        <span class="catalog-filter-label">Tabela (id)</span>
-        <input class="catalog-filter-control" type="number" min="1" formControlName="priceBookId" (change)="applyPriceFilters()" />
-      </label>
-
-      <label class="catalog-filter-field">
-        <span class="catalog-filter-label">Buscar</span>
-        <input class="catalog-filter-control" type="text" formControlName="text" (change)="applyPriceFilters()" />
-      </label>
-
-      <label class="catalog-filter-field">
-        <span class="catalog-filter-label">De</span>
-        <input class="catalog-filter-control" type="text" appDateMask placeholder="DD/MM/AAAA" formControlName="fromDate" (change)="applyPriceFilters()" />
-      </label>
-
-      <label class="catalog-filter-field">
-        <span class="catalog-filter-label">Ate</span>
-        <input class="catalog-filter-control" type="text" appDateMask placeholder="DD/MM/AAAA" formControlName="toDate" (change)="applyPriceFilters()" />
-      </label>
-
-      <div class="catalog-ledger-filter-actions">
-        <button mat-button type="button" (click)="clearPriceFilters()" [disabled]="!hasPriceFiltersActive() || priceHistoryLoading">
-          Limpar
-        </button>
-      </div>
-    </form>
-
-    <div class="flex justify-end pb-2" *ngIf="priceHistoryLoading">
-      <app-inline-loader label="Carregando historico de preco"></app-inline-loader>
-    </div>
-
-    <div class="catalog-stock-error mb-2" *ngIf="priceHistoryError">{{ priceHistoryError }}</div>
-
-    <div class="hidden overflow-auto border border-[var(--border-light)] md:block" *ngIf="priceHistoryEntries.length > 0">
-      <table mat-table [dataSource]="priceHistoryEntries" class="w-full">
-        <ng-container matColumnDef="changedAt">
-          <th mat-header-cell *matHeaderCellDef>Data/Hora</th>
-          <td mat-cell *matCellDef="let row">{{ row.changedAt | date:'dd/MM/yyyy HH:mm' }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="action">
-          <th mat-header-cell *matHeaderCellDef>Acao</th>
-          <td mat-cell *matCellDef="let row">{{ priceActionLabel(row.action) }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="source">
-          <th mat-header-cell *matHeaderCellDef>Fonte</th>
-          <td mat-cell *matCellDef="let row">{{ priceSourceLabel(row.sourceType) }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="priceType">
-          <th mat-header-cell *matHeaderCellDef>Tipo base</th>
-          <td mat-cell *matCellDef="let row">{{ priceTypeLabel(row.priceType) }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="priceBook">
-          <th mat-header-cell *matHeaderCellDef>Tabela</th>
-          <td mat-cell *matCellDef="let row">
-            {{ row.priceBookId ? '#' + row.priceBookId + ' - ' + (row.priceBookName || '-') : '-' }}
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="oldPrice">
-          <th mat-header-cell *matHeaderCellDef class="text-right">Anterior</th>
-          <td mat-cell *matCellDef="let row" class="text-right app-money-value">{{ formatMetricValue(row.oldPriceFinal ?? null, 'PRECO') }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="newPrice">
-          <th mat-header-cell *matHeaderCellDef class="text-right">Novo</th>
-          <td mat-cell *matCellDef="let row" class="text-right app-money-value">{{ formatMetricValue(row.newPriceFinal ?? null, 'PRECO') }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="user">
-          <th mat-header-cell *matHeaderCellDef>Usuario</th>
-          <td mat-cell *matCellDef="let row">{{ row.changedBy || '-' }}</td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="['changedAt','action','source','priceType','priceBook','oldPrice','newPrice','user']"></tr>
-        <tr mat-row *matRowDef="let row; columns: ['changedAt','action','source','priceType','priceBook','oldPrice','newPrice','user'];"></tr>
-      </table>
-    </div>
-
-    <div class="grid gap-2.5 md:hidden" *ngIf="priceHistoryEntries.length > 0">
-      <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]" *ngFor="let row of priceHistoryEntries">
-        <div class="flex items-center justify-between gap-2">
-          <div class="text-sm font-semibold">{{ priceActionLabel(row.action) }} - {{ priceSourceLabel(row.sourceType) }}</div>
-          <span class="text-xs text-[var(--muted)]">{{ row.changedAt | date:'dd/MM/yyyy HH:mm' }}</span>
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <div class="flex flex-col gap-0.5">
-            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Tipo base</span>
-            <span class="text-xs">{{ priceTypeLabel(row.priceType) }}</span>
-          </div>
-          <div class="flex flex-col gap-0.5">
-            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Tabela</span>
-            <span class="text-xs">{{ row.priceBookId ? '#' + row.priceBookId + ' - ' + (row.priceBookName || '-') : '-' }}</span>
-          </div>
-          <div class="flex flex-col gap-0.5">
-            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Anterior</span>
-            <span class="text-xs app-money-value">{{ formatMetricValue(row.oldPriceFinal ?? null, 'PRECO') }}</span>
-          </div>
-          <div class="flex flex-col gap-0.5">
-            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Novo</span>
-            <span class="text-xs app-money-value">{{ formatMetricValue(row.newPriceFinal ?? null, 'PRECO') }}</span>
-          </div>
-          <div class="col-span-2 flex flex-col gap-0.5">
-            <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Usuario</span>
-            <span class="text-xs">{{ row.changedBy || '-' }}</span>
-          </div>
-        </div>
-      </article>
-    </div>
-
-    <div class="flex justify-center py-2" *ngIf="priceHistoryLoadingMore && priceHistoryEntries.length > 0">
-      <app-inline-loader label="Carregando mais historico de preco"></app-inline-loader>
-    </div>
-
-    <div class="catalog-empty mt-2.5" *ngIf="!priceHistoryLoading && priceHistoryEntries.length === 0">
-      Nenhum historico de preco encontrado para os filtros atuais.
-    </div>
+    <div class="catalog-stock-error m-3 mt-0" *ngIf="priceHistoryError">{{ priceHistoryError }}</div>
   </section>
 </mat-dialog-content>

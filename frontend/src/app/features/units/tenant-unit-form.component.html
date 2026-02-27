@@ -77,6 +77,12 @@
         <mat-error *ngIf="form.get('fatorParaOficial')?.hasError('required')">Informe o fator.</mat-error>
         <mat-error *ngIf="form.get('fatorParaOficial')?.hasError('min')">Fator deve ser maior ou igual a zero.</mat-error>
       </mat-form-field>
+
+      <div class="md:col-span-2">
+        <mat-slide-toggle formControlName="padrao">
+          Unidade padrao do locatario
+        </mat-slide-toggle>
+      </div>
     </form>
 
     <div class="mt-1 text-xs text-[var(--muted)]" *ngIf="unit?.systemMirror">
@@ -94,4 +100,3 @@
     </div>
   </section>
 </div>
-

@@ -1,11 +1,13 @@
 package com.ia.app.web;
 
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -101,6 +103,12 @@ public class ApiExceptionHandler {
       pd.setDetail("E-mail ja cadastrado para outro usuario.");
     } else if (message.startsWith("usuario_username_duplicado")) {
       pd.setDetail("Username ja cadastrado para outro usuario.");
+    } else if (message.startsWith("usuario_master_role_restrito")) {
+      pd.setDetail("Somente o usuario \"master\" pode possuir o papel MASTER.");
+    } else if (message.startsWith("usuario_master_protegido")) {
+      pd.setDetail("Nao e permitido excluir o usuario master.");
+    } else if (message.startsWith("usuario_self_delete_forbidden")) {
+      pd.setDetail("Nao e permitido excluir o proprio usuario autenticado.");
     } else if (message.startsWith("agrupador_nome_duplicado")) {
       pd.setDetail("Ja existe agrupador com este nome para esta configuracao.");
     } else if (message.startsWith("empresa_ja_vinculada_outro_agrupador")) {
@@ -464,6 +472,32 @@ public class ApiExceptionHandler {
     return pd;
   }
 
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  public ProblemDetail handleNotReadable(HttpMessageNotReadableException ex) {
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+    pd.setTitle("Requisicao invalida");
+    String detail = "Payload JSON invalido.";
+    Throwable root = rootCause(ex);
+    String message = root != null && root.getMessage() != null ? root.getMessage() : ex.getMessage();
+    if (message != null && !message.isBlank()) {
+      detail = "Payload JSON invalido: " + message;
+    }
+    pd.setDetail(detail);
+    return pd;
+  }
+
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
+    ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.BAD_REQUEST);
+    pd.setTitle("Requisicao invalida");
+    String detail = ex.getBindingResult().getFieldErrors().stream()
+      .findFirst()
+      .map(err -> "Campo invalido: " + err.getField())
+      .orElse("Payload invalido.");
+    pd.setDetail(detail);
+    return pd;
+  }
+
   @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
   public ProblemDetail handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
     ProblemDetail pd = ProblemDetail.forStatus(HttpStatus.CONFLICT);
@@ -558,23 +592,28 @@ public class ApiExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ProblemDetail handleGeneric(Exception ex) {
-    Throwable root = rootCause(ex);
-    if (root instanceof IllegalArgumentException iae) {
+    IllegalArgumentException iae = findCause(ex, IllegalArgumentException.class);
+    if (iae != null) {
       return handleIllegalArgument(iae);
     }
-    if (root instanceof EntityNotFoundException enfe) {
+    EntityNotFoundException enfe = findCause(ex, EntityNotFoundException.class);
+    if (enfe != null) {
       return handleNotFound(enfe);
     }
-    if (root instanceof IllegalStateException ise) {
+    IllegalStateException ise = findCause(ex, IllegalStateException.class);
+    if (ise != null) {
       return handleIllegalState(ise);
     }
-    if (root instanceof AccessDeniedException ade) {
+    AccessDeniedException ade = findCause(ex, AccessDeniedException.class);
+    if (ade != null) {
       return handleAccessDenied(ade);
     }
-    if (root instanceof ObjectOptimisticLockingFailureException oole) {
+    ObjectOptimisticLockingFailureException oole = findCause(ex, ObjectOptimisticLockingFailureException.class);
+    if (oole != null) {
       return handleOptimisticLock(oole);
     }
-    if (root instanceof DataIntegrityViolationException dive) {
+    DataIntegrityViolationException dive = findCause(ex, DataIntegrityViolationException.class);
+    if (dive != null) {
       return handleDataIntegrityViolation(dive);
     }
 
@@ -637,5 +676,19 @@ public class ApiExceptionHandler {
       current = current.getCause();
     }
     return current == null ? ex : current;
+  }
+
+  private <T extends Throwable> T findCause(Throwable ex, Class<T> type) {
+    Throwable current = ex;
+    while (current != null) {
+      if (type.isInstance(current)) {
+        return type.cast(current);
+      }
+      if (current.getCause() == current) {
+        break;
+      }
+      current = current.getCause();
+    }
+    return null;
   }
 }

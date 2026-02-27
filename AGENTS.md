@@ -81,6 +81,7 @@
 - O botao deve exibir icone `tune` e indicador de expansao.
 - Em desktop/tablet (`md+`), filtros ficam sempre visiveis.
 - O comportamento mobile deve depender de regra explicita de viewport no componente.
+- Filtros `Tipo` e `Status` em listas devem usar o mesmo estilo global de select compacto (`.status-search-like` + `.status-native-select`) dentro de `form[role='search']`; evitar variar com `mat-form-field/mat-select` quando o padrao da tela usa select nativo compacto.
 
 ### Padrao global de abas (tabs de secao)
 
@@ -140,6 +141,12 @@
 - Inputs monetarios de ficha devem exibir 2 casas decimais na interacao de edicao (ao menos no blur) e manter parse consistente de locale antes do payload.
 - Valores renderizados em tabela/card devem usar alinhamento a direita com classes `.app-qty-value` e `.app-money-value`.
 - Ao montar payload de salvamento, normalizar quantidade para 3 casas e monetario para 2 casas para manter consistencia entre UI e API.
+
+### Padrao global para documentos CPF/CNPJ
+
+- Campos de CPF/CNPJ devem aceitar colagem e digitacao com ou sem formatacao (pontuacao opcional).
+- Validacoes de CPF/CNPJ devem considerar apenas os digitos, nunca rejeitar por causa de mascara.
+- Antes de enviar para a API, normalizar CPF/CNPJ para somente digitos.
 
 ### Padrao global de controle de acesso por controle
 

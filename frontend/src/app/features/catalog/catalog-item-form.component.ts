@@ -513,9 +513,9 @@ export class CatalogItemFormComponent implements OnInit {
           return;
         }
         if (this.mode === 'new' && !(this.form.value.tenantUnitId || '').trim()) {
-          const firstUnit = this.unitOptions[0];
-          if (firstUnit?.id) {
-            this.form.controls.tenantUnitId.setValue(firstUnit.id, { emitEvent: false });
+          const defaultUnit = this.unitOptions.find(unit => !!unit.padrao) || this.unitOptions[0];
+          if (defaultUnit?.id) {
+            this.form.controls.tenantUnitId.setValue(defaultUnit.id, { emitEvent: false });
           }
         }
         onLoaded();
@@ -546,7 +546,8 @@ export class CatalogItemFormComponent implements OnInit {
         sigla: (sigla || '').trim() || '-',
         nome: (nome || '').trim() || 'Unidade sem descricao',
         fatorParaOficial: 1,
-        systemMirror: false
+        systemMirror: false,
+        padrao: false
       }
     ];
   }

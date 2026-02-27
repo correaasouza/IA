@@ -18,6 +18,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import com.ia.app.tenant.EmpresaContext;
@@ -67,7 +68,7 @@ public class TenantAccessFilter extends OncePerRequestFilter {
     }
 
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    boolean isMaster = authentication != null && hasRole(authentication, "ROLE_MASTER");
+    boolean isMaster = isGlobalMaster(authentication);
 
     String tenantIdHeader = request.getHeader("X-Tenant-Id");
     if ((tenantIdHeader == null || tenantIdHeader.isBlank()) && !isMaster) {
@@ -164,6 +165,21 @@ public class TenantAccessFilter extends OncePerRequestFilter {
       }
     }
     return false;
+  }
+
+  private boolean isGlobalMaster(Authentication authentication) {
+    if (authentication == null || !authentication.isAuthenticated()) {
+      return false;
+    }
+    if (hasRole(authentication, "ROLE_MASTER")) {
+      return true;
+    }
+    if (authentication instanceof JwtAuthenticationToken jwtAuth) {
+      String preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");
+      return preferredUsername != null && preferredUsername.equalsIgnoreCase("master");
+    }
+    String name = authentication.getName();
+    return name != null && name.equalsIgnoreCase("master");
   }
 
   private void writeProblem(HttpServletResponse response, int status, String type,

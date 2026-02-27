@@ -8,6 +8,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { AccessControlDirective } from '../../shared/access-control.directive';
@@ -31,6 +32,7 @@ interface OfficialOption {
     MatIconModule,
     MatInputModule,
     MatSelectModule,
+    MatSlideToggleModule,
     InlineLoaderComponent,
     AccessControlDirective
   ],
@@ -49,7 +51,8 @@ export class TenantUnitFormComponent implements OnInit {
     unidadeOficialId: ['', [Validators.required]],
     sigla: ['', [Validators.required, Validators.maxLength(20)]],
     nome: ['', [Validators.required, Validators.maxLength(160)]],
-    fatorParaOficial: [1, [Validators.required, Validators.min(0)]]
+    fatorParaOficial: [1, [Validators.required, Validators.min(0)]],
+    padrao: [false]
   });
 
   constructor(
@@ -108,7 +111,8 @@ export class TenantUnitFormComponent implements OnInit {
       unidadeOficialId: String(this.form.value.unidadeOficialId || ''),
       sigla: (this.form.value.sigla || '').trim().toUpperCase(),
       nome: (this.form.value.nome || '').trim(),
-      fatorParaOficial: Number(this.form.value.fatorParaOficial || 0)
+      fatorParaOficial: Number(this.form.value.fatorParaOficial || 0),
+      padrao: !!this.form.value.padrao
     };
 
     this.saving = true;
@@ -210,7 +214,8 @@ export class TenantUnitFormComponent implements OnInit {
             unidadeOficialId: unit.unidadeOficialId,
             sigla: unit.sigla,
             nome: unit.nome,
-            fatorParaOficial: Number(unit.fatorParaOficial || 0)
+            fatorParaOficial: Number(unit.fatorParaOficial || 0),
+            padrao: !!unit.padrao
           });
           if (this.mode === 'view') {
             this.form.disable();
@@ -223,4 +228,3 @@ export class TenantUnitFormComponent implements OnInit {
       });
   }
 }
-

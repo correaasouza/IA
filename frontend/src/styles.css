@@ -26,6 +26,7 @@
   --success-bg: #e9f7ef;
   --success-ink: #166534;
   --warning-bg: #fff5dd;
+  --warning-border: #f2d49b;
   --warning-ink: #9a5a00;
   --shadow-xs: 0 1px 0 rgba(15, 23, 42, 0.06);
   --shadow-sm: 0 8px 18px rgba(15, 23, 42, 0.1);
@@ -91,6 +92,18 @@ body {
   font-family: 'IBM Plex Sans', sans-serif;
   font-size: 13px;
   line-height: 18px;
+}
+
+.app-warning-message {
+  border-color: var(--warning-border) !important;
+  background: var(--warning-bg) !important;
+  color: var(--warning-ink) !important;
+}
+
+.app-warning-inline {
+  border-color: var(--warning-border) !important;
+  background: var(--warning-bg) !important;
+  color: var(--warning-ink) !important;
 }
 
 .dense {

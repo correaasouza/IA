@@ -87,6 +87,11 @@
           <td mat-cell *matCellDef="let row">{{ row.systemMirror ? 'Espelhada' : 'Custom' }}</td>
         </ng-container>
 
+        <ng-container matColumnDef="padrao">
+          <th mat-header-cell *matHeaderCellDef>Padrao</th>
+          <td mat-cell *matCellDef="let row">{{ row.padrao ? 'Sim' : '-' }}</td>
+        </ng-container>
+
         <ng-container matColumnDef="acoes" stickyEnd>
           <th mat-header-cell *matHeaderCellDef class="text-right">Acoes</th>
           <td mat-cell *matCellDef="let row" class="flex justify-end gap-1.5">
@@ -131,4 +136,3 @@
     </div>
   </section>
 </div>
-

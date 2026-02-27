@@ -1,12 +1,12 @@
 package com.ia.app.service;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
@@ -140,13 +140,48 @@ public class KeycloakAdminService {
       .block(Duration.ofSeconds(10));
   }
 
+  public boolean userExists(String userId) {
+    if (userId == null || userId.isBlank()) {
+      return false;
+    }
+    String token = getAdminToken();
+    return Boolean.TRUE.equals(webClient.get()
+      .uri("/admin/realms/{realm}/users/{id}", targetRealm, userId)
+      .header("Authorization", "Bearer " + token)
+      .exchangeToMono(resp -> {
+        if (resp.statusCode().is2xxSuccessful()) {
+          return reactor.core.publisher.Mono.just(true);
+        }
+        if (resp.statusCode().value() == 404) {
+          return reactor.core.publisher.Mono.just(false);
+        }
+        return resp.bodyToMono(String.class)
+          .defaultIfEmpty("")
+          .flatMap(body -> reactor.core.publisher.Mono.error(
+            new IllegalStateException("keycloak_user_lookup_failed: " + body)
+          ));
+      })
+      .block(Duration.ofSeconds(10)));
+  }
+
   public void deleteUser(String userId) {
     String token = getAdminToken();
     webClient.delete()
       .uri("/admin/realms/{realm}/users/{id}", targetRealm, userId)
       .header("Authorization", "Bearer " + token)
-      .retrieve()
-      .toBodilessEntity()
+      .exchangeToMono(resp -> {
+        if (resp.statusCode().value() == 404) {
+          return reactor.core.publisher.Mono.empty();
+        }
+        if (resp.statusCode().isError()) {
+          return resp.bodyToMono(String.class)
+            .defaultIfEmpty("")
+            .flatMap(body -> reactor.core.publisher.Mono.error(
+              new IllegalStateException("keycloak_delete_user_failed: " + body)
+            ));
+        }
+        return reactor.core.publisher.Mono.empty();
+      })
       .block(Duration.ofSeconds(10));
   }
 
@@ -155,24 +190,28 @@ public class KeycloakAdminService {
       return;
     }
     String token = getAdminToken();
-
-    List<Map<String, Object>> roleReps = roles.stream().map(roleName -> {
-      Map<String, Object> role = webClient.get()
-        .uri("/admin/realms/{realm}/roles/{role}", targetRealm, roleName)
-        .header("Authorization", "Bearer " + token)
-        .retrieve()
-        .onStatus(HttpStatusCode::is4xxClientError, resp -> resp.bodyToMono(String.class)
-          .defaultIfEmpty("")
-          .flatMap(body -> reactor.core.publisher.Mono.error(
-            new IllegalArgumentException("keycloak_role_not_found: " + roleName)
-          )))
-        .bodyToMono(Map.class)
-        .block(Duration.ofSeconds(10));
-      return Map.of(
+    List<Map<String, Object>> roleReps = new ArrayList<>();
+    for (String roleName : roles) {
+      String normalizedRole = roleName == null ? "" : roleName.trim();
+      if (normalizedRole.isEmpty()) {
+        continue;
+      }
+      Map<String, Object> role = fetchRealmRole(token, normalizedRole);
+      if (role == null) {
+        createRealmRole(token, normalizedRole);
+        role = fetchRealmRole(token, normalizedRole);
+      }
+      if (role == null || role.get("id") == null || role.get("name") == null) {
+        throw new IllegalStateException("keycloak_role_resolution_failed: " + normalizedRole);
+      }
+      roleReps.add(Map.of(
         "id", role.get("id"),
         "name", role.get("name")
-      );
-    }).toList();
+      ));
+    }
+    if (roleReps.isEmpty()) {
+      return;
+    }
 
     webClient.post()
       .uri("/admin/realms/{realm}/users/{id}/role-mappings/realm", targetRealm, userId)
@@ -181,6 +220,46 @@ public class KeycloakAdminService {
       .bodyValue(roleReps)
       .retrieve()
       .toBodilessEntity()
+      .block(Duration.ofSeconds(10));
+  }
+
+  private Map<String, Object> fetchRealmRole(String token, String roleName) {
+    return webClient.get()
+      .uri("/admin/realms/{realm}/roles/{role}", targetRealm, roleName)
+      .header("Authorization", "Bearer " + token)
+      .exchangeToMono(resp -> {
+        if (resp.statusCode().is2xxSuccessful()) {
+          return resp.bodyToMono(Map.class);
+        }
+        if (resp.statusCode().value() == 404) {
+          return reactor.core.publisher.Mono.justOrEmpty(null);
+        }
+        return resp.bodyToMono(String.class)
+          .defaultIfEmpty("")
+          .flatMap(body -> reactor.core.publisher.Mono.error(
+            new IllegalStateException("keycloak_role_lookup_failed: " + roleName + ": " + body)
+          ));
+      })
+      .block(Duration.ofSeconds(10));
+  }
+
+  private void createRealmRole(String token, String roleName) {
+    Map<String, Object> payload = Map.of("name", roleName);
+    webClient.post()
+      .uri("/admin/realms/{realm}/roles", targetRealm)
+      .contentType(MediaType.APPLICATION_JSON)
+      .header("Authorization", "Bearer " + token)
+      .bodyValue(payload)
+      .exchangeToMono(resp -> {
+        if (resp.statusCode().is2xxSuccessful() || resp.statusCode().value() == 409) {
+          return reactor.core.publisher.Mono.empty();
+        }
+        return resp.bodyToMono(String.class)
+          .defaultIfEmpty("")
+          .flatMap(body -> reactor.core.publisher.Mono.error(
+            new IllegalStateException("keycloak_role_create_failed: " + roleName + ": " + body)
+          ));
+      })
       .block(Duration.ofSeconds(10));
   }
 

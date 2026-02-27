@@ -119,17 +119,11 @@ public class LocatarioService {
       keycloakId = jwtAuth.getToken().getSubject();
       preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");
     }
-    boolean isMaster = authentication.getAuthorities().stream()
-      .anyMatch(a -> a.getAuthority().equals("ROLE_MASTER"));
-    boolean isGlobalMaster = isMaster
-      && ((preferredUsername != null && preferredUsername.equalsIgnoreCase("master"))
-        || "master".equalsIgnoreCase(keycloakId));
+    boolean isGlobalMaster = (preferredUsername != null && preferredUsername.equalsIgnoreCase("master"))
+      || "master".equalsIgnoreCase(keycloakId)
+      || authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_MASTER"));
     if (isGlobalMaster) {
       return repository.findAll().stream().map(LocatarioMapper::toResponse).toList();
-    }
-    if (preferredUsername != null && preferredUsername.equalsIgnoreCase("master")) {
-      return repository.findById(1L).stream()
-        .map(LocatarioMapper::toResponse).toList();
     }
     java.util.List<Long> allowedIds = usuarioLocatarioAcessoRepository.findLocatarioIdsByUsuarioId(keycloakId);
     if (allowedIds.isEmpty()) {

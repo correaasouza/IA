@@ -57,9 +57,12 @@ public class TenantUnitMirrorService {
       mirror.setNome(normalizeName(officialUnit.getDescricao(), mirror.getSigla()));
       mirror.setFatorParaOficial(BigDecimal.ONE.setScale(UnitConversionService.FACTOR_SCALE, java.math.RoundingMode.HALF_UP));
       mirror.setSystemMirror(true);
+      mirror.setPadrao(false);
       tenantUnitRepository.save(mirror);
       created += 1;
     }
+
+    ensureDefaultUnitForTenant(tenantId);
 
     if (created > 0) {
       log.info("tenant_unit mirror seed: tenant={} created={} officialUnits={}", tenantId, created, officialUnits.size());
@@ -134,5 +137,22 @@ public class TenantUnitMirrorService {
       normalized = normalized.substring(0, 160);
     }
     return normalized;
+  }
+
+  private void ensureDefaultUnitForTenant(Long tenantId) {
+    if (tenantUnitRepository.existsByTenantIdAndPadraoTrue(tenantId)) {
+      return;
+    }
+
+    TenantUnit selected = tenantUnitRepository.findByTenantIdAndSiglaIgnoreCase(tenantId, "UN").orElse(null);
+    if (selected == null) {
+      selected = tenantUnitRepository.findAllByTenantIdOrderBySiglaAsc(tenantId).stream().findFirst().orElse(null);
+    }
+    if (selected == null) {
+      return;
+    }
+
+    selected.setPadrao(true);
+    tenantUnitRepository.save(selected);
   }
 }

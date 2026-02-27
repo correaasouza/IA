@@ -76,6 +76,7 @@ export class AppComponent {
   loadingEmpresaContext = false;
   private loadingDefaultEmpresaId = 0;
   private currentTenantId = '';
+  private securityTenantId = '';
   private readonly shortcutRemoving = new Set<string>();
   private readonly shortcutCreating = new Set<string>();
   menuMode: 'operacao' | 'configuracao' = 'operacao';
@@ -120,6 +121,13 @@ export class AppComponent {
     this.loadShortcuts();
     this.loadMe();
     this.refreshEmpresaContextIfNeeded();
+    this.accessControl.changes$.subscribe(() => {
+      if (this.isSelectionRoute) {
+        return;
+      }
+      this.refreshMenu();
+      this.rebuildShortcutsTop();
+    });
 
     this.breakpoint.observe(['(max-width: 900px)']).subscribe(result => {
       this.isMobile = result.matches;
@@ -135,6 +143,7 @@ export class AppComponent {
         this.sidebarOpen = false;
       }
       if (!this.isSelectionRoute && localStorage.getItem('tenantId')) {
+        this.reloadSecurityContextIfNeeded();
         this.refreshMenu();
         this.loadShortcuts();
         this.refreshEmpresaContextIfNeeded();
@@ -354,10 +363,15 @@ export class AppComponent {
         this.permissions = data?.permissions || [];
         this.tenantRoles = data?.tenantRoles || [];
         this.storeFeatureFlags(data?.features);
-        localStorage.setItem('tenantRoles', JSON.stringify(this.tenantRoles));
+        localStorage.removeItem('tenantRoles');
         const apiTenantId = data?.tenantId ? String(data.tenantId) : '';
         if (apiTenantId && !localStorage.getItem('tenantId')) {
           localStorage.setItem('tenantId', apiTenantId);
+        }
+        const tenantStorageId = (localStorage.getItem('tenantId') || apiTenantId || '').trim();
+        if (tenantStorageId) {
+          localStorage.setItem(this.tenantRolesStorageKey(tenantStorageId), JSON.stringify(this.tenantRoles));
+          this.securityTenantId = tenantStorageId;
         }
         this.accessControl.refreshPolicies();
         this.setUserIdentity(data);
@@ -379,6 +393,18 @@ export class AppComponent {
         this.storeFeatureFlags({});
       }
     });
+  }
+
+  private reloadSecurityContextIfNeeded(): void {
+    const tenantId = this.getTenantId();
+    if (!tenantId) {
+      this.securityTenantId = '';
+      return;
+    }
+    if (this.securityTenantId === tenantId) {
+      return;
+    }
+    this.loadMe();
   }
 
   refreshMenu() {
@@ -628,6 +654,10 @@ export class AppComponent {
 
   private getTenantId(): string {
     return (localStorage.getItem('tenantId') || '').trim();
+  }
+
+  private tenantRolesStorageKey(tenantId: string): string {
+    return `tenantRoles:${tenantId}`;
   }
 
   private isMasterTenantContext(): boolean {

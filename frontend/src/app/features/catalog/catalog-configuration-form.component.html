@@ -7,7 +7,7 @@
         class="catalog-tab-btn app-tab-btn"
         [ngClass]="isTabActive('GROUP_CONFIG') ? 'catalog-tab-active app-tab-active' : ''"
         (click)="setTab('GROUP_CONFIG')">
-        Configuracoes por Grupo de Empresas
+        Configuracoes por Empresa
       </button>
       <button
         mat-stroked-button
@@ -38,8 +38,8 @@
 
   <div class="catalog-step-content" *ngIf="isTabActive('GROUP_CONFIG')">
     <app-config-section-shell
-      [title]="'Configuracoes por Grupo de Empresas - ' + typeLabel()"
-      subtitle="Configuracao por grupo de empresas."
+      [title]="'Configuracoes por Empresa - ' + typeLabel()"
+      subtitle="Configuracao por empresa."
       [hasActions]="true">
       <div shell-actions>
         <span class="inline-flex items-center rounded-full border border-[var(--border-light)] bg-[var(--surface-muted)] px-2 py-0.5 text-xs text-[var(--muted-strong)]">

@@ -39,7 +39,7 @@ export class TenantUnitsListComponent implements OnInit {
   reconciling = false;
   mobileFiltersOpen = false;
   isMobile = false;
-  displayedColumns = ['sigla', 'nome', 'oficial', 'fator', 'mirror', 'acoes'];
+  displayedColumns = ['sigla', 'nome', 'oficial', 'fator', 'padrao', 'mirror', 'acoes'];
 
   filters = this.fb.group({
     text: ['']
@@ -142,4 +142,3 @@ export class TenantUnitsListComponent implements OnInit {
     this.isMobile = typeof window !== 'undefined' ? window.innerWidth < 900 : false;
   }
 }
-

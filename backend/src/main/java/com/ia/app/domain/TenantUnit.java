@@ -35,6 +35,9 @@ public class TenantUnit extends AuditableEntity {
   @Column(name = "system_mirror", nullable = false)
   private boolean systemMirror = false;
 
+  @Column(name = "padrao", nullable = false)
+  private boolean padrao = false;
+
   public UUID getId() {
     return id;
   }
@@ -85,5 +88,13 @@ public class TenantUnit extends AuditableEntity {
 
   public void setSystemMirror(boolean systemMirror) {
     this.systemMirror = systemMirror;
+  }
+
+  public boolean isPadrao() {
+    return padrao;
+  }
+
+  public void setPadrao(boolean padrao) {
+    this.padrao = padrao;
   }
 }

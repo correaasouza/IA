@@ -39,12 +39,14 @@ export class UsuarioPapeisDialogComponent implements OnInit {
         this.papeis = papeis || [];
         const ids = user?.papelIds || [];
         this.selected = new Set<number>(ids);
+        this.enforceMasterRoleConstraint();
       }
     });
   }
 
   onChange(options: MatListOption[]) {
     this.selected = new Set(options.map(o => o.value as number));
+    this.enforceMasterRoleConstraint();
   }
 
   save() {
@@ -57,6 +59,33 @@ export class UsuarioPapeisDialogComponent implements OnInit {
 
   close() {
     this.dialogRef.close(false);
+  }
+
+  isMasterRoleDisabled(papel: Papel): boolean {
+    return this.isMasterRole(papel.nome) && !this.isMasterUsername();
+  }
+
+  private enforceMasterRoleConstraint(): void {
+    if (this.isMasterUsername()) {
+      return;
+    }
+    const forbiddenIds = new Set(
+      this.papeis
+        .filter(papel => this.isMasterRole(papel?.nome || ''))
+        .map(papel => papel.id)
+    );
+    if (!forbiddenIds.size) {
+      return;
+    }
+    this.selected = new Set(Array.from(this.selected).filter(id => !forbiddenIds.has(id)));
+  }
+
+  private isMasterRole(roleName: string): boolean {
+    return (roleName || '').trim().toUpperCase() === 'MASTER';
+  }
+
+  private isMasterUsername(): boolean {
+    return (this.data?.username || '').trim().toLowerCase() === 'master';
   }
 }
 

@@ -114,8 +114,13 @@ export class AccessControlService {
   private currentRoles(): string[] {
     const tokenRoles = this.normalize(this.auth.getUserRoles() || []);
     let tenantRoles: string[] = [];
+    const tenantId = (localStorage.getItem('tenantId') || '').trim();
+    if (!tenantId) {
+      return tokenRoles;
+    }
+    const tenantKey = `tenantRoles:${tenantId}`;
     try {
-      const raw = localStorage.getItem('tenantRoles');
+      const raw = localStorage.getItem(tenantKey);
       tenantRoles = raw ? JSON.parse(raw) : [];
     } catch {
       tenantRoles = [];
@@ -133,8 +138,23 @@ export class AccessControlService {
 
   private normalize(values: string[]): string[] {
     return Array.from(new Set((values || [])
-      .map(v => (v || '').trim().toUpperCase())
+      .map(v => this.normalizeRole(v || ''))
       .filter(v => v.length > 0)));
+  }
+
+  private normalizeRole(value: string): string {
+    let role = (value || '').trim().toUpperCase();
+    if (!role) {
+      return '';
+    }
+    const sepIdx = role.lastIndexOf(':');
+    if (sepIdx >= 0 && sepIdx < role.length - 1) {
+      role = role.substring(sepIdx + 1);
+    }
+    if (role.startsWith('ROLE_')) {
+      role = role.substring(5);
+    }
+    return role;
   }
 
   private forcedRoles(controlKey: string): string[] | null {

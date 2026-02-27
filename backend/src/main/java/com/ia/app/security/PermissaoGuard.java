@@ -23,6 +23,9 @@ public class PermissaoGuard {
     if (auth == null || !auth.isAuthenticated()) {
       return false;
     }
+    if (isGlobalMaster(auth)) {
+      return true;
+    }
     if (hasAuthority(auth, "ROLE_MASTER") || hasAuthority(auth, "ROLE_ADMIN")) {
       return true;
     }
@@ -46,6 +49,18 @@ public class PermissaoGuard {
       if (role.equals(authority.getAuthority())) return true;
     }
     return false;
+  }
+
+  private boolean isGlobalMaster(Authentication auth) {
+    if (hasAuthority(auth, "ROLE_MASTER")) {
+      return true;
+    }
+    if (auth instanceof JwtAuthenticationToken jwtAuth) {
+      String preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");
+      return preferredUsername != null && preferredUsername.equalsIgnoreCase("master");
+    }
+    String name = auth.getName();
+    return name != null && name.equalsIgnoreCase("master");
   }
 }
 

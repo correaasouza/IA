@@ -80,7 +80,7 @@ public class MeController {
       }
       Set<String> permissoes = tenant == null ? Set.of() : permissaoUsuarioService.permissoes(tenant, jwt.getSubject());
       List<String> papeis = tenant == null ? List.of() : permissaoUsuarioService.papeis(tenant, jwt.getSubject());
-      if (tenant != null && tenant == 1L && "master".equalsIgnoreCase(username)) {
+      if ("master".equalsIgnoreCase(username)) {
         java.util.LinkedHashSet<String> boosted = new java.util.LinkedHashSet<>(papeis);
         boosted.add("MASTER");
         boosted.add("ADMIN");

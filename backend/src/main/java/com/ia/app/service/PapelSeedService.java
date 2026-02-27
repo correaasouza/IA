@@ -29,6 +29,16 @@ public class PapelSeedService {
         return papelRepository.save(p);
       });
 
+    papelRepository.findByTenantIdAndNome(tenantId, "USER")
+      .orElseGet(() -> {
+        Papel p = new Papel();
+        p.setTenantId(tenantId);
+        p.setNome("USER");
+        p.setDescricao("Usuario padrao do locatario");
+        p.setAtivo(true);
+        return papelRepository.save(p);
+      });
+
     papelRepository.findByTenantIdAndNome(tenantId, "MASTER")
       .orElseGet(() -> {
         Papel p = new Papel();

@@ -13,5 +13,6 @@ public record TenantUnitResponse(
   String sigla,
   String nome,
   BigDecimal fatorParaOficial,
-  boolean systemMirror
+  boolean systemMirror,
+  boolean padrao
 ) {}

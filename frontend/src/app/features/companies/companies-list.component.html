@@ -37,22 +37,20 @@
           (searchChange)="onSearchChange($event)">
         </app-field-search>
       </div>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Tipo</mat-label>
-        <mat-select formControlName="tipo" (selectionChange)="applyFilters()">
-          <mat-option value="">Todos</mat-option>
-          <mat-option value="MATRIZ">Matriz</mat-option>
-          <mat-option value="FILIAL">Filial</mat-option>
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline" subscriptSizing="dynamic">
-        <mat-label>Status</mat-label>
-        <mat-select formControlName="status" (selectionChange)="applyFilters()">
-          <mat-option value="">Todos</mat-option>
-          <mat-option value="ativo">Ativo</mat-option>
-          <mat-option value="inativo">Inativo</mat-option>
-        </mat-select>
-      </mat-form-field>
+      <div class="status-search-like">
+        <select class="status-native-select" formControlName="tipo" (change)="applyFilters()" aria-label="Tipo">
+          <option value="">Tipo: Todos</option>
+          <option value="MATRIZ">Tipo: Matriz</option>
+          <option value="FILIAL">Tipo: Filial</option>
+        </select>
+      </div>
+      <div class="status-search-like">
+        <select class="status-native-select" formControlName="status" (change)="applyFilters()" aria-label="Status">
+          <option value="">Status: Todos</option>
+          <option value="ativo">Status: Ativo</option>
+          <option value="inativo">Status: Inativo</option>
+        </select>
+      </div>
       <div class="flex items-center justify-end gap-2">
         <button mat-stroked-button type="button" (click)="clearFilters()">
           Limpar

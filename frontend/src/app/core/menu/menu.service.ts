@@ -112,6 +112,15 @@ export class MenuService {
       icon: 'settings',
       children: [
         {
+          id: 'companies-access',
+          label: 'Acessos',
+          route: '/companies',
+          accessKey: 'menu.companies',
+          icon: 'apartment',
+          roles: ['MASTER', 'ADMIN'],
+          perms: ['ENTIDADE_EDIT', 'RELATORIO_VIEW']
+        },
+        {
           id: 'catalog-config',
           label: 'Catálogo',
           route: '/catalog/configuration',

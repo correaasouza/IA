@@ -2,7 +2,7 @@
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { RouterLink } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -15,6 +15,15 @@ import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { CompanyService, EmpresaResponse } from './company.service';
 import { CompanyContextService } from './company-context.service';
+import { normalizeCpfCnpj } from '../../shared/cpf-cnpj.validator';
+
+function cnpjFlexibleValidator(control: AbstractControl): ValidationErrors | null {
+  const value = (control.value || '').toString().trim();
+  if (!value) {
+    return null;
+  }
+  return normalizeCpfCnpj(value).length === 14 ? null : { pattern: true };
+}
 
 @Component({
   selector: 'app-company-form',
@@ -48,7 +57,7 @@ export class CompanyFormComponent implements OnInit {
     matrizId: [null as number | null],
     razaoSocial: ['', Validators.required],
     nomeFantasia: [''],
-    cnpj: ['', [Validators.required, Validators.pattern(/^\d{14}$/)]],
+    cnpj: ['', [Validators.required, cnpjFlexibleValidator]],
     ativo: [true, Validators.required],
     empresaPadrao: [false]
   });
@@ -133,7 +142,7 @@ export class CompanyFormComponent implements OnInit {
     const body = {
       razaoSocial: this.form.value.razaoSocial!,
       nomeFantasia: this.form.value.nomeFantasia || undefined,
-      cnpj: this.form.value.cnpj!,
+      cnpj: normalizeCpfCnpj(this.form.value.cnpj || ''),
       ativo: !!this.form.value.ativo
     };
 
