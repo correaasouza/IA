@@ -9,6 +9,7 @@
 }
 
 :root {
+  --control-h: 36px;
   --app-sidenav-width: 260px;
   --bg: #edf2f7;
   --surface: #ffffff;
@@ -113,7 +114,9 @@ body {
   --mdc-typography-body2-line-height: 16px;
 }
 
-:focus-visible {
+a:focus-visible,
+button:focus-visible,
+[role='button']:focus-visible {
   outline: 2px solid rgba(30, 58, 138, 0.45);
   outline-offset: 2px;
 }
@@ -121,10 +124,7 @@ body {
 .mat-mdc-button:focus-visible,
 .mat-mdc-outlined-button:focus-visible,
 .mat-mdc-unelevated-button:focus-visible,
-.mat-mdc-icon-button:focus-visible,
-.mat-mdc-form-field input:focus-visible,
-.mat-mdc-form-field textarea:focus-visible,
-.mat-mdc-select:focus-visible {
+.mat-mdc-icon-button:focus-visible {
   outline: 2px solid rgba(29, 78, 216, 0.5);
   outline-offset: 2px;
 }
@@ -376,90 +376,149 @@ body {
 
 .mat-mdc-form-field {
   width: 100%;
-  --mdc-outlined-text-field-container-height: 30px;
-  --mdc-filled-text-field-container-height: 30px;
+  --mat-form-field-container-height: var(--control-h);
+  --mat-form-field-container-vertical-padding: 6px;
+  --mdc-outlined-text-field-container-height: var(--control-h);
+  --mdc-filled-text-field-container-height: var(--control-h);
+}
+
+.mat-mdc-form-field .mat-mdc-text-field-wrapper {
+  min-height: var(--control-h);
+  height: var(--control-h);
 }
 
 .mat-mdc-form-field-infix {
   padding-top: 1px;
   padding-bottom: 1px;
-  min-height: 22px;
+  min-height: 20px;
+}
+
+.mat-mdc-form-field .mat-mdc-input-element:focus-visible,
+.mat-mdc-form-field textarea.mat-mdc-input-element:focus-visible,
+.mat-mdc-form-field .mat-mdc-select-trigger:focus-visible,
+.mat-mdc-form-field .mat-mdc-select:focus-visible {
+  outline: none !important;
+}
+
+.mat-mdc-form-field.mat-focused .mdc-notched-outline__leading,
+.mat-mdc-form-field.mat-focused .mdc-notched-outline__notch,
+.mat-mdc-form-field.mat-focused .mdc-notched-outline__trailing {
+  border-color: #7ea3d6 !important;
+  border-width: 1px !important;
+}
+
+.mat-mdc-form-field.mat-focused .mat-mdc-form-field-focus-overlay {
+  opacity: 0 !important;
 }
 
 /* Compact density for ERP record pages (fichas). */
 :where(.page-form-shell, .erp-form-dialog-dense) {
-  --erp-form-field-height: 26px;
+  --erp-form-field-height: 36px;
   --erp-form-row-gap: 2px;
   --erp-form-col-gap: 4px;
+  --mat-form-field-container-height: var(--erp-form-field-height);
+  --mat-form-field-container-vertical-padding: 6px;
   --mdc-outlined-text-field-container-height: var(--erp-form-field-height);
   --mdc-filled-text-field-container-height: var(--erp-form-field-height);
+  --filter-h: 36px;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) form:not([role='search']) {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
   row-gap: var(--erp-form-row-gap) !important;
   column-gap: var(--erp-form-col-gap) !important;
 }
 
+@media (min-width: 640px) {
+  :where(.page-form-shell, .erp-form-dialog-dense) form:not([role='search']) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 900px) {
+  :where(.page-form-shell, .erp-form-dialog-dense) form:not([role='search']) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1200px) {
+  :where(.page-form-shell, .erp-form-dialog-dense) form:not([role='search']) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1600px) {
+  :where(.page-form-shell, .erp-form-dialog-dense) form:not([role='search']) {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
 :where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-text-field-wrapper {
-  min-height: var(--erp-form-field-height);
+  min-height: var(--erp-form-field-height) !important;
+  height: var(--erp-form-field-height) !important;
   padding-left: 3px;
   padding-right: 3px;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-form-field-infix {
-  min-height: 16px;
-  padding-top: 0;
-  padding-bottom: 0;
+  min-height: 20px !important;
+  height: 20px !important;
+  padding-top: 1px;
+  padding-bottom: 1px;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-input-element,
 :where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-select-trigger {
-  font-size: 10.5px;
-  line-height: 1.25;
+  font-size: 11.5px;
+  line-height: 1.35;
+  min-height: 20px !important;
+}
+
+:where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-form-field {
+  --mat-form-field-container-height: var(--erp-form-field-height) !important;
+  --mdc-outlined-text-field-container-height: var(--erp-form-field-height) !important;
+  --mdc-filled-text-field-container-height: var(--erp-form-field-height) !important;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-form-field-subscript-wrapper {
   padding: 0 2px;
-  min-height: 10px;
+  min-height: 12px;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) .mdc-floating-label,
 :where(.page-form-shell, .erp-form-dialog-dense) .mat-mdc-floating-label {
-  font-size: 11px;
+  font-size: 11.5px;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) .status-search-like {
-  min-height: 30px;
+  min-height: 36px;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) .status-native-select {
-  height: 30px;
-  border-radius: 7px;
+  height: 36px;
+  border-radius: 9px;
   background: #ffffff;
-  font-size: 10.5px;
-  padding: 0 28px 0 8px;
+  font-size: 11.5px;
+  padding: 0 30px 0 10px;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense) .item-toggle-box {
-  min-height: 30px;
+  min-height: 36px;
 }
 
-@media (min-width: 1024px) {
-  :where(.page-form-shell, .erp-form-dialog-dense) {
-    --erp-form-field-height: 24px;
-    --erp-form-row-gap: 2px;
-    --erp-form-col-gap: 4px;
-  }
+:where(.page-form-shell, .erp-form-dialog-dense) .field-search-shell {
+  --field-search-h: 36px;
 }
 
 .filters,
 .filter-bar {
-  --mdc-outlined-text-field-container-height: 36px;
-  --mdc-filled-text-field-container-height: 36px;
+  --mdc-outlined-text-field-container-height: var(--control-h);
+  --mdc-filled-text-field-container-height: var(--control-h);
 }
 
 :where(form[role='search'], .filters, .filter-bar, .filters-row) {
-  --filter-h: 36px;
+  --filter-h: var(--control-h);
   --mdc-outlined-text-field-container-height: var(--filter-h);
   --mdc-filled-text-field-container-height: var(--filter-h);
   gap: 6px;
@@ -772,14 +831,14 @@ mat-icon {
 
 /* Force compact native selects used in forms/filters even when local css sets larger height. */
 :where(.page-form-shell, .erp-form-dialog-dense, form[role='search'], .filters, .filter-bar, .filters-row) .status-search-like {
-  min-height: var(--filter-h, 36px) !important;
+  min-height: var(--filter-h, var(--control-h)) !important;
   display: grid !important;
 }
 
 :where(.page-form-shell, .erp-form-dialog-dense, form[role='search'], .filters, .filter-bar, .filters-row) .status-native-select {
   width: 100% !important;
-  height: var(--filter-h, 36px) !important;
-  min-height: var(--filter-h, 36px) !important;
+  height: var(--filter-h, var(--control-h)) !important;
+  min-height: var(--filter-h, var(--control-h)) !important;
   box-sizing: border-box !important;
   border: 1px solid var(--border) !important;
   border-radius: 9px !important;
@@ -798,6 +857,25 @@ mat-icon {
     calc(100% - 8px) calc(50% - 2px) !important;
   background-size: 5px 5px, 5px 5px !important;
   background-repeat: no-repeat !important;
+}
+
+.status-search-like {
+  min-height: var(--control-h) !important;
+  display: grid !important;
+}
+
+.status-native-select {
+  width: 100% !important;
+  height: var(--control-h) !important;
+  min-height: var(--control-h) !important;
+  box-sizing: border-box !important;
+}
+
+.status-native-select:focus-visible,
+.status-native-select:focus {
+  outline: none !important;
+  border-color: #7ea3d6 !important;
+  box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.16);
 }
 
 .table-sticky-actions {
@@ -949,6 +1027,22 @@ mat-icon {
 .snackbar-info .mdc-snackbar__surface {
   background: #0b3a4a;
   color: #f2fbfc;
+}
+
+.cdk-overlay-container:has(.catalog-history-dialog-panel) {
+  z-index: 900 !important;
+}
+
+.cdk-global-overlay-wrapper:has(.catalog-history-dialog-panel) {
+  z-index: 900 !important;
+}
+
+.cdk-overlay-pane.catalog-history-dialog-panel {
+  z-index: 1 !important;
+}
+
+.cdk-overlay-backdrop.catalog-history-dialog-backdrop {
+  z-index: 899 !important;
 }
 
 .acl-config-trigger {

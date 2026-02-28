@@ -51,8 +51,6 @@ describe('CatalogItemHistoryDialogComponent', () => {
     component.ledgerFilters.patchValue({
       origemTipo: 'MOVIMENTO_ESTOQUE',
       origemCodigo: 'MV-123',
-      origemId: '77',
-      movimentoTipo: 'ENTRADA',
       usuario: 'joao',
       fromDate: '01/02/2026',
       toDate: '28/02/2026'
@@ -63,8 +61,6 @@ describe('CatalogItemHistoryDialogComponent', () => {
     const params = stockService.getLedger.calls.mostRecent().args[2]!;
     expect(params.origemTipo).toBe('MOVIMENTO_ESTOQUE');
     expect(params.origemCodigo).toBe('MV-123');
-    expect(params.origemId).toBe(77);
-    expect(params.movimentoTipo).toBe('ENTRADA');
     expect(params.usuario).toBe('joao');
     expect(params.fromDate).toBe('2026-02-01');
     expect(params.toDate).toBe('2026-02-28');
@@ -72,22 +68,14 @@ describe('CatalogItemHistoryDialogComponent', () => {
   });
 
   it('should apply price history filters', () => {
-    component.priceFilters.patchValue({
-      sourceType: 'SALE_PRICE',
-      priceType: 'SALE_BASE',
-      priceBookId: '5',
-      text: 'padrao',
+    component.ledgerFilters.patchValue({
       fromDate: '01/02/2026',
       toDate: '28/02/2026'
     });
 
-    component.applyPriceFilters();
+    component.applyLedgerFilters();
 
     const params = pricingService.getPriceHistory.calls.mostRecent().args[2]!;
-    expect(params.sourceType).toBe('SALE_PRICE');
-    expect(params.priceType).toBe('SALE_BASE');
-    expect(params.priceBookId).toBe(5);
-    expect(params.text).toBe('padrao');
     expect(params.fromDate).toBe('2026-02-01');
     expect(params.toDate).toBe('2026-02-28');
     expect(typeof params.tzOffsetMinutes).toBe('number');

@@ -49,6 +49,40 @@ public class ApiExceptionHandler {
       pd.setDetail("Definicao de workflow nao encontrada.");
     } else if (message.startsWith("workflow_instance_not_found")) {
       pd.setDetail("Instancia de workflow nao encontrada para o registro informado.");
+    } else if (message.startsWith("entidade_tratamento_not_found")) {
+      pd.setDetail("Tratamento da entidade nao encontrado no locatario atual.");
+    } else if (message.startsWith("entidade_documentacao_not_found")) {
+      pd.setDetail("Documentacao da entidade nao encontrada.");
+    } else if (message.startsWith("entidade_endereco_not_found")) {
+      pd.setDetail("Endereco da entidade nao encontrado.");
+    } else if (message.startsWith("entidade_contato_not_found")) {
+      pd.setDetail("Contato da entidade nao encontrado.");
+    } else if (message.startsWith("entidade_contato_forma_not_found")) {
+      pd.setDetail("Forma de contato nao encontrada.");
+    } else if (message.startsWith("entidade_familiar_not_found")) {
+      pd.setDetail("Vinculo familiar nao encontrado.");
+    } else if (message.startsWith("entidade_info_comercial_not_found")) {
+      pd.setDetail("Informacoes comerciais nao encontradas.");
+    } else if (message.startsWith("entidade_dados_fiscais_not_found")) {
+      pd.setDetail("Dados fiscais nao encontrados.");
+    } else if (message.startsWith("entidade_contrato_rh_not_found")) {
+      pd.setDetail("Contrato RH nao encontrado.");
+    } else if (message.startsWith("entidade_info_rh_not_found")) {
+      pd.setDetail("Informacoes RH nao encontradas.");
+    } else if (message.startsWith("entidade_referencia_not_found")) {
+      pd.setDetail("Referencia RH nao encontrada.");
+    } else if (message.startsWith("entidade_qualificacao_not_found")) {
+      pd.setDetail("Qualificacao RH nao encontrada.");
+    } else if (message.startsWith("entidade_rh_tipo_funcionario_not_found")) {
+      pd.setDetail("Tipo de funcionario RH nao encontrado.");
+    } else if (message.startsWith("entidade_rh_situacao_funcionario_not_found")) {
+      pd.setDetail("Situacao de funcionario RH nao encontrada.");
+    } else if (message.startsWith("entidade_rh_setor_not_found")) {
+      pd.setDetail("Setor RH nao encontrado.");
+    } else if (message.startsWith("entidade_rh_cargo_not_found")) {
+      pd.setDetail("Cargo RH nao encontrado.");
+    } else if (message.startsWith("entidade_rh_ocupacao_not_found")) {
+      pd.setDetail("Ocupacao/atividade RH nao encontrada.");
     } else {
       pd.setDetail(ex.getMessage());
     }
@@ -121,6 +155,10 @@ public class ApiExceptionHandler {
       pd.setDetail("Tipos de entidade padrao nao podem ser inativados.");
     } else if (message.startsWith("tipo_entidade_config_duplicada_agrupador")) {
       pd.setDetail("Ja existe configuracao ativa para este agrupador neste tipo de entidade.");
+    } else if (message.startsWith("entidade_form_group_key_required")) {
+      pd.setDetail("Informe a chave do grupo na configuracao da ficha.");
+    } else if (message.startsWith("entidade_form_field_key_required")) {
+      pd.setDetail("Informe a chave do campo na configuracao da ficha.");
     } else if (message.startsWith("empresa_context_required")) {
       pd.setDetail("Selecione uma empresa no sistema para continuar.");
     } else if (message.startsWith("empresa_sem_grupo_no_tipo_entidade")) {
@@ -129,6 +167,72 @@ public class ApiExceptionHandler {
       pd.setDetail("Ja existe entidade com este codigo na configuracao atual.");
     } else if (message.startsWith("pessoa_registro_federal_duplicado")) {
       pd.setDetail("Ja existe pessoa com este documento neste locatario.");
+    } else if (message.startsWith("entidade_codigo_barras_duplicado_empresa")) {
+      pd.setDetail("Ja existe entidade com este codigo de barras na empresa atual.");
+    } else if (message.startsWith("registro_entidade_field_too_long")) {
+      pd.setDetail("Um ou mais campos de texto excederam o tamanho maximo permitido.");
+    } else if (message.startsWith("entidade_documentacao_tipo_registro_required")) {
+      pd.setDetail("Informe o tipo de registro federal da documentacao.");
+    } else if (message.startsWith("entidade_documentacao_tipo_registro_invalid")) {
+      pd.setDetail("Tipo de registro federal invalido.");
+    } else if (message.startsWith("entidade_documentacao_registro_federal_required")) {
+      pd.setDetail("Informe o registro federal da documentacao.");
+    } else if (message.startsWith("entidade_documentacao_registro_federal_invalid")) {
+      pd.setDetail("Registro federal da documentacao invalido.");
+    } else if (message.startsWith("entidade_documentacao_motivo_nif_invalid")) {
+      pd.setDetail("Motivo de nao NIF invalido.");
+    } else if (message.startsWith("entidade_endereco_tipo_required")) {
+      pd.setDetail("Informe o tipo do endereco.");
+    } else if (message.startsWith("entidade_endereco_tipo_invalid")) {
+      pd.setDetail("Tipo do endereco invalido.");
+    } else if (message.startsWith("entidade_endereco_cep_invalid")) {
+      pd.setDetail("CEP invalido. Informe 8 digitos.");
+    } else if (message.startsWith("entidade_endereco_uf_invalid")) {
+      pd.setDetail("UF invalida. Informe 2 letras.");
+    } else if (message.startsWith("entidade_field_too_long")) {
+      pd.setDetail("Um ou mais campos excederam o tamanho maximo permitido.");
+    } else if (message.startsWith("entidade_contato_forma_tipo_required")) {
+      pd.setDetail("Informe o tipo da forma de contato.");
+    } else if (message.startsWith("entidade_contato_forma_tipo_invalid")) {
+      pd.setDetail("Tipo da forma de contato invalido.");
+    } else if (message.startsWith("entidade_contato_forma_valor_required")) {
+      pd.setDetail("Informe o valor da forma de contato.");
+    } else if (message.startsWith("entidade_contato_forma_email_invalid")) {
+      pd.setDetail("E-mail da forma de contato invalido.");
+    } else if (message.startsWith("entidade_contato_forma_telefone_invalid")) {
+      pd.setDetail("Telefone da forma de contato invalido.");
+    } else if (message.startsWith("entidade_familiar_parente_required")) {
+      pd.setDetail("Informe a entidade parente no vinculo familiar.");
+    } else if (message.startsWith("entidade_familiar_parente_self")) {
+      pd.setDetail("A entidade nao pode ser vinculada como familiar dela mesma.");
+    } else if (message.startsWith("entidade_familiar_parentesco_required")) {
+      pd.setDetail("Informe o parentesco.");
+    } else if (message.startsWith("entidade_familiar_parentesco_invalid")) {
+      pd.setDetail("Parentesco invalido.");
+    } else if (message.startsWith("entidade_info_comercial_periodo_invalid")) {
+      pd.setDetail("Periodo comercial invalido: data inicial maior que data final.");
+    } else if (message.startsWith("faturamento_frequencia_not_found")) {
+      pd.setDetail("Frequencia de cobranca nao encontrada.");
+    } else if (message.startsWith("entidade_info_comercial_juro_invalid")) {
+      pd.setDetail("Juro padrao invalido. Use percentual entre 0 e 100.");
+    } else if (message.startsWith("entidade_dados_fiscais_flag_invalid")) {
+      pd.setDetail("Valor fiscal invalido. Use 0, 1 ou 2.");
+    } else if (message.startsWith("entidade_rh_valor_invalid")) {
+      pd.setDetail("Valor monetario RH invalido.");
+    } else if (message.startsWith("entidade_rh_percentual_invalid")) {
+      pd.setDetail("Percentual RH invalido. Use intervalo 0 a 100.");
+    } else if (message.startsWith("entidade_rh_meta_horas_invalid")) {
+      pd.setDetail("Meta de horas vendidas por dia invalida.");
+    } else if (message.startsWith("entidade_rh_meta_produtos_invalid")) {
+      pd.setDetail("Meta de produtos vendidos invalida.");
+    } else if (message.startsWith("entidade_referencia_nome_required")) {
+      pd.setDetail("Informe o nome da referencia.");
+    } else if (message.startsWith("entidade_referencia_periodo_invalid")) {
+      pd.setDetail("Periodo da referencia invalido.");
+    } else if (message.startsWith("entidade_qualificacao_rh_required")) {
+      pd.setDetail("Informe a qualificacao RH.");
+    } else if (message.startsWith("entidade_qualificacao_rh_not_found")) {
+      pd.setDetail("Qualificacao RH nao encontrada.");
     } else if (message.startsWith("grupo_entidade_nome_duplicado_mesmo_pai")) {
       pd.setDetail("Ja existe grupo com este nome no mesmo nivel.");
     } else if (message.startsWith("grupo_entidade_possui_entidades")) {
@@ -584,6 +688,12 @@ public class ApiExceptionHandler {
       pd.setDetail("Execucao de acao de workflow duplicada (idempotencia).");
     } else if (normalized.contains("ux_mov_item_tenant_mov_chave")) {
       pd.setDetail("Item ja possui movimentacao de estoque com esta chave de idempotencia.");
+    } else if (normalized.contains("ux_ent_contato_forma_preferencial_tipo")) {
+      pd.setDetail("Ja existe forma preferencial para este tipo de contato.");
+    } else if (normalized.contains("ux_ent_familiar_scope_unique")) {
+      pd.setDetail("Vinculo familiar duplicado para a mesma entidade e parentesco.");
+    } else if (normalized.contains("ux_ent_qualificacao_scope_unique")) {
+      pd.setDetail("Qualificacao RH duplicada para a entidade.");
     } else {
       pd.setDetail("Operacao violou uma restricao de integridade.");
     }
@@ -635,6 +745,7 @@ public class ApiExceptionHandler {
       || message.startsWith("empresa_context_required")
       || message.startsWith("empresa_sem_grupo_no_tipo_entidade")
       || message.startsWith("entidade_codigo_duplicado_configuracao")
+      || message.startsWith("entidade_codigo_barras_duplicado_empresa")
       || message.startsWith("pessoa_registro_federal_duplicado")
       || message.startsWith("grupo_entidade_nome_duplicado_mesmo_pai")
       || message.startsWith("grupo_entidade_possui_entidades")

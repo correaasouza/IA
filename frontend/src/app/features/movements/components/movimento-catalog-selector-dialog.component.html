@@ -23,8 +23,13 @@
             <div class="selector-selected-item-info">
               <div class="selector-selected-item-code">Codigo: {{ selected.codigo }}</div>
               <div class="selector-selected-item-desc-row">
-                <div class="result-title selector-selected-item-name-inline">
-                  {{ selected.nome }}
+                <div class="selector-selected-item-highlight">
+                  <div class="result-title selector-selected-item-name-inline">
+                    {{ selected.nome }}
+                  </div>
+                  <div class="selector-selected-item-description" *ngIf="selected.descricao">
+                    {{ selected.descricao }}
+                  </div>
                 </div>
                 <button
                   mat-stroked-button

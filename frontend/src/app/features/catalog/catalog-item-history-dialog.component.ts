@@ -8,7 +8,7 @@ import { MatTableModule } from '@angular/material/table';
 import { finalize } from 'rxjs/operators';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { DateMaskDirective } from '../../shared/date-mask.directive';
-import { isValidDateInput, toDisplayDate, toIsoDate } from '../../shared/date-utils';
+import { isValidDateInput, toIsoDate } from '../../shared/date-utils';
 import { CatalogCrudType } from './catalog-item.service';
 import {
   CatalogPriceHistoryEntry,
@@ -81,8 +81,6 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
   ledgerFilters = this.fb.group({
     origemTipo: [''],
     origemCodigo: [''],
-    origemId: [''],
-    movimentoTipo: [''],
     usuario: [''],
     metricType: [''],
     estoqueTipoId: [''],
@@ -147,8 +145,6 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     let count = 0;
     if ((value.origemTipo || '').trim()) count++;
     if ((value.origemCodigo || '').trim()) count++;
-    if (`${value.origemId || ''}`.trim()) count++;
-    if ((value.movimentoTipo || '').trim()) count++;
     if ((value.usuario || '').trim()) count++;
     if ((value.metricType || '').trim()) count++;
     if (`${value.estoqueTipoId || ''}`.trim()) count++;
@@ -162,8 +158,6 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     this.ledgerFilters.patchValue({
       origemTipo: '',
       origemCodigo: '',
-      origemId: '',
-      movimentoTipo: '',
       usuario: '',
       metricType: '',
       estoqueTipoId: '',
@@ -178,80 +172,12 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     const value = this.ledgerFilters.value;
     return !!((value.origemTipo || '').trim()
       || (value.origemCodigo || '').trim()
-      || `${value.origemId || ''}`.trim()
-      || (value.movimentoTipo || '').trim()
       || (value.usuario || '').trim()
       || (value.metricType || '').trim()
       || `${value.estoqueTipoId || ''}`.trim()
       || `${value.filialId || ''}`.trim()
       || (value.fromDate || '').trim()
       || (value.toDate || '').trim());
-  }
-
-  activeLedgerFilterChips(): Array<{ key: string; label: string }> {
-    const chips: Array<{ key: string; label: string }> = [];
-    const value = this.ledgerFilters.value;
-
-    const origem = (value.origemTipo || '').trim();
-    if (origem) {
-      chips.push({ key: 'origemTipo', label: `Origem: ${this.originLabel(origem)}` });
-    }
-
-    const origemCodigo = (value.origemCodigo || '').trim();
-    if (origemCodigo) {
-      chips.push({ key: 'origemCodigo', label: `Cod. origem: ${origemCodigo}` });
-    }
-
-    const origemId = this.toPositive((value.origemId || '').trim());
-    if (origemId) {
-      chips.push({ key: 'origemId', label: `Id origem: ${origemId}` });
-    }
-
-    const movimentoTipo = (value.movimentoTipo || '').trim();
-    if (movimentoTipo) {
-      chips.push({ key: 'movimentoTipo', label: `Tipo movimento: ${movimentoTipo}` });
-    }
-
-    const usuario = (value.usuario || '').trim();
-    if (usuario) {
-      chips.push({ key: 'usuario', label: `Usuario: ${usuario}` });
-    }
-
-    const metric = (value.metricType || '').trim();
-    if (metric) {
-      chips.push({ key: 'metricType', label: `Metrica: ${this.metricLabel(metric)}` });
-    }
-
-    const estoqueTipoId = this.toPositive((value.estoqueTipoId || '').trim());
-    if (estoqueTipoId) {
-      const stockType = this.ledgerStockTypeOptions().find(item => item.id === estoqueTipoId);
-      chips.push({ key: 'estoqueTipoId', label: `Estoque: ${stockType?.label || '#' + estoqueTipoId}` });
-    }
-
-    const filialId = this.toPositive((value.filialId || '').trim());
-    if (filialId) {
-      const filial = this.ledgerFilialOptions().find(item => item.id === filialId);
-      chips.push({ key: 'filialId', label: `Filial: ${filial?.label || '#' + filialId}` });
-    }
-
-    const fromDate = (value.fromDate || '').trim();
-    if (fromDate) {
-      chips.push({ key: 'fromDate', label: `De: ${this.formatDateLabel(fromDate)}` });
-    }
-
-    const toDate = (value.toDate || '').trim();
-    if (toDate) {
-      chips.push({ key: 'toDate', label: `Ate: ${this.formatDateLabel(toDate)}` });
-    }
-
-    return chips;
-  }
-
-  clearLedgerFilter(key: string): void {
-    const control = this.ledgerFilters.get(key);
-    if (!control) return;
-    control.setValue('');
-    this.applyLedgerFilters();
   }
 
   setLedgerSortOrder(value: 'RECENT' | 'OLDEST'): void {
@@ -321,15 +247,41 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
     return `${baseLabel} #${idLabel}`;
   }
 
+  originCodeLabel(row: CatalogHistoryLineRow): string {
+    const codigo = `${row?.origemMovimentacaoCodigo || ''}`.trim();
+    if (codigo) {
+      return codigo;
+    }
+    const originId = Number(row?.origemMovimentacaoId || 0);
+    if (originId > 0) {
+      return String(originId);
+    }
+    return '-';
+  }
+
   metricLabel(value: string): string {
     if (value === 'PRECO_TABELA') return 'Historico tabela preco';
     return value === 'PRECO' ? 'Preco' : 'Quantidade';
   }
 
+  movementDirectionLabel(row: CatalogHistoryLineRow): string {
+    const numericDelta = Number(row?.delta);
+    if (Number.isFinite(numericDelta) && numericDelta !== 0) {
+      return numericDelta > 0 ? 'Entrada' : 'Saida';
+    }
+    const raw = `${row?.movimentoTipo || ''}`.trim().toUpperCase();
+    if (raw === 'ENTRADA') return 'Entrada';
+    if (raw === 'SAIDA') return 'Saida';
+    if (raw === 'UNDO') return '-';
+    if (raw === 'TRANSFERENCIA') return 'Transferencia';
+    return '-';
+  }
+
   formatMetricValue(value: number | null, metricType?: CatalogMovementMetricType | '' | null): string {
     if (value === null || value === undefined) return '-';
+    const normalized = Math.abs(Number(value));
     const decimalPlaces = metricType === 'PRECO' ? 2 : 3;
-    return value.toLocaleString('pt-BR', {
+    return normalized.toLocaleString('pt-BR', {
       minimumFractionDigits: decimalPlaces,
       maximumFractionDigits: decimalPlaces
     });
@@ -412,8 +364,6 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
       size: this.ledgerPageSize,
       origemTipo: (filters.origemTipo || '').trim() as CatalogMovementOriginType | '',
       origemCodigo: (filters.origemCodigo || '').trim(),
-      origemId: this.toPositive((filters.origemId || '').trim()),
-      movimentoTipo: (filters.movimentoTipo || '').trim(),
       usuario: (filters.usuario || '').trim(),
       metricType: ledgerMetricType,
       estoqueTipoId: this.toPositive((filters.estoqueTipoId || '').trim()),
@@ -796,14 +746,6 @@ export class CatalogItemHistoryDialogComponent implements OnInit {
 
   private timezoneOffsetMinutes(): number {
     return new Date().getTimezoneOffset();
-  }
-
-  private formatDateLabel(value: string): string {
-    const normalized = (value || '').trim();
-    if (!normalized || !isValidDateInput(normalized)) {
-      return value;
-    }
-    return toDisplayDate(normalized);
   }
 
   private updateViewportMode(): void {

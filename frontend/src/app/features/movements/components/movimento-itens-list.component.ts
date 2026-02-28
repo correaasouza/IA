@@ -259,8 +259,9 @@ export class MovimentoItensListComponent implements OnInit {
     if (!Number.isFinite(parsed)) {
       return fallback;
     }
+    const normalized = Math.abs(parsed);
     const factor = Math.pow(10, scale);
-    return Math.round(parsed * factor) / factor;
+    return Math.round(normalized * factor) / factor;
   }
 
   private updateViewportColumns(): void {

@@ -105,7 +105,10 @@
 - Em telas com padding superior no container, aplicar compensacao no sticky para evitar salto visual.
 - Toda ficha deve ter rotas dedicadas para `novo`, `consultar` e `editar` quando aplicavel.
 - Toda ficha deve usar layout compacto para alta densidade de campos, com wrapper `.page-form-shell`.
-- Campos de formulario em ficha devem priorizar altura reduzida e espacamento curto entre linhas/colunas (evitar blocos muito altos e gaps amplos).
+- Altura padrao de controles de entrada em ficha: `36px` para `input`, `select`, `textarea` (quando aplicavel), `mat-form-field` e `app-field-search`.
+- Em fichas, evitar variacao local de altura (ex.: `24px`, `30px`, `42px`, `52px`); seguir sempre o padrao global de `36px`.
+- Grid responsivo obrigatorio de ficha: desktop grande `6` colunas, reduzindo progressivamente para `4`, `3`, `2` e mobile `1` coluna.
+- Breakpoints de referencia para fichas: `>=1600px: 6`, `>=1200px: 4`, `>=900px: 3`, `>=640px: 2`, `<640px: 1`.
 - Em desktop, formularios de ficha devem priorizar grade com 2 a 4 colunas quando o contexto permitir, preservando legibilidade.
 - Formularios de busca/filtro (`role='search'`) nao entram na regra de densidade da ficha.
 
@@ -114,6 +117,7 @@
 - Em `mat-dialog`, usar card superior unico dentro de `mat-dialog-title` (titulo, metadados e acoes no mesmo bloco).
 - Dialog de ficha segue o mesmo padrao de header das fichas de pagina, incluindo `Nome: <valor atual>` no bloco de metadados.
 - Layout padrao: esquerda com titulo/metadados; direita com acoes primarias (`Cancelar/Voltar` e `Salvar`).
+- Em dialog/modal de ficha, controles de entrada tambem devem seguir `36px` de altura, sem excecoes locais.
 - Em mobile, acoes devem quebrar para duas colunas e depois uma coluna em telas estreitas.
 - `mat-dialog-content` deve iniciar com espacamento que nao corte o primeiro campo.
 - `mat-dialog-actions` so deve existir quando houver necessidade funcional adicional.

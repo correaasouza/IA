@@ -305,8 +305,8 @@ export class MovimentoEstoqueListComponent implements OnInit {
         movimentoItemTipoId: current.movimentoItemTipoId,
         catalogItemId: current.catalogItemId,
         tenantUnitId: current.tenantUnitId || null,
-        quantidade: current.quantidade,
-        valorUnitario: current.valorUnitario,
+        quantidade: Math.abs(Number(current.quantidade || 0)),
+        valorUnitario: Math.abs(Number(current.valorUnitario || 0)),
         ordem: idx,
         observacao: current.observacao || null
       }))

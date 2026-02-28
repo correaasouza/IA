@@ -4,13 +4,27 @@
 }
 
 .dialog-content {
-  max-height: 78vh;
-  overflow: auto;
+  max-height: none !important;
+  height: 100%;
+  overflow: hidden;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 12px;
   background: var(--surface);
-  padding-bottom: 10px;
+  padding-bottom: 0;
   position: relative;
+}
+
+.catalog-history-title {
+  font-size: 15px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.catalog-history-item-name {
+  font-weight: 800;
+  color: #020617;
 }
 
 .history-list-sticky {
@@ -23,27 +37,28 @@
   isolation: isolate;
 }
 
-.catalog-filters-head {
+.catalog-list-header-top {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.catalog-list-header-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
 
-.catalog-filters-head-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.catalog-filters-count {
-  white-space: nowrap;
+.catalog-list-header-filters-row {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
 }
 
 .catalog-ledger-filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 6px;
   margin-bottom: 6px;
 }
@@ -100,48 +115,25 @@
 }
 
 .catalog-ledger-filter-actions {
-  grid-column: 4;
+  grid-column: 6;
   display: flex;
   justify-content: flex-end;
   align-items: flex-end;
 }
 
-.catalog-ledger-filter-chips {
+.catalog-filter-field-date-range {
+  grid-column: span 2;
+}
+
+.catalog-filter-date-range {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
 }
 
-.catalog-ledger-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  color: #1d4ed8;
-  font-size: 11px;
-  line-height: 1.2;
-}
-
-.catalog-ledger-chip-remove {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border: none;
-  background: transparent;
-  color: inherit;
-  padding: 0;
-  cursor: pointer;
-}
-
-.catalog-ledger-chip-remove .mat-icon {
-  width: 14px;
-  height: 14px;
-  font-size: 14px;
+.catalog-filter-date-range .catalog-filter-control {
+  flex: 1 1 0;
+  min-width: 0;
 }
 
 .catalog-stock-error {
@@ -166,6 +158,36 @@
   margin-left: 2px;
 }
 
+:host ::ng-deep .history-table-scroll {
+  position: relative;
+}
+
+.history-table {
+  width: max-content;
+  min-width: 100%;
+  table-layout: auto;
+}
+
+.history-results-scroll {
+  min-height: 0;
+  max-height: 100%;
+  overflow: auto;
+  padding-right: 2px;
+  scrollbar-gutter: stable;
+}
+
+:host ::ng-deep .history-table-scroll .mat-mdc-header-row.mat-mdc-table-sticky {
+  position: sticky;
+  top: 0 !important;
+  z-index: 24;
+  background: var(--surface);
+  box-shadow: 0 1px 0 var(--border-light);
+}
+
+:host ::ng-deep .history-table-scroll .mat-mdc-header-cell {
+  background: var(--surface);
+}
+
 :host ::ng-deep .mat-mdc-header-row {
   height: 40px;
 }
@@ -178,11 +200,24 @@
 :host ::ng-deep .mat-mdc-header-cell {
   padding-top: 4px;
   padding-bottom: 4px;
+  white-space: nowrap;
 }
 
 @media (max-width: 899px) {
+  .catalog-list-header-actions {
+    width: 100%;
+  }
+
+  .catalog-list-header-actions .mat-mdc-button-base {
+    flex: 1 1 auto;
+  }
+
   .catalog-ledger-filters {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .catalog-filter-field-date-range {
+    grid-column: span 3;
   }
 
   .catalog-ledger-filter-actions {
@@ -192,28 +227,29 @@
 }
 
 @media (max-width: 640px) {
-  .catalog-filters-head {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .catalog-filters-head-right {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .catalog-filters-count {
-    white-space: normal;
-    text-align: right;
-    line-height: 1.2;
-  }
-
   .catalog-ledger-filters {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .catalog-filter-field-date-range {
+    grid-column: 1 / -1;
+  }
+
+  .catalog-filter-date-range {
+    display: grid;
     grid-template-columns: minmax(0, 1fr);
   }
 
   :host ::ng-deep .mat-mdc-paginator-container {
     justify-content: flex-start;
     row-gap: 8px;
+  }
+}
+
+@media (min-width: 900px) {
+  .catalog-list-header-top {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
   }
 }

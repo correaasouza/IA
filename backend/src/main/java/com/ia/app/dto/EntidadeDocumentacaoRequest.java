@@ -1,0 +1,39 @@
+package com.ia.app.dto;
+
+import java.time.LocalDate;
+
+public record EntidadeDocumentacaoRequest(
+  String tipoRegistroFederal,
+  String registroFederal,
+  LocalDate registroFederalDataEmissao,
+  String rg,
+  String rgTipo,
+  LocalDate rgDataEmissao,
+  String rgUfEmissao,
+  String registroEstadual,
+  LocalDate registroEstadualDataEmissao,
+  String registroEstadualUf,
+  Boolean registroEstadualContribuinte,
+  Boolean registroEstadualConsumidorFinal,
+  String registroMunicipal,
+  LocalDate registroMunicipalDataEmissao,
+  String cnh,
+  String cnhCategoria,
+  String cnhObservacao,
+  LocalDate cnhDataEmissao,
+  String suframa,
+  String rntc,
+  String pis,
+  String tituloEleitor,
+  String tituloEleitorZona,
+  String tituloEleitorSecao,
+  String ctps,
+  String ctpsSerie,
+  LocalDate ctpsDataEmissao,
+  String ctpsUfEmissao,
+  String militarNumero,
+  String militarSerie,
+  String militarCategoria,
+  String numeroNif,
+  Short motivoNaoNif
+) {}

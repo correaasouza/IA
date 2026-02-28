@@ -754,8 +754,8 @@ export class MovimentoCatalogSelectorDialogComponent implements OnInit, OnDestro
         unidade: selected.unidade ?? null,
         allowedUnits: [],
         unitsLoading: true,
-        quantidade: Number(selected.quantidade || 0),
-        valorUnitario: selected.valorUnitario == null ? null : Number(selected.valorUnitario),
+        quantidade: this.toScaledNumber(selected.quantidade, 3, 0) ?? 0,
+        valorUnitario: this.toScaledNumber(selected.valorUnitario, 2, null),
         observacao: selected.observacao || null,
         catalogType: selected.catalogType,
         codigo: Number(selected.codigo || 0),
@@ -810,8 +810,9 @@ export class MovimentoCatalogSelectorDialogComponent implements OnInit, OnDestro
     if (!Number.isFinite(parsed)) {
       return fallback;
     }
+    const normalized = Math.abs(parsed);
     const factor = Math.pow(10, scale);
-    return Math.round(parsed * factor) / factor;
+    return Math.round(normalized * factor) / factor;
   }
 
   private resolveAtivoFromStatus(status: string | null | undefined): boolean | null {

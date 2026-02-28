@@ -2,8 +2,11 @@ package com.ia.app.web;
 
 import com.ia.app.dto.TipoEntidadeConfigAgrupadorRequest;
 import com.ia.app.dto.TipoEntidadeConfigAgrupadorResponse;
+import com.ia.app.dto.EntidadeFormConfigAgrupadorRequest;
+import com.ia.app.dto.EntidadeFormConfigAgrupadorResponse;
 import com.ia.app.dto.TipoEntidadeRequest;
 import com.ia.app.dto.TipoEntidadeResponse;
+import com.ia.app.service.EntidadeFormConfigService;
 import com.ia.app.service.TipoEntidadeConfigPorAgrupadorService;
 import com.ia.app.service.TipoEntidadeService;
 import jakarta.validation.Valid;
@@ -28,12 +31,15 @@ public class TipoEntidadeController {
 
   private final TipoEntidadeService service;
   private final TipoEntidadeConfigPorAgrupadorService configPorAgrupadorService;
+  private final EntidadeFormConfigService entidadeFormConfigService;
 
   public TipoEntidadeController(
       TipoEntidadeService service,
-      TipoEntidadeConfigPorAgrupadorService configPorAgrupadorService) {
+      TipoEntidadeConfigPorAgrupadorService configPorAgrupadorService,
+      EntidadeFormConfigService entidadeFormConfigService) {
     this.service = service;
     this.configPorAgrupadorService = configPorAgrupadorService;
+    this.entidadeFormConfigService = entidadeFormConfigService;
   }
 
   @GetMapping
@@ -86,6 +92,23 @@ public class TipoEntidadeController {
       @Valid @RequestBody TipoEntidadeConfigAgrupadorRequest request) {
     return ResponseEntity.ok(
       configPorAgrupadorService.atualizar(id, agrupadorId, Boolean.TRUE.equals(request.obrigarUmTelefone())));
+  }
+
+  @GetMapping("/{id}/config-agrupadores/{agrupadorId}/ficha")
+  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  public ResponseEntity<EntidadeFormConfigAgrupadorResponse> getFichaConfigPorAgrupador(
+    @PathVariable Long id,
+    @PathVariable Long agrupadorId) {
+    return ResponseEntity.ok(entidadeFormConfigService.get(id, agrupadorId));
+  }
+
+  @PutMapping("/{id}/config-agrupadores/{agrupadorId}/ficha")
+  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  public ResponseEntity<EntidadeFormConfigAgrupadorResponse> updateFichaConfigPorAgrupador(
+    @PathVariable Long id,
+    @PathVariable Long agrupadorId,
+    @RequestBody EntidadeFormConfigAgrupadorRequest request) {
+    return ResponseEntity.ok(entidadeFormConfigService.update(id, agrupadorId, request));
   }
 
   private TipoEntidadeResponse toResponse(com.ia.app.domain.TipoEntidade tipoEntidade) {

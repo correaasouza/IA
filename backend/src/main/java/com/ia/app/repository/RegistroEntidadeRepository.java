@@ -47,6 +47,7 @@ public interface RegistroEntidadeRepository extends JpaRepository<RegistroEntida
         ON p.id = re.pessoa_id
        AND p.tenant_id = re.tenant_id
       WHERE re.tenant_id = :tenantId
+        AND re.empresa_id = :empresaId
         AND re.tipo_entidade_config_agrupador_id = :configId
         AND (
           (:codigo IS NULL AND :pessoaNome IS NULL AND :registroFederalNorm IS NULL)
@@ -65,6 +66,7 @@ public interface RegistroEntidadeRepository extends JpaRepository<RegistroEntida
         ON p.id = re.pessoa_id
        AND p.tenant_id = re.tenant_id
       WHERE re.tenant_id = :tenantId
+        AND re.empresa_id = :empresaId
         AND re.tipo_entidade_config_agrupador_id = :configId
         AND (
           (:codigo IS NULL AND :pessoaNome IS NULL AND :registroFederalNorm IS NULL)
@@ -78,6 +80,7 @@ public interface RegistroEntidadeRepository extends JpaRepository<RegistroEntida
     nativeQuery = true)
   Page<RegistroEntidade> search(
     @Param("tenantId") Long tenantId,
+    @Param("empresaId") Long empresaId,
     @Param("configId") Long tipoEntidadeConfigAgrupadorId,
     @Param("codigo") Long codigo,
     @Param("pessoaNome") String pessoaNome,

@@ -6,6 +6,7 @@ import com.ia.app.domain.RegistroEntidade;
 import com.ia.app.dto.PessoaVinculoResponse;
 import com.ia.app.dto.RegistroEntidadeRequest;
 import com.ia.app.dto.RegistroEntidadeResponse;
+import com.ia.app.repository.EntidadeTratamentoRepository;
 import com.ia.app.repository.GrupoEntidadeRepository;
 import com.ia.app.repository.PessoaRepository;
 import com.ia.app.repository.PriceBookRepository;
@@ -30,6 +31,7 @@ public class RegistroEntidadeService {
   private final PessoaResolveService pessoaResolveService;
   private final PessoaRepository pessoaRepository;
   private final GrupoEntidadeRepository grupoRepository;
+  private final EntidadeTratamentoRepository tratamentoRepository;
   private final PriceBookRepository priceBookRepository;
   private final AuditService auditService;
 
@@ -40,6 +42,7 @@ public class RegistroEntidadeService {
       PessoaResolveService pessoaResolveService,
       PessoaRepository pessoaRepository,
       GrupoEntidadeRepository grupoRepository,
+      EntidadeTratamentoRepository tratamentoRepository,
       PriceBookRepository priceBookRepository,
       AuditService auditService) {
     this.repository = repository;
@@ -48,6 +51,7 @@ public class RegistroEntidadeService {
     this.pessoaResolveService = pessoaResolveService;
     this.pessoaRepository = pessoaRepository;
     this.grupoRepository = grupoRepository;
+    this.tratamentoRepository = tratamentoRepository;
     this.priceBookRepository = priceBookRepository;
     this.auditService = auditService;
   }
@@ -64,6 +68,7 @@ public class RegistroEntidadeService {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     Page<RegistroEntidade> page = repository.search(
       scope.tenantId(),
+      scope.empresaId(),
       scope.tipoEntidadeConfigAgrupadorId(),
       codigo,
       normalizeSearch(pessoaNome),
@@ -81,6 +86,9 @@ public class RegistroEntidadeService {
       .findByIdAndTenantIdAndTipoEntidadeConfigAgrupadorId(
         id, scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId())
       .orElseThrow(() -> new EntityNotFoundException("registro_entidade_not_found"));
+    if (!scope.empresaId().equals(entity.getEmpresaId())) {
+      throw new EntityNotFoundException("registro_entidade_not_found");
+    }
     return toResponse(scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId(), entity);
   }
 
@@ -89,21 +97,29 @@ public class RegistroEntidadeService {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     Long grupoId = validateGrupo(scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId(), request.grupoEntidadeId());
     Long priceBookId = validatePriceBook(scope.tenantId(), request.priceBookId());
+    Long tratamentoId = validateTratamento(scope.tenantId(), request.tratamentoId());
     Pessoa pessoa = pessoaResolveService.resolveOrCreate(scope.tenantId(), request.pessoa());
 
     RegistroEntidade entity = new RegistroEntidade();
     entity.setTenantId(scope.tenantId());
+    entity.setEmpresaId(scope.empresaId());
     entity.setTipoEntidadeConfigAgrupadorId(scope.tipoEntidadeConfigAgrupadorId());
     entity.setCodigo(codigoService.proximoCodigo(scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId()));
     entity.setPessoaId(pessoa.getId());
     entity.setGrupoEntidadeId(grupoId);
     entity.setPriceBookId(priceBookId);
+    entity.setAlerta(normalizeText(request.alerta(), 1000));
+    entity.setObservacao(normalizeText(request.observacao(), null));
+    entity.setParecer(normalizeText(request.parecer(), null));
+    entity.setCodigoBarras(normalizeText(request.codigoBarras(), 60));
+    entity.setTextoTermoQuitacao(normalizeText(request.textoTermoQuitacao(), 4096));
+    entity.setTratamentoId(tratamentoId);
     entity.setAtivo(Boolean.TRUE.equals(request.ativo()));
 
     RegistroEntidade saved = saveWithIntegrityMap(entity);
     auditService.log(scope.tenantId(), "REGISTRO_ENTIDADE_CRIADO", "registro_entidade", String.valueOf(saved.getId()),
       "tipoEntidadeId=" + tipoEntidadeId + ";configAgrupadorId=" + scope.tipoEntidadeConfigAgrupadorId()
-        + ";codigo=" + saved.getCodigo() + ";pessoaId=" + saved.getPessoaId());
+        + ";empresaId=" + scope.empresaId() + ";codigo=" + saved.getCodigo() + ";pessoaId=" + saved.getPessoaId());
     return toResponse(scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId(), saved);
   }
 
@@ -114,20 +130,30 @@ public class RegistroEntidadeService {
       .findByIdAndTenantIdAndTipoEntidadeConfigAgrupadorId(
         id, scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId())
       .orElseThrow(() -> new EntityNotFoundException("registro_entidade_not_found"));
+    if (!scope.empresaId().equals(entity.getEmpresaId())) {
+      throw new EntityNotFoundException("registro_entidade_not_found");
+    }
 
     Long grupoId = validateGrupo(scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId(), request.grupoEntidadeId());
     Long priceBookId = validatePriceBook(scope.tenantId(), request.priceBookId());
+    Long tratamentoId = validateTratamento(scope.tenantId(), request.tratamentoId());
     Pessoa pessoa = pessoaResolveService.resolveOrCreate(scope.tenantId(), request.pessoa());
 
     entity.setGrupoEntidadeId(grupoId);
     entity.setPriceBookId(priceBookId);
+    entity.setAlerta(normalizeText(request.alerta(), 1000));
+    entity.setObservacao(normalizeText(request.observacao(), null));
+    entity.setParecer(normalizeText(request.parecer(), null));
+    entity.setCodigoBarras(normalizeText(request.codigoBarras(), 60));
+    entity.setTextoTermoQuitacao(normalizeText(request.textoTermoQuitacao(), 4096));
+    entity.setTratamentoId(tratamentoId);
     entity.setPessoaId(pessoa.getId());
     entity.setAtivo(Boolean.TRUE.equals(request.ativo()));
 
     RegistroEntidade saved = saveWithIntegrityMap(entity);
     auditService.log(scope.tenantId(), "REGISTRO_ENTIDADE_ATUALIZADO", "registro_entidade", String.valueOf(saved.getId()),
       "tipoEntidadeId=" + tipoEntidadeId + ";configAgrupadorId=" + scope.tipoEntidadeConfigAgrupadorId()
-        + ";codigo=" + saved.getCodigo() + ";pessoaId=" + saved.getPessoaId());
+        + ";empresaId=" + scope.empresaId() + ";codigo=" + saved.getCodigo() + ";pessoaId=" + saved.getPessoaId());
     return toResponse(scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId(), saved);
   }
 
@@ -138,11 +164,14 @@ public class RegistroEntidadeService {
       .findByIdAndTenantIdAndTipoEntidadeConfigAgrupadorId(
         id, scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId())
       .orElseThrow(() -> new EntityNotFoundException("registro_entidade_not_found"));
+    if (!scope.empresaId().equals(entity.getEmpresaId())) {
+      throw new EntityNotFoundException("registro_entidade_not_found");
+    }
     entity.setAtivo(false);
     repository.save(entity);
     auditService.log(scope.tenantId(), "REGISTRO_ENTIDADE_EXCLUIDO", "registro_entidade", String.valueOf(entity.getId()),
       "tipoEntidadeId=" + tipoEntidadeId + ";configAgrupadorId=" + scope.tipoEntidadeConfigAgrupadorId()
-        + ";codigo=" + entity.getCodigo());
+        + ";empresaId=" + scope.empresaId() + ";codigo=" + entity.getCodigo());
   }
 
   private Long validateGrupo(Long tenantId, Long configAgrupadorId, Long grupoId) {
@@ -161,6 +190,14 @@ public class RegistroEntidadeService {
     return priceBookId;
   }
 
+  private Long validateTratamento(Long tenantId, Long tratamentoId) {
+    if (tratamentoId == null) return null;
+    if (!tratamentoRepository.existsByTenantIdAndIdAndAtivoTrue(tenantId, tratamentoId)) {
+      throw new EntityNotFoundException("entidade_tratamento_not_found");
+    }
+    return tratamentoId;
+  }
+
   private RegistroEntidade saveWithIntegrityMap(RegistroEntidade entity) {
     try {
       return repository.save(entity);
@@ -171,6 +208,9 @@ public class RegistroEntidadeService {
       }
       if (message.contains("ux_pessoa_tenant_tipo_registro_federal_norm")) {
         throw new IllegalArgumentException("pessoa_registro_federal_duplicado");
+      }
+      if (message.contains("ux_registro_entidade_empresa_codigo_barras")) {
+        throw new IllegalArgumentException("entidade_codigo_barras_duplicado_empresa");
       }
       throw ex;
     }
@@ -189,11 +229,19 @@ public class RegistroEntidadeService {
     }
     return new RegistroEntidadeResponse(
       entity.getId(),
+      entity.getEmpresaId(),
       entity.getTipoEntidadeConfigAgrupadorId(),
       entity.getCodigo(),
       entity.getGrupoEntidadeId(),
       grupoNome,
       entity.getPriceBookId(),
+      entity.getAlerta(),
+      entity.getObservacao(),
+      entity.getParecer(),
+      entity.getCodigoBarras(),
+      entity.getTextoTermoQuitacao(),
+      entity.getTratamentoId(),
+      entity.getVersion(),
       entity.isAtivo(),
       new PessoaVinculoResponse(
         pessoa.getId(),
@@ -226,5 +274,15 @@ public class RegistroEntidadeService {
       return digits;
     }
     return trimmed.toUpperCase();
+  }
+
+  private String normalizeText(String value, Integer maxLength) {
+    if (value == null) return null;
+    String normalized = value.trim();
+    if (normalized.isEmpty()) return null;
+    if (maxLength != null && normalized.length() > maxLength) {
+      throw new IllegalArgumentException("registro_entidade_field_too_long");
+    }
+    return normalized;
   }
 }

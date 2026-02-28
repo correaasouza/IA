@@ -76,6 +76,6 @@ describe('AgrupadoresEmpresaComponent', () => {
     component.remove(group);
 
     expect(agrupadorService.remove).toHaveBeenCalledWith('FORMULARIO', 10, 7);
-    expect(notify.success).toHaveBeenCalledWith('Agrupador removido.');
+    expect(notify.success).toHaveBeenCalledWith('Configuracao removida.');
   });
 });

@@ -120,8 +120,7 @@ public class LocatarioService {
       preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");
     }
     boolean isGlobalMaster = (preferredUsername != null && preferredUsername.equalsIgnoreCase("master"))
-      || "master".equalsIgnoreCase(keycloakId)
-      || authentication.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_MASTER"));
+      || "master".equalsIgnoreCase(keycloakId);
     if (isGlobalMaster) {
       return repository.findAll().stream().map(LocatarioMapper::toResponse).toList();
     }

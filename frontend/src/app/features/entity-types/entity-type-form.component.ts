@@ -14,7 +14,13 @@ import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { AgrupadoresEmpresaComponent } from '../configs/agrupadores-empresa.component';
 import { AgrupadorEmpresa } from '../configs/agrupador-empresa.service';
-import { EntityTypeConfigByGroupService, TipoEntidadeConfigPorAgrupador } from './entity-type-config-by-group.service';
+import {
+  EntityTypeConfigByGroupService,
+  TipoEntidadeConfigPorAgrupador,
+  EntidadeFormConfigByGroup,
+  EntidadeFormGroupConfig,
+  EntidadeFormFieldConfig
+} from './entity-type-config-by-group.service';
 import { EntityTypeService, TipoEntidade } from './entity-type.service';
 
 @Component({
@@ -49,6 +55,8 @@ export class EntityTypeFormComponent implements OnInit {
   configTabGroupNome = '';
   configTabGroupEmpresas: Array<{ empresaId: number; nome: string }> = [];
   configTabObrigarUmTelefone = false;
+  configTabFormConfig: EntidadeFormConfigByGroup | null = null;
+  configTabFormLoading = false;
   configTabSaving = false;
 
   form = this.fb.group({
@@ -175,20 +183,36 @@ export class EntityTypeFormComponent implements OnInit {
     this.configTabGroupNome = group.nome;
     this.configTabGroupEmpresas = [...(group.empresas || [])];
     this.applyConfigFromRows(group.id);
+    this.loadFormConfigTab(group.id);
   }
 
   saveConfigTab(): void {
     if (!this.tipoEntidade?.id || !this.configTabGroupId || this.mode === 'view' || this.configTabSaving) return;
     this.configTabSaving = true;
-    this.configByGroupService.update(this.tipoEntidade.id, this.configTabGroupId, this.configTabObrigarUmTelefone)
+    const groups = (this.configTabFormConfig?.groups || []).map(group => ({
+      ...group,
+      fields: (group.fields || []).map(field => ({ ...field }))
+    }));
+    this.configByGroupService.updateFormConfig(this.tipoEntidade.id, this.configTabGroupId, {
+      obrigarUmTelefone: this.configTabObrigarUmTelefone,
+      groups
+    })
       .pipe(finalize(() => (this.configTabSaving = false)))
       .subscribe({
         next: updated => {
+          this.configTabFormConfig = updated;
+          this.configTabObrigarUmTelefone = !!updated.obrigarUmTelefone;
+          const row = {
+            agrupadorId: updated.agrupadorId,
+            agrupadorNome: updated.agrupadorNome,
+            obrigarUmTelefone: !!updated.obrigarUmTelefone,
+            ativo: true
+          } as TipoEntidadeConfigPorAgrupador;
           const index = this.configRows.findIndex(item => item.agrupadorId === updated.agrupadorId);
           if (index >= 0) {
-            this.configRows[index] = updated;
+            this.configRows[index] = row;
           } else {
-            this.configRows = [...this.configRows, updated];
+            this.configRows = [...this.configRows, row];
           }
           this.notify.success('Configuracao do agrupador atualizada.');
         },
@@ -228,6 +252,42 @@ export class EntityTypeFormComponent implements OnInit {
   private applyConfigFromRows(groupId: number): void {
     const row = this.configRows.find(item => item.agrupadorId === groupId);
     this.configTabObrigarUmTelefone = !!row?.obrigarUmTelefone;
+  }
+
+  private loadFormConfigTab(groupId: number): void {
+    if (!this.tipoEntidade?.id || !groupId) {
+      this.configTabFormConfig = null;
+      return;
+    }
+    this.configTabFormLoading = true;
+    this.configByGroupService.getFormConfig(this.tipoEntidade.id, groupId)
+      .pipe(finalize(() => (this.configTabFormLoading = false)))
+      .subscribe({
+        next: data => {
+          this.configTabFormConfig = data;
+          this.configTabObrigarUmTelefone = !!data?.obrigarUmTelefone;
+        },
+        error: err => {
+          this.configTabFormConfig = null;
+          this.notify.error(err?.error?.detail || 'Nao foi possivel carregar a configuracao da ficha por agrupador.');
+        }
+      });
+  }
+
+  toggleGroupEnabled(group: EntidadeFormGroupConfig, value: boolean): void {
+    group.enabled = !!value;
+  }
+
+  toggleFieldVisible(field: EntidadeFormFieldConfig, value: boolean): void {
+    field.visible = !!value;
+  }
+
+  toggleFieldEditable(field: EntidadeFormFieldConfig, value: boolean): void {
+    field.editable = !!value;
+  }
+
+  toggleFieldRequired(field: EntidadeFormFieldConfig, value: boolean): void {
+    field.required = !!value;
   }
 
   private applyModeState(): void {

@@ -30,8 +30,8 @@
 
 .selector-content {
   display: block;
-  --mat-form-field-container-height: 42px;
-  --mat-form-field-container-vertical-padding: 8px;
+  --mat-form-field-container-height: 36px;
+  --mat-form-field-container-vertical-padding: 6px;
 }
 
 .selector-left-header {
@@ -252,39 +252,40 @@
 
 .selector-search-field {
   width: 100%;
+  --filter-h: 36px;
 }
 
 .selector-filters-actions {
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  min-height: 52px;
+  min-height: 36px;
 }
 
 .status-search-like {
-  min-height: 52px;
+  min-height: 36px;
   display: grid;
 }
 
 .status-native-select {
   width: 100%;
-  height: 52px;
+  height: 36px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 8px;
   background: #ededed;
   color: var(--ink);
-  font-size: 16px;
-  line-height: 1;
-  padding: 0 38px 0 16px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  padding: 0 30px 0 10px;
   appearance: none;
   outline: none;
   background-image:
     linear-gradient(45deg, transparent 50%, #6b7280 50%),
     linear-gradient(135deg, #6b7280 50%, transparent 50%);
   background-position:
-    calc(100% - 16px) calc(50% - 3px),
-    calc(100% - 10px) calc(50% - 3px);
-  background-size: 6px 6px, 6px 6px;
+    calc(100% - 13px) calc(50% - 2px),
+    calc(100% - 8px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
   background-repeat: no-repeat;
 }
 
@@ -560,9 +561,18 @@
 
 .selector-selected-item-desc-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   margin-top: 2px;
+}
+
+.selector-selected-item-highlight {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 1px solid color-mix(in srgb, var(--primary) 38%, var(--border));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--primary) 9%, #ffffff);
+  padding: 6px 10px;
 }
 
 .selector-selected-item-name-inline {
@@ -570,8 +580,20 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
   flex: 1 1 auto;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: var(--ink);
+}
+
+.selector-selected-item-description {
+  margin-top: 3px;
+  font-size: 13px;
+  line-height: 1.25;
+  color: var(--muted-strong);
+  overflow-wrap: anywhere;
 }
 
 .selector-selected-item-meta {
@@ -830,6 +852,10 @@
   .selector-selected-item-desc-row {
     flex-wrap: wrap;
     align-items: flex-start;
+  }
+
+  .selector-selected-item-name-inline {
+    font-size: 18px;
   }
 
   .selector-search-item-btn {

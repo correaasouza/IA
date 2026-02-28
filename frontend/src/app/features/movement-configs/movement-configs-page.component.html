@@ -8,29 +8,7 @@
     </header>
 
     <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled">
-      <div class="top-ux-section">
-        <div class="section-switcher-row">
-          <div class="top-ux-label">Modo</div>
-          <div class="section-switcher">
-          <button
-            type="button"
-            class="type-tab-btn"
-            [class.type-tab-active]="activeSection === 'CONFIGURACOES'"
-            (click)="setActiveSection('CONFIGURACOES')">
-            Configuracoes
-          </button>
-          <button
-            type="button"
-            class="type-tab-btn"
-            [class.type-tab-active]="activeSection === 'TIPOS_ITENS'"
-            (click)="setActiveSection('TIPOS_ITENS')">
-            Tipos de Itens
-          </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="top-ux-compact-row" *ngIf="activeSection === 'CONFIGURACOES'">
+      <div class="top-ux-compact-row">
         <div class="top-ux-card top-ux-card-compact">
           <div class="type-header-row">
             <div class="top-ux-label">Tipo de movimento</div>
@@ -74,26 +52,9 @@
           </button>
         </div>
       </div>
-
-      <div class="top-ux-compact-row" *ngIf="activeSection === 'TIPOS_ITENS'">
-        <div class="config-action-row">
-          <button
-            mat-flat-button
-            color="primary"
-            type="button"
-            class="action-mini-btn"
-            (click)="openCreateItemType()"
-            [disabled]="saving || loadingItemTypes"
-            appAccessControl="movimentos.configuracoes.tipos-itens.create"
-            [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-            <mat-icon>add</mat-icon>
-            Novo tipo de item
-          </button>
-        </div>
-      </div>
     </section>
 
-    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled && activeSection === 'CONFIGURACOES'">
+    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled">
       <div class="mb-2 flex items-center justify-between gap-2">
         <div class="text-sm font-semibold">Filtros</div>
         <div class="flex items-center gap-2">
@@ -140,62 +101,6 @@
       </div>
     </section>
 
-    <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled && activeSection === 'TIPOS_ITENS'">
-      <div class="mb-2 flex items-center justify-between gap-2">
-        <div class="text-sm font-semibold">Filtros</div>
-        <div class="flex items-center gap-2">
-          <button mat-button type="button" class="mobile-filter-toggle md:!hidden" (click)="toggleMobileFilters()">
-            <mat-icon>tune</mat-icon>
-            Filtros{{ itemTypesFiltersCount() > 0 ? ' (' + itemTypesFiltersCount() + ')' : '' }}
-            <mat-icon class="mobile-filter-chevron">{{ mobileFiltersOpen ? 'expand_less' : 'expand_more' }}</mat-icon>
-          </button>
-          <div class="text-xs text-[var(--muted)]">{{ filteredItemTypes.length }} tipo(s)</div>
-        </div>
-      </div>
-      <form *ngIf="!isMobile || mobileFiltersOpen" class="grid grid-cols-1 items-start gap-2 lg:grid-cols-[minmax(0,1.5fr)_220px_220px_auto]" role="search">
-        <div class="min-w-0">
-          <app-field-search
-            [options]="itemTypesSearchOptions"
-            label="Buscar"
-            placeholder="Digite e selecione os campos"
-            [defaultFields]="itemTypesSearchFields"
-            [showActions]="false"
-            (searchChange)="onItemTypeSearchChange($event)">
-          </app-field-search>
-        </div>
-
-        <div class="status-search-like">
-          <select
-            class="status-native-select"
-            [ngModel]="itemTypesCatalogFilter"
-            (ngModelChange)="itemTypesCatalogFilter = $event; applyItemTypesFilters()"
-            [ngModelOptions]="{ standalone: true }"
-            aria-label="Catalogo">
-            <option value="">Catalogo: Todos</option>
-            <option value="PRODUCTS">Catalogo: Produtos</option>
-            <option value="SERVICES">Catalogo: Servicos</option>
-          </select>
-        </div>
-
-        <div class="status-search-like">
-          <select
-            class="status-native-select"
-            [ngModel]="itemTypesStatusFilter"
-            (ngModelChange)="itemTypesStatusFilter = $event; applyItemTypesFilters()"
-            [ngModelOptions]="{ standalone: true }"
-            aria-label="Status">
-            <option value="ALL">Status: Todos</option>
-            <option value="ATIVO">Status: Ativo</option>
-            <option value="INATIVO">Status: Inativo</option>
-          </select>
-        </div>
-        <div class="flex items-center justify-end gap-2">
-          <button mat-stroked-button type="button" (click)="clearItemTypeFilters()">
-            Limpar
-          </button>
-        </div>
-      </form>
-    </section>
   </div>
 
   <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-sm text-[var(--muted)] shadow-[var(--shadow-xs)]" *ngIf="loadingTypes || loadingCompanies || loadingEntityTypes || loadingItemTypes">
@@ -206,7 +111,7 @@
     {{ errorMessage }}
   </section>
 
-  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled && activeSection === 'CONFIGURACOES' && filteredConfigs.length > 0">
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled && filteredConfigs.length > 0">
     <div class="table-sticky-actions overflow-auto border-b border-[var(--border-light)]" *ngIf="!isMobile">
       <table mat-table [dataSource]="filteredConfigs" class="w-full">
         <ng-container matColumnDef="nome">
@@ -326,76 +231,11 @@
     </div>
   </section>
 
-  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-0 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled && activeSection === 'TIPOS_ITENS' && filteredItemTypes.length > 0">
-    <div class="table-sticky-actions overflow-auto border-b border-[var(--border-light)]" *ngIf="!isMobile">
-      <table mat-table [dataSource]="filteredItemTypes" class="w-full">
-        <ng-container matColumnDef="nome">
-          <th mat-header-cell *matHeaderCellDef>Nome</th>
-          <td mat-cell *matCellDef="let row"><span class="font-semibold">{{ row.nome }}</span></td>
-        </ng-container>
-
-        <ng-container matColumnDef="catalogo">
-          <th mat-header-cell *matHeaderCellDef>Catalogo</th>
-          <td mat-cell *matCellDef="let row">{{ catalogTypeLabel(row.catalogType) }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="ativo">
-          <th mat-header-cell *matHeaderCellDef>Situacao</th>
-          <td mat-cell *matCellDef="let row">{{ row.ativo ? 'Ativo' : 'Inativo' }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="acoes" stickyEnd>
-          <th mat-header-cell *matHeaderCellDef class="text-right">Acoes</th>
-          <td mat-cell *matCellDef="let row" class="text-right">
-            <div class="inline-flex items-center justify-end gap-1.5">
-              <button mat-icon-button matTooltip="Consultar" (click)="openViewItemType(row)">
-                <mat-icon>visibility</mat-icon>
-              </button>
-              <button mat-icon-button matTooltip="Alterar" (click)="openEditItemType(row)" appAccessControl="movimentos.configuracoes.tipos-itens.update" [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button mat-icon-button color="warn" matTooltip="Inativar" (click)="deleteItemType(row)" appAccessControl="movimentos.configuracoes.tipos-itens.delete" [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-                <mat-icon>delete</mat-icon>
-              </button>
-            </div>
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="itemTypesDisplayedColumns; sticky: true"></tr>
-        <tr mat-row *matRowDef="let row; columns: itemTypesDisplayedColumns"></tr>
-      </table>
-    </div>
-    <div class="grid gap-2.5 p-3" *ngIf="isMobile">
-      <article class="grid gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2.5 shadow-[var(--shadow-xs)]" *ngFor="let row of filteredItemTypes">
-        <div class="flex items-center justify-between gap-2">
-          <div class="text-sm font-semibold">{{ row.nome }}</div>
-          <span class="chip-item">{{ catalogTypeLabel(row.catalogType) }}</span>
-        </div>
-        <div class="text-xs text-[var(--muted)]">Situacao: {{ row.ativo ? 'Ativo' : 'Inativo' }}</div>
-        <div class="flex justify-end gap-1.5">
-          <button mat-icon-button matTooltip="Consultar" (click)="openViewItemType(row)">
-            <mat-icon>visibility</mat-icon>
-          </button>
-          <button mat-icon-button matTooltip="Alterar" (click)="openEditItemType(row)" appAccessControl="movimentos.configuracoes.tipos-itens.update" [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-            <mat-icon>edit</mat-icon>
-          </button>
-          <button mat-icon-button color="warn" matTooltip="Inativar" (click)="deleteItemType(row)" appAccessControl="movimentos.configuracoes.tipos-itens.delete" [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-            <mat-icon>delete</mat-icon>
-          </button>
-        </div>
-      </article>
-    </div>
-  </section>
-
-  <section class="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--muted)]" *ngIf="featureEnabled && activeSection === 'CONFIGURACOES' && !loadingList && filteredConfigs.length === 0">
+  <section class="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--muted)]" *ngIf="featureEnabled && !loadingList && filteredConfigs.length === 0">
     Nenhuma configuracao encontrada para o tipo selecionado.
   </section>
 
-  <section class="rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-3 py-2.5 text-sm text-[var(--muted)]" *ngIf="featureEnabled && activeSection === 'TIPOS_ITENS' && !loadingItemTypes && filteredItemTypes.length === 0">
-    Nenhum tipo de item encontrado.
-  </section>
-
-  <section class="rounded-xl border border-dashed border-[#fdb022] bg-[#fffaeb] p-3 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled && activeSection === 'CONFIGURACOES' && !loadingCoverageWarnings && coverageWarningsForActiveType().length > 0">
+  <section class="rounded-xl border border-dashed border-[#fdb022] bg-[#fffaeb] p-3 shadow-[var(--shadow-xs)]" *ngIf="featureEnabled && !loadingCoverageWarnings && coverageWarningsForActiveType().length > 0">
     <div class="mb-1.5 text-sm font-semibold text-[#7a2e0e]">
       Atencao: cobertura obrigatoria
     </div>
@@ -499,8 +339,18 @@
     </section>
 
     <section class="mov-config-tab-panel" *ngIf="activeFormTab === 'ITENS'">
-      <div class="mb-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2 text-xs text-[var(--muted-strong)]">
-        Vincule os tipos de itens permitidos neste tipo de movimento e configure se devem ser cobrados.
+      <div class="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface-muted)] px-2.5 py-2 text-xs text-[var(--muted-strong)]">
+        <span>Vincule os tipos de itens permitidos neste tipo de movimento e configure se devem ser cobrados.</span>
+        <button
+          mat-stroked-button
+          type="button"
+          (click)="openCreateItemType()"
+          [disabled]="saving || loadingItemTypes || readOnlyMode"
+          appAccessControl="movimentos.configuracoes.tipos-itens.create"
+          [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+          <mat-icon>add</mat-icon>
+          Incluir tipo de item
+        </button>
       </div>
       <div class="grid gap-2">
         <div class="config-item-card" *ngFor="let itemType of itemTypes">

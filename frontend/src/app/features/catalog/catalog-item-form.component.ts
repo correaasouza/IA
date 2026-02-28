@@ -629,7 +629,11 @@ export class CatalogItemFormComponent implements OnInit {
     const itemNome = (this.form.value.nome || '').trim() || '-';
     this.dialog.open(CatalogItemHistoryDialogComponent, {
       width: '1200px',
-      maxWidth: '96vw',
+      maxWidth: '98vw',
+      maxHeight: 'calc(100dvh - 52px)',
+      position: { top: '52px' },
+      panelClass: 'catalog-history-dialog-panel',
+      backdropClass: 'catalog-history-dialog-backdrop',
       autoFocus: false,
       data: {
         type: this.type,

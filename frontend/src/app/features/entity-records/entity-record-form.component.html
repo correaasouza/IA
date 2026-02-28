@@ -48,12 +48,12 @@
     {{ contextoWarning }}
   </section>
 
-  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]">
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="isGroupEnabled('DADOS_ENTIDADE')">
     <div class="mb-2 text-sm font-semibold">Dados da entidade</div>
 
     <form [formGroup]="form" class="grid grid-cols-1 gap-2.5 md:grid-cols-2">
       <mat-form-field appearance="outline">
-        <mat-label>Registro federal</mat-label>
+        <mat-label>Registro federal{{ isFieldRequired('registroFederal') ? ' *' : '' }}</mat-label>
         <input matInput formControlName="registroFederal" />
         <mat-error *ngIf="form.get('registroFederal')?.hasError('required')">Informe o registro.</mat-error>
       </mat-form-field>
@@ -78,14 +78,44 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Nome da pessoa</mat-label>
+        <mat-label>Tratamento (id)</mat-label>
+        <input matInput type="number" formControlName="tratamentoId" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Codigo de barras</mat-label>
+        <input matInput formControlName="codigoBarras" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Nome da pessoa{{ isFieldRequired('pessoaNome') ? ' *' : '' }}</mat-label>
         <input matInput formControlName="pessoaNome" />
         <mat-error *ngIf="form.get('pessoaNome')?.hasError('required')">Informe o nome.</mat-error>
       </mat-form-field>
 
       <mat-form-field appearance="outline">
-        <mat-label>Apelido</mat-label>
+        <mat-label>Apelido{{ isFieldRequired('pessoaApelido') ? ' *' : '' }}</mat-label>
         <input matInput formControlName="pessoaApelido" />
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>Alerta</mat-label>
+        <textarea matInput rows="2" formControlName="alerta"></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>Observacao</mat-label>
+        <textarea matInput rows="2" formControlName="observacao"></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>Parecer</mat-label>
+        <textarea matInput rows="2" formControlName="parecer"></textarea>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="md:col-span-2">
+        <mat-label>Texto termo de quitacao</mat-label>
+        <textarea matInput rows="3" formControlName="textoTermoQuitacao"></textarea>
       </mat-form-field>
 
       <div class="col-span-full flex justify-end" *ngIf="loading">
@@ -98,5 +128,688 @@
         <app-inline-loader label="Excluindo"></app-inline-loader>
       </div>
     </form>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="entidadeId && isGroupEnabled('ENDERECOS')">
+    <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Resumo de subcadastros</div>
+      <div class="text-xs text-[var(--muted)]">
+        Enderecos: <strong>{{ enderecosCount }}</strong> |
+        Contatos: <strong>{{ contatosCount }}</strong> |
+        Familiares: <strong>{{ familiaresCount }}</strong> |
+        Referencias: <strong>{{ referenciasCount }}</strong> |
+        Qualificacoes: <strong>{{ qualificacoesCount }}</strong>
+      </div>
+    </div>
+    <p class="m-0 text-xs text-[var(--muted)]">
+      Nesta etapa foram habilitados os blocos de Documentacao, Comercial, Fiscal e RH.
+    </p>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="entidadeId && isGroupEnabled('CONTATOS')">
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Enderecos</div>
+      <span class="text-xs text-[var(--muted)]">{{ enderecosCount }} item(ns)</span>
+    </div>
+    <form [formGroup]="enderecoForm" class="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-6">
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo</mat-label>
+        <mat-select formControlName="enderecoTipo">
+          <mat-option value="RESIDENCIAL">Residencial</mat-option>
+          <mat-option value="COMERCIAL">Comercial</mat-option>
+          <mat-option value="ENTREGA">Entrega</mat-option>
+          <mat-option value="COBRANCA">Cobranca</mat-option>
+          <mat-option value="CORRESPONDENCIA">Correspondencia</mat-option>
+          <mat-option value="OUTRO">Outro</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="lg:col-span-2">
+        <mat-label>Nome</mat-label>
+        <input matInput formControlName="nome" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>CEP{{ isFieldRequired('enderecos.cep') ? ' *' : '' }}</mat-label>
+        <input matInput formControlName="cep" placeholder="00000-000" />
+        <mat-error *ngIf="enderecoForm.get('cep')?.invalid">CEP invalido (00000-000).</mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>UF{{ isFieldRequired('enderecos.uf') ? ' *' : '' }}</mat-label>
+        <input matInput formControlName="uf" maxlength="2" />
+        <mat-error *ngIf="enderecoForm.get('uf')?.invalid">UF invalida (2 letras).</mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Municipio{{ isFieldRequired('enderecos.municipio') ? ' *' : '' }}</mat-label>
+        <input matInput formControlName="municipio" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="lg:col-span-2">
+        <mat-label>Logradouro{{ isFieldRequired('enderecos.logradouro') ? ' *' : '' }}</mat-label>
+        <input matInput formControlName="logradouro" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Numero</mat-label>
+        <input matInput formControlName="numero" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="lg:col-span-2">
+        <mat-label>Complemento</mat-label>
+        <input matInput formControlName="complemento" />
+      </mat-form-field>
+      <div class="flex items-center">
+        <mat-slide-toggle formControlName="principal">Principal</mat-slide-toggle>
+      </div>
+      <div class="col-span-full flex justify-end">
+        <div class="flex gap-2">
+          <button mat-stroked-button type="button" (click)="saveEndereco()" [disabled]="!canEdit() || savingEndereco">
+            {{ editingEnderecoId ? 'Salvar endereco' : 'Incluir endereco' }}
+          </button>
+          <button mat-button type="button" *ngIf="editingEnderecoId" (click)="cancelEnderecoEdit()" [disabled]="!canEdit()">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </form>
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[980px] text-sm">
+        <thead>
+          <tr class="border-b border-[var(--border)] text-left">
+            <th class="py-2 pr-3">Tipo</th>
+            <th class="py-2 pr-3">Nome</th>
+            <th class="py-2 pr-3">CEP</th>
+            <th class="py-2 pr-3">UF</th>
+            <th class="py-2 pr-3">Municipio</th>
+            <th class="py-2 pr-3">Logradouro</th>
+            <th class="py-2 pr-3">Numero</th>
+            <th class="py-2 pr-3">Principal</th>
+            <th class="py-2 pr-0 text-right">Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of enderecos" class="border-b border-[var(--border)]">
+            <td class="py-2 pr-3">{{ item.enderecoTipo }}</td>
+            <td class="py-2 pr-3">{{ item.nome || '-' }}</td>
+            <td class="py-2 pr-3">{{ item.cep || '-' }}</td>
+            <td class="py-2 pr-3">{{ item.uf || '-' }}</td>
+            <td class="py-2 pr-3">{{ item.municipio || '-' }}</td>
+            <td class="py-2 pr-3">{{ item.logradouro || '-' }}</td>
+            <td class="py-2 pr-3">{{ item.numero || '-' }}</td>
+            <td class="py-2 pr-3">{{ item.principal ? 'Sim' : 'Nao' }}</td>
+            <td class="py-2 pr-0 text-right">
+              <button mat-button type="button" (click)="editEndereco(item)" [disabled]="!canEdit()">Editar</button>
+              <button mat-button color="warn" type="button" (click)="removeEndereco(item.id)" [disabled]="!canEdit()">Remover</button>
+            </td>
+          </tr>
+          <tr *ngIf="!enderecos.length">
+            <td class="py-2 text-[var(--muted)]" colspan="9">Nenhum endereco cadastrado.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="entidadeId">
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Contatos e formas</div>
+      <span class="text-xs text-[var(--muted)]">{{ contatosCount }} contato(s)</span>
+    </div>
+    <form [formGroup]="contatoForm" class="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-6">
+      <mat-form-field appearance="outline" class="lg:col-span-2">
+        <mat-label>Nome contato</mat-label>
+        <input matInput formControlName="nome" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="lg:col-span-2">
+        <mat-label>Cargo</mat-label>
+        <input matInput formControlName="cargo" />
+      </mat-form-field>
+      <div class="flex items-center lg:col-span-2 lg:justify-end">
+        <div class="flex gap-2">
+          <button mat-stroked-button type="button" (click)="saveContato()" [disabled]="!canEdit() || savingContato">
+            {{ editingContatoId ? 'Salvar contato' : 'Incluir contato' }}
+          </button>
+          <button mat-button type="button" *ngIf="editingContatoId" (click)="cancelContatoEdit()" [disabled]="!canEdit()">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <form [formGroup]="contatoFormaForm" class="mt-2 grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-6">
+      <mat-form-field appearance="outline">
+        <mat-label>Contato</mat-label>
+        <mat-select formControlName="contatoId">
+          <mat-option [value]="null">Selecione</mat-option>
+          <mat-option *ngFor="let contato of contatos" [value]="contato.id">
+            #{{ contato.id }} - {{ contato.nome || 'Sem nome' }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo</mat-label>
+        <mat-select formControlName="tipoContato">
+          <mat-option value="EMAIL" *ngIf="isContatoFormaTipoVisible('EMAIL')">Email</mat-option>
+          <mat-option value="FONE_CELULAR" *ngIf="isContatoFormaTipoVisible('FONE_CELULAR')">Fone celular</mat-option>
+          <mat-option value="FONE_RESIDENCIAL">Fone residencial</mat-option>
+          <mat-option value="FONE_COMERCIAL" *ngIf="isContatoFormaTipoVisible('FONE_COMERCIAL')">Fone comercial</mat-option>
+          <mat-option value="WHATSAPP" *ngIf="isContatoFormaTipoVisible('WHATSAPP')">WhatsApp</mat-option>
+          <mat-option value="FACEBOOK">Facebook</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="lg:col-span-2">
+        <mat-label>Valor</mat-label>
+        <input matInput formControlName="valor" [type]="isContatoFormaEmail() ? 'email' : 'text'" />
+        <mat-error *ngIf="contatoFormaForm.get('valor')?.hasError('required')">Informe o valor.</mat-error>
+        <mat-error *ngIf="contatoFormaForm.get('valor')?.hasError('email')">Email invalido.</mat-error>
+        <mat-error *ngIf="contatoFormaForm.get('valor')?.hasError('pattern')">Formato invalido para o tipo selecionado.</mat-error>
+      </mat-form-field>
+      <div class="flex items-center">
+        <mat-slide-toggle formControlName="preferencial">Preferencial</mat-slide-toggle>
+      </div>
+      <div class="flex items-center lg:justify-end">
+        <div class="flex gap-2">
+          <button mat-stroked-button type="button" (click)="saveContatoForma()" [disabled]="!canEdit() || savingContatoForma || !contatos.length">
+            {{ editingContatoFormaId ? 'Salvar forma' : 'Incluir forma' }}
+          </button>
+          <button mat-button type="button" *ngIf="editingContatoFormaId" (click)="cancelContatoFormaEdit()" [disabled]="!canEdit()">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </form>
+
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[980px] text-sm">
+        <thead>
+          <tr class="border-b border-[var(--border)] text-left">
+            <th class="py-2 pr-3">Contato</th>
+            <th class="py-2 pr-3">Cargo</th>
+            <th class="py-2 pr-3">Formas</th>
+            <th class="py-2 pr-0 text-right">Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of contatos" class="border-b border-[var(--border)] align-top">
+            <td class="py-2 pr-3">{{ item.nome || '-' }}</td>
+            <td class="py-2 pr-3">{{ item.cargo || '-' }}</td>
+            <td class="py-2 pr-3">
+              <div *ngIf="contatoFormas(item.id).length; else noFormas" class="grid gap-1">
+                <div class="flex items-center justify-between gap-2 rounded border border-[var(--border)] px-2 py-1" *ngFor="let forma of contatoFormas(item.id)">
+                  <span>{{ formatTipoContato(forma.tipoContato) }}: {{ forma.valor }}</span>
+                  <div class="flex items-center gap-1">
+                    <button mat-button type="button" (click)="editContatoForma(item.id, forma)" [disabled]="!canEdit()">Editar</button>
+                    <button mat-button color="warn" type="button" (click)="removeContatoForma(item.id, forma.id)" [disabled]="!canEdit()">Remover</button>
+                  </div>
+                </div>
+              </div>
+              <ng-template #noFormas>
+                <span class="text-[var(--muted)]">Sem formas cadastradas.</span>
+              </ng-template>
+            </td>
+            <td class="py-2 pr-0 text-right">
+              <button mat-button type="button" (click)="editContato(item)" [disabled]="!canEdit()">Editar</button>
+              <button mat-button color="warn" type="button" (click)="removeContato(item.id)" [disabled]="!canEdit()">Remover contato</button>
+            </td>
+          </tr>
+          <tr *ngIf="!contatos.length">
+            <td class="py-2 text-[var(--muted)]" colspan="4">Nenhum contato cadastrado.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="!entidadeId && pendingEnabledGroupsForNew().length">
+    <div class="mb-2 text-sm font-semibold">Grupos habilitados para esta ficha</div>
+    <div class="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+      <article class="rounded-lg border border-[var(--border)] p-2.5" *ngFor="let group of pendingEnabledGroupsForNew()">
+        <div class="text-sm font-semibold">{{ group.label }}</div>
+        <div class="mt-1 text-xs text-[var(--muted)]">Disponivel apos salvar a entidade.</div>
+      </article>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="entidadeId && isGroupEnabled('FAMILIARES_REFERENCIAS')">
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Familiares</div>
+      <span class="text-xs text-[var(--muted)]">{{ familiaresCount }} item(ns)</span>
+    </div>
+    <form [formGroup]="familiarForm" class="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-6">
+      <mat-form-field appearance="outline" class="lg:col-span-2">
+        <mat-label>Buscar parente (nome/codigo)</mat-label>
+        <input
+          matInput
+          formControlName="entidadeParenteBusca"
+          [matAutocomplete]="familiarAuto"
+          (input)="onFamiliarQueryChange()" />
+        <mat-autocomplete #familiarAuto="matAutocomplete">
+          <mat-option *ngFor="let row of familiarSearchResults" [value]="row.pessoa.nome" (onSelectionChange)="chooseFamiliarParente(row, $event.isUserInput)">
+            #{{ row.codigo }} - {{ row.pessoa.nome }}
+          </mat-option>
+        </mat-autocomplete>
+      </mat-form-field>
+      <div class="flex items-center lg:col-span-2">
+        <div
+          *ngIf="familiarSelecionadoLabel; else familiarNaoSelecionado"
+          class="inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-2 py-1 text-xs">
+          <span>{{ familiarSelecionadoLabel }}</span>
+          <button
+            mat-icon-button
+            type="button"
+            aria-label="Limpar parente selecionado"
+            (click)="clearFamiliarSelection()"
+            [disabled]="!canEdit()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </div>
+        <ng-template #familiarNaoSelecionado>
+          <span class="text-xs text-[var(--muted)]">Nenhum parente selecionado.</span>
+        </ng-template>
+      </div>
+      <mat-form-field appearance="outline">
+        <mat-label>Parentesco{{ isFieldRequired('familiares.parentesco') ? ' *' : '' }}</mat-label>
+        <mat-select formControlName="parentesco">
+          <mat-option value="PAI">Pai</mat-option>
+          <mat-option value="FILHO">Filho</mat-option>
+          <mat-option value="IRMAO">Irmao</mat-option>
+          <mat-option value="IRMA">Irma</mat-option>
+          <mat-option value="TIO">Tio</mat-option>
+          <mat-option value="TIA">Tia</mat-option>
+          <mat-option value="PRIMO">Primo</mat-option>
+          <mat-option value="PRIMA">Prima</mat-option>
+          <mat-option value="VO">Vo</mat-option>
+          <mat-option value="VOMAE">Vo mae</mat-option>
+          <mat-option value="BISAVO">Bisavo</mat-option>
+          <mat-option value="BISAVOMAE">Bisavo mae</mat-option>
+          <mat-option value="OUTROS">Outros</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <div class="flex items-center">
+        <mat-slide-toggle formControlName="dependente">Dependente</mat-slide-toggle>
+      </div>
+      <div class="flex items-center text-xs text-[var(--muted)]" *ngIf="searchingFamiliar">
+        Buscando parentes...
+      </div>
+      <div class="flex items-center lg:col-span-2 lg:justify-end">
+        <div class="flex gap-2">
+          <button mat-stroked-button type="button" (click)="saveFamiliar()" [disabled]="!canEdit() || savingFamiliar">
+            {{ editingFamiliarId ? 'Salvar familiar' : 'Incluir familiar' }}
+          </button>
+          <button mat-button type="button" *ngIf="editingFamiliarId" (click)="cancelFamiliarEdit()" [disabled]="!canEdit()">
+            Cancelar
+          </button>
+        </div>
+      </div>
+    </form>
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[760px] text-sm">
+        <thead>
+          <tr class="border-b border-[var(--border)] text-left">
+            <th class="py-2 pr-3">Parente ID</th>
+            <th class="py-2 pr-3">Nome</th>
+            <th class="py-2 pr-3">Parentesco</th>
+            <th class="py-2 pr-3">Dependente</th>
+            <th class="py-2 pr-0 text-right">Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of familiares" class="border-b border-[var(--border)]">
+            <td class="py-2 pr-3">{{ item.entidadeParenteId }}</td>
+            <td class="py-2 pr-3">{{ item.entidadeParenteNome || '-' }}</td>
+            <td class="py-2 pr-3">{{ item.parentesco }}</td>
+            <td class="py-2 pr-3">{{ item.dependente ? 'Sim' : 'Nao' }}</td>
+            <td class="py-2 pr-0 text-right">
+              <button mat-button type="button" (click)="editFamiliar(item)" [disabled]="!canEdit()">Editar</button>
+              <button mat-button color="warn" type="button" (click)="removeFamiliar(item.id)" [disabled]="!canEdit()">Remover</button>
+            </td>
+          </tr>
+          <tr *ngIf="!familiares.length">
+            <td class="py-2 text-[var(--muted)]" colspan="5">Nenhum familiar cadastrado.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="entidadeId && isGroupEnabled('DOCUMENTACAO')">
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Documentacao</div>
+      <button mat-stroked-button type="button" (click)="saveDocumentacao()" [disabled]="!canEdit()">
+        Salvar documentacao
+      </button>
+    </div>
+    <form [formGroup]="documentacaoForm" class="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-3">
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo registro federal</mat-label>
+        <mat-select formControlName="tipoRegistroFederal">
+          <mat-option value="CPF">CPF</mat-option>
+          <mat-option value="CNPJ">CNPJ</mat-option>
+          <mat-option value="ID_ESTRANGEIRO">ID estrangeiro</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Registro federal</mat-label>
+        <input matInput formControlName="registroFederal" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>RG{{ isFieldRequired('documentacao.rg') ? ' *' : '' }}</mat-label>
+        <input matInput formControlName="rg" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>UF emissao RG</mat-label>
+        <input matInput formControlName="rgUfEmissao" maxlength="2" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>CNH{{ isFieldRequired('documentacao.cnh') ? ' *' : '' }}</mat-label>
+        <input matInput formControlName="cnh" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Numero NIF{{ isFieldRequired('documentacao.numeroNif') ? ' *' : '' }}</mat-label>
+        <input matInput formControlName="numeroNif" />
+      </mat-form-field>
+    </form>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="entidadeId && isGroupEnabled('COMERCIAL_FISCAL')">
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Informacoes comerciais</div>
+      <button mat-stroked-button type="button" (click)="saveComercial()" [disabled]="!canEdit()">
+        Salvar comercial
+      </button>
+    </div>
+    <form [formGroup]="comercialForm" class="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-3">
+      <mat-form-field appearance="outline">
+        <mat-label>Dias prazo faturamento{{ isFieldRequired('comercial.faturamentoDiasPrazo') ? ' *' : '' }}</mat-label>
+        <input matInput type="number" formControlName="faturamentoDiasPrazo" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Frequencia cobranca</mat-label>
+        <mat-select formControlName="faturamentoFrequenciaCobrancaId">
+          <mat-option [value]="null">Nao informado</mat-option>
+          <mat-option *ngFor="let item of rhOptions.frequenciasCobranca" [value]="item.id">
+            {{ item.nome }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Juro taxa padrao (%){{ isFieldRequired('comercial.juroTaxaPadrao') ? ' *' : '' }}</mat-label>
+        <input matInput type="number" step="0.01" formControlName="juroTaxaPadrao" />
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="md:col-span-2 lg:col-span-3">
+        <mat-label>Ramo de atividade</mat-label>
+        <input matInput formControlName="ramoAtividade" />
+      </mat-form-field>
+      <div class="flex items-center">
+        <mat-slide-toggle formControlName="boletosEnviarEmail">Enviar boletos por email</mat-slide-toggle>
+      </div>
+      <div class="flex items-center">
+        <mat-slide-toggle formControlName="consumidorFinal">Consumidor final</mat-slide-toggle>
+      </div>
+    </form>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="entidadeId && isGroupEnabled('COMERCIAL_FISCAL')">
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Dados fiscais</div>
+      <button mat-stroked-button type="button" (click)="saveFiscal()" [disabled]="!canEdit()">
+        Salvar dados fiscais
+      </button>
+    </div>
+    <form [formGroup]="fiscalForm" class="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-3">
+      <mat-form-field appearance="outline">
+        <mat-label>Manifestar nota automaticamente{{ isFieldRequired('fiscal.manifestarNotaAutomaticamente') ? ' *' : '' }}</mat-label>
+        <mat-select formControlName="manifestarNotaAutomaticamente">
+          <mat-option [value]="null">Nao informado</mat-option>
+          <mat-option [value]="0">Nao</mat-option>
+          <mat-option [value]="1">Sim</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Usa nota fiscal fatura</mat-label>
+        <mat-select formControlName="usaNotaFiscalFatura">
+          <mat-option [value]="null">Nao informado</mat-option>
+          <mat-option [value]="0">Nao</mat-option>
+          <mat-option [value]="1">Sim</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Ignorar importacao nota</mat-label>
+        <mat-select formControlName="ignorarImportacaoNota">
+          <mat-option [value]="null">Nao informado</mat-option>
+          <mat-option [value]="0">Nao</mat-option>
+          <mat-option [value]="1">Sim</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </form>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="entidadeId && isGroupEnabled('RH')">
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Contrato RH</div>
+      <button mat-stroked-button type="button" (click)="saveRhContrato()" [disabled]="!canEdit()">
+        Salvar contrato RH
+      </button>
+    </div>
+    <form [formGroup]="rhContratoForm" class="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-3">
+      <mat-form-field appearance="outline">
+        <mat-label>Numero{{ isFieldRequired('rh.contrato.numero') ? ' *' : '' }}</mat-label>
+        <input matInput formControlName="numero" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Data admissao{{ isFieldRequired('rh.contrato.admissaoData') ? ' *' : '' }}</mat-label>
+        <input matInput appDateMask placeholder="DD/MM/AAAA" formControlName="admissaoData" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Remuneracao</mat-label>
+        <input matInput type="number" step="0.01" formControlName="remuneracao" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Remuneracao complementar</mat-label>
+        <input matInput type="number" step="0.01" formControlName="remuneracaoComplementar" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Bonificacao</mat-label>
+        <input matInput type="number" step="0.01" formControlName="bonificacao" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>% Insalubridade</mat-label>
+        <input matInput type="number" step="0.01" formControlName="percentualInsalubridade" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>% Periculosidade</mat-label>
+        <input matInput type="number" step="0.01" formControlName="percentualPericulosidade" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo funcionario</mat-label>
+        <mat-select formControlName="tipoFuncionarioId">
+          <mat-option [value]="null">Nao informado</mat-option>
+          <mat-option *ngFor="let item of rhOptions.tiposFuncionario" [value]="item.id">{{ item.nome }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Situacao funcionario</mat-label>
+        <mat-select formControlName="situacaoFuncionarioId">
+          <mat-option [value]="null">Nao informado</mat-option>
+          <mat-option *ngFor="let item of rhOptions.situacoesFuncionario" [value]="item.id">{{ item.nome }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Setor</mat-label>
+        <mat-select formControlName="setorId">
+          <mat-option [value]="null">Nao informado</mat-option>
+          <mat-option *ngFor="let item of rhOptions.setores" [value]="item.id">{{ item.nome }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Cargo</mat-label>
+        <mat-select formControlName="cargoId">
+          <mat-option [value]="null">Nao informado</mat-option>
+          <mat-option *ngFor="let item of rhOptions.cargos" [value]="item.id">{{ item.nome }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Ocupacao atividade</mat-label>
+        <mat-select formControlName="ocupacaoAtividadeId">
+          <mat-option [value]="null">Nao informado</mat-option>
+          <mat-option *ngFor="let item of rhOptions.ocupacoesAtividade" [value]="item.id">{{ item.nome }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <div class="flex items-center">
+        <mat-slide-toggle formControlName="sindicalizado">Sindicalizado</mat-slide-toggle>
+      </div>
+    </form>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="entidadeId && isGroupEnabled('RH')">
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Informacoes RH</div>
+      <button mat-stroked-button type="button" (click)="saveRhInfo()" [disabled]="!canEdit()">
+        Salvar informacoes RH
+      </button>
+    </div>
+    <form [formGroup]="rhInfoForm" class="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-3">
+      <mat-form-field appearance="outline" class="md:col-span-2 lg:col-span-3">
+        <mat-label>Atividades{{ isFieldRequired('rh.info.atividades') ? ' *' : '' }}</mat-label>
+        <textarea matInput rows="2" formControlName="atividades"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="md:col-span-2 lg:col-span-3">
+        <mat-label>Habilidades</mat-label>
+        <textarea matInput rows="2" formControlName="habilidades"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="md:col-span-2 lg:col-span-3">
+        <mat-label>Experiencias</mat-label>
+        <textarea matInput rows="2" formControlName="experiencias"></textarea>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Meta media horas vendidas/dia</mat-label>
+        <input matInput type="number" formControlName="metaMediaHorasVendidasDia" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Meta produtos vendidos</mat-label>
+        <input matInput type="number" step="0.01" formControlName="metaProdutosVendidos" />
+      </mat-form-field>
+      <div class="flex items-center">
+        <mat-slide-toggle formControlName="aceitaViajar">Aceita viajar</mat-slide-toggle>
+      </div>
+      <div class="flex items-center">
+        <mat-slide-toggle formControlName="possuiCarro">Possui carro</mat-slide-toggle>
+      </div>
+      <div class="flex items-center">
+        <mat-slide-toggle formControlName="possuiMoto">Possui moto</mat-slide-toggle>
+      </div>
+    </form>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="entidadeId && isGroupEnabled('FAMILIARES_REFERENCIAS')">
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Referencias</div>
+      <span class="text-xs text-[var(--muted)]">{{ referenciasCount }} item(ns)</span>
+    </div>
+    <form [formGroup]="referenciaForm" class="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-6">
+      <mat-form-field appearance="outline" class="md:col-span-2 lg:col-span-2">
+        <mat-label>Nome{{ isFieldRequired('referencias.nome') ? ' *' : '' }}</mat-label>
+        <input matInput formControlName="nome" />
+        <mat-error *ngIf="referenciaForm.get('nome')?.hasError('required')">Informe o nome.</mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="md:col-span-2 lg:col-span-2">
+        <mat-label>Atividades</mat-label>
+        <input matInput formControlName="atividades" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Data inicio</mat-label>
+        <input matInput appDateMask placeholder="DD/MM/AAAA" formControlName="dataInicio" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Data fim</mat-label>
+        <input matInput appDateMask placeholder="DD/MM/AAAA" formControlName="dataFim" />
+      </mat-form-field>
+      <div class="col-span-full flex justify-end">
+        <button mat-stroked-button type="button" (click)="saveReferencia()" [disabled]="!canEdit() || savingReferencia">
+          Incluir referencia
+        </button>
+      </div>
+    </form>
+
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[760px] text-sm">
+        <thead>
+          <tr class="border-b border-[var(--border)] text-left">
+            <th class="py-2 pr-3">Nome</th>
+            <th class="py-2 pr-3">Atividades</th>
+            <th class="py-2 pr-3">Inicio</th>
+            <th class="py-2 pr-3">Fim</th>
+            <th class="py-2 pr-0 text-right">Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of referencias" class="border-b border-[var(--border)]">
+            <td class="py-2 pr-3">{{ item.nome }}</td>
+            <td class="py-2 pr-3">{{ item.atividades || '-' }}</td>
+            <td class="py-2 pr-3">{{ item.dataInicio || '-' }}</td>
+            <td class="py-2 pr-3">{{ item.dataFim || '-' }}</td>
+            <td class="py-2 pr-0 text-right">
+              <button mat-button color="warn" type="button" (click)="removeReferencia(item.id)" [disabled]="!canEdit()">
+                Remover
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="!referencias.length">
+            <td class="py-2 text-[var(--muted)]" colspan="5">Nenhuma referencia cadastrada.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-[var(--shadow-xs)]" *ngIf="entidadeId && isGroupEnabled('FAMILIARES_REFERENCIAS')">
+    <div class="mb-2 flex items-center justify-between gap-2">
+      <div class="text-sm font-semibold">Qualificacoes</div>
+      <span class="text-xs text-[var(--muted)]">{{ qualificacoesCount }} item(ns)</span>
+    </div>
+    <form [formGroup]="qualificacaoForm" class="grid grid-cols-1 gap-2.5 md:grid-cols-2 lg:grid-cols-6">
+      <mat-form-field appearance="outline" class="md:col-span-2 lg:col-span-3">
+        <mat-label>Qualificacao{{ isFieldRequired('qualificacoes.rhQualificacaoId') ? ' *' : '' }}</mat-label>
+        <mat-select formControlName="rhQualificacaoId">
+          <mat-option [value]="null">Selecione</mat-option>
+          <mat-option *ngFor="let item of rhOptions.qualificacoes" [value]="item.id">{{ item.nome }}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo</mat-label>
+        <input matInput maxlength="1" formControlName="tipo" />
+      </mat-form-field>
+      <div class="flex items-center lg:col-span-2">
+        <mat-slide-toggle formControlName="completo">Completo</mat-slide-toggle>
+      </div>
+      <div class="col-span-full flex justify-end">
+        <button mat-stroked-button type="button" (click)="saveQualificacao()" [disabled]="!canEdit() || savingQualificacao">
+          Incluir qualificacao
+        </button>
+      </div>
+    </form>
+
+    <div class="overflow-x-auto">
+      <table class="w-full min-w-[680px] text-sm">
+        <thead>
+          <tr class="border-b border-[var(--border)] text-left">
+            <th class="py-2 pr-3">Qualificacao</th>
+            <th class="py-2 pr-3">Tipo</th>
+            <th class="py-2 pr-3">Completo</th>
+            <th class="py-2 pr-0 text-right">Acoes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of qualificacoes" class="border-b border-[var(--border)]">
+            <td class="py-2 pr-3">{{ item.rhQualificacaoNome || ('#' + item.rhQualificacaoId) }}</td>
+            <td class="py-2 pr-3">{{ item.tipo || '-' }}</td>
+            <td class="py-2 pr-3">{{ item.completo ? 'Sim' : 'Nao' }}</td>
+            <td class="py-2 pr-0 text-right">
+              <button mat-button color="warn" type="button" (click)="removeQualificacao(item.id)" [disabled]="!canEdit()">
+                Remover
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="!qualificacoes.length">
+            <td class="py-2 text-[var(--muted)]" colspan="4">Nenhuma qualificacao cadastrada.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </section>
 </div>

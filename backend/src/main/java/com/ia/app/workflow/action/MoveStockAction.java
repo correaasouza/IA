@@ -92,8 +92,8 @@ public class MoveStockAction implements WorkflowAction {
     }
 
     CatalogStockAdjustmentType adjustmentType = CatalogStockAdjustmentType.from(adjustment.getTipo());
-    BigDecimal quantidade = normalize(item.getQuantidadeConvertidaBase() == null ? item.getQuantidade() : item.getQuantidadeConvertidaBase());
-    BigDecimal valorTotal = normalize(item.getValorTotal());
+    BigDecimal quantidade = normalizeAbs(item.getQuantidadeConvertidaBase() == null ? item.getQuantidade() : item.getQuantidadeConvertidaBase());
+    BigDecimal valorTotal = normalizeAbs(item.getValorTotal());
 
     List<CatalogMovementEngine.Impact> impacts = new ArrayList<>();
     if (adjustmentType == CatalogStockAdjustmentType.ENTRADA) {
@@ -155,8 +155,8 @@ public class MoveStockAction implements WorkflowAction {
       Instant.now(),
       item.getTenantUnitId(),
       item.getUnidadeBaseCatalogoTenantUnitId(),
-      normalize(item.getQuantidade()),
-      normalize(item.getQuantidadeConvertidaBase() == null ? item.getQuantidade() : item.getQuantidadeConvertidaBase()),
+      normalizeAbs(item.getQuantidade()),
+      normalizeAbs(item.getQuantidadeConvertidaBase() == null ? item.getQuantidade() : item.getQuantidadeConvertidaBase()),
       item.getFatorAplicado(),
       item.getFatorFonte(),
       impacts);
@@ -222,6 +222,10 @@ public class MoveStockAction implements WorkflowAction {
       return BigDecimal.ZERO.setScale(6, java.math.RoundingMode.HALF_UP);
     }
     return value.setScale(6, java.math.RoundingMode.HALF_UP);
+  }
+
+  private BigDecimal normalizeAbs(BigDecimal value) {
+    return normalize(value).abs().setScale(6, java.math.RoundingMode.HALF_UP);
   }
 
   private String writeJson(Object value) {
