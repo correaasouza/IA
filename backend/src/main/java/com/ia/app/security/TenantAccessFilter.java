@@ -60,6 +60,10 @@ public class TenantAccessFilter extends OncePerRequestFilter {
       filterChain.doFilter(request, response);
       return;
     }
+    if (shouldBypassTenantContext(path)) {
+      filterChain.doFilter(request, response);
+      return;
+    }
 
     String tenantIdHeader = request.getHeader("X-Tenant-Id");
     if (tenantIdHeader == null || tenantIdHeader.isBlank()) {
@@ -145,6 +149,10 @@ public class TenantAccessFilter extends OncePerRequestFilter {
       return true;
     }
     return OPEN_PATHS.contains(path);
+  }
+
+  private boolean shouldBypassTenantContext(String path) {
+    return path != null && path.startsWith("/api/locatarios");
   }
 
   private boolean shouldIgnoreEmpresaHeader(HttpServletRequest request) {

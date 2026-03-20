@@ -29,6 +29,12 @@ describe('MasterOnlyGuard', () => {
     expect(guard.canActivate()).toBeTrue();
   });
 
+  it('allows global master without tenant context', () => {
+    auth.getUsername.and.returnValue('master');
+    auth.getUserRoles.and.returnValue([]);
+    expect(guard.canActivate()).toBeTrue();
+  });
+
   it('blocks non-master', () => {
     localStorage.setItem('tenantId', '2');
     auth.getUsername.and.returnValue('user1');

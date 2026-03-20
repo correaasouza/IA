@@ -330,11 +330,12 @@ export class AppComponent {
 
   private isAllowedLeaf(item: MenuItem): boolean {
     const tenantId = localStorage.getItem('tenantId');
-    if (!tenantId && item.id !== 'home') {
+    const allowGlobalMasterTenantMenu = item.id === 'tenants' && this.isGlobalMasterUsername();
+    if (!tenantId && item.id !== 'home' && !allowGlobalMasterTenantMenu) {
       return false;
     }
     if (item.id === 'tenants') {
-      return this.isMasterTenantContext() && this.hasMasterRole();
+      return this.isGlobalMasterUsername() || (this.isMasterTenantContext() && this.hasMasterRole());
     }
     if (item.id === 'roles') {
       return this.hasAdminOrMasterRole();
@@ -709,6 +710,11 @@ export class AppComponent {
     return this.getTenantId() === '1';
   }
 
+  private isGlobalMasterUsername(): boolean {
+    const username = (this.auth.getUsername() || '').trim().toLowerCase();
+    return username === 'master';
+  }
+
   private hasMasterRole(): boolean {
     const normalize = (role: string) => {
       const value = (role || '').trim().toUpperCase();
@@ -717,7 +723,7 @@ export class AppComponent {
     const tokenRoles = (this.auth.getUserRoles() || []).map(normalize);
     const tenantRoles = (this.tenantRoles || []).map(normalize);
     const roleMaster = Array.from(new Set([...tokenRoles, ...tenantRoles])).includes('MASTER');
-    const usernameMaster = (this.auth.getUsername() || '').trim().toLowerCase() === 'master';
+    const usernameMaster = this.isGlobalMasterUsername();
     return roleMaster || usernameMaster;
   }
 
@@ -729,7 +735,7 @@ export class AppComponent {
     const tokenRoles = (this.auth.getUserRoles() || []).map(normalize);
     const tenantRoles = (this.tenantRoles || []).map(normalize);
     const merged = Array.from(new Set([...tokenRoles, ...tenantRoles]));
-    const usernameMaster = (this.auth.getUsername() || '').trim().toLowerCase() === 'master';
+    const usernameMaster = this.isGlobalMasterUsername();
     return usernameMaster || merged.includes('MASTER') || merged.includes('ADMIN');
   }
 

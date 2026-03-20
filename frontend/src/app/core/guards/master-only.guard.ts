@@ -7,11 +7,20 @@ export class MasterOnlyGuard implements CanActivate {
   constructor(private auth: AuthService, private router: Router) {}
 
   canActivate(): boolean {
-    if (this.isMasterInMasterTenant()) {
+    if (this.canAccessTenantManagement()) {
       return true;
     }
     this.router.navigateByUrl('/home');
     return false;
+  }
+
+  private canAccessTenantManagement(): boolean {
+    return this.isGlobalMasterUsername() || this.isMasterInMasterTenant();
+  }
+
+  private isGlobalMasterUsername(): boolean {
+    const username = (this.auth.getUsername() || '').trim().toLowerCase();
+    return username === 'master';
   }
 
   private isMasterInMasterTenant(): boolean {

@@ -14,11 +14,11 @@ export class AuthGuard implements CanActivate {
     }
     const tenantId = localStorage.getItem('tenantId');
     const url = state?.url || '';
-    if (!tenantId && url !== '/' && url !== '') {
+    if (!tenantId && url !== '/' && url !== '' && !(this.requiresMasterTenant(url) && this.isGlobalMasterUsername())) {
       this.router.navigateByUrl('/');
       return false;
     }
-    if (this.requiresMasterTenant(url) && !this.isMasterInMasterTenant()) {
+    if (this.requiresMasterTenant(url) && !this.canAccessTenantManagement()) {
       this.router.navigateByUrl('/home');
       return false;
     }
@@ -27,6 +27,15 @@ export class AuthGuard implements CanActivate {
 
   private requiresMasterTenant(url: string): boolean {
     return url === '/tenants' || url.startsWith('/tenants/');
+  }
+
+  private canAccessTenantManagement(): boolean {
+    return this.isGlobalMasterUsername() || this.isMasterInMasterTenant();
+  }
+
+  private isGlobalMasterUsername(): boolean {
+    const username = (this.auth.getUsername() || '').trim().toLowerCase();
+    return username === 'master';
   }
 
   private isMasterInMasterTenant(): boolean {
