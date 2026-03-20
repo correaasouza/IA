@@ -65,7 +65,7 @@ services:
       MOVIMENTO_CONFIG_STRICT_ENABLED: ${MOVIMENTO_CONFIG_STRICT_ENABLED:-false}
       MOVIMENTO_SEED_DEFAULTS_ENABLED: ${MOVIMENTO_SEED_DEFAULTS_ENABLED:-false}
     ports:
-      - "0.0.0.0:8082:8082"
+      - "0.0.0.0:18082:18082"
 
   frontend:
     build:

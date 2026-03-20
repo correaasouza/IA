@@ -5,7 +5,7 @@ const host =
 
 export const environment = {
   production: false,
-  apiBaseUrl: `http://${host}:8082`,
+  apiBaseUrl: `http://${host}:18082`,
   keycloakUrl: `http://${host}:18081`,
   keycloakRealm: 'ia',
   keycloakClientId: 'frontend'
