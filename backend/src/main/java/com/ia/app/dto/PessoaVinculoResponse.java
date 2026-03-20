@@ -5,5 +5,11 @@ public record PessoaVinculoResponse(
   String nome,
   String apelido,
   String tipoRegistro,
-  String registroFederal
+  String registroFederal,
+  String tipoPessoa,
+  String genero,
+  String nacionalidade,
+  String naturalidade,
+  String estadoCivil,
+  String dataNascimento
 ) {}

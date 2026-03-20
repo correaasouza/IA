@@ -21,18 +21,6 @@
         Alterar
       </button>
       <button
-        mat-flat-button
-        color="primary"
-        *ngIf="mode !== 'view'"
-        type="button"
-        (click)="save()"
-        [disabled]="saving"
-        [appAccessControl]="mode === 'new' ? 'tenant.units.create' : 'tenant.units.update'"
-        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-        <mat-icon>save</mat-icon>
-        Salvar
-      </button>
-      <button
         mat-button
         color="warn"
         *ngIf="mode !== 'new'"
@@ -43,6 +31,18 @@
         [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
         <mat-icon>delete</mat-icon>
         Excluir
+      </button>
+      <button
+        mat-flat-button
+        color="primary"
+        *ngIf="mode !== 'view'"
+        type="button"
+        (click)="save()"
+        [disabled]="saving"
+        [appAccessControl]="mode === 'new' ? 'tenant.units.create' : 'tenant.units.update'"
+        [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+        <mat-icon>save</mat-icon>
+        Salvar
       </button>
     </div>
   </header>

@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 
 export interface EmpresaResponse {
   id: number;
+  tenantId?: number | null;
   tipo: 'MATRIZ' | 'FILIAL';
   matrizId?: number | null;
   razaoSocial: string;

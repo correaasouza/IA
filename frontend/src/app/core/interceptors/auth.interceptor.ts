@@ -14,7 +14,9 @@ export class AuthInterceptor implements HttpInterceptor {
       catchError(() => of(false)),
       switchMap(loggedIn => {
         const tenantId = localStorage.getItem('tenantId');
-        const empresaId = localStorage.getItem('empresaContextId');
+        const empresaId = this.shouldAttachCompanyHeader(req)
+          ? localStorage.getItem('empresaContextId')
+          : null;
         if (!loggedIn) {
           let headers = req.headers;
           if (tenantId) {
@@ -62,5 +64,15 @@ export class AuthInterceptor implements HttpInterceptor {
         );
       })
     );
+  }
+
+  private shouldAttachCompanyHeader(req: HttpRequest<any>): boolean {
+    const method = (req.method || '').toUpperCase();
+    const url = req.url || '';
+    // Avoid stale company context blocking company selection/loading endpoints.
+    if (method === 'GET' && /\/api\/empresas(\?|$|\/)/.test(url)) {
+      return false;
+    }
+    return true;
   }
 }

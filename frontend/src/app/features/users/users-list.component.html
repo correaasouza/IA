@@ -8,7 +8,7 @@
     <div class="flex flex-wrap gap-2">
       <button mat-flat-button color="primary" routerLink="/users/new"
         appAccessControl="users.create"
-        [appAccessFallbackRoles]="['MASTER']"
+        [appAccessFallbackRoles]="['MASTER','ADMIN']"
         [appAccessConfigurable]="false">
         <mat-icon>add</mat-icon>
         Novo usuário
@@ -39,6 +39,16 @@
           [showActions]="false"
           (searchChange)="onSearchChange($event)">
         </app-field-search>
+        <div class="mt-2 grid gap-1 sm:max-w-xs" *ngIf="isGlobalMaster">
+          <label class="text-xs font-medium text-[var(--muted-strong)]" for="tenant-filter">Locatário</label>
+          <select id="tenant-filter"
+            class="status-native-select"
+            [value]="selectedTenantId || ''"
+            (change)="onTenantFilterChange(($any($event.target)).value)">
+            <option value="">Todos</option>
+            <option *ngFor="let tenant of tenantOptions" [value]="tenant.id">{{ tenant.nome }}</option>
+          </select>
+        </div>
       </div>
       <div class="flex items-center justify-end gap-2">
         <button mat-stroked-button type="button" (click)="clearFilters()">
@@ -105,13 +115,13 @@
             </button>
             <button mat-icon-button [matTooltip]="row.ativo ? 'Desativar' : 'Ativar'" (click)="toggleStatus(row)" [disabled]="togglingUserId === row.id" [attr.aria-label]="(row.ativo ? 'Desativar ' : 'Ativar ') + row.username"
               appAccessControl="users.toggleStatus"
-              [appAccessFallbackRoles]="['MASTER']"
+              [appAccessFallbackRoles]="['MASTER','ADMIN']"
               [appAccessConfigurable]="false">
               <mat-icon>{{ row.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
             </button>
             <button mat-icon-button color="warn" matTooltip="Excluir" (click)="remove(row)" [attr.aria-label]="'Excluir ' + row.username"
               appAccessControl="users.delete"
-              [appAccessFallbackRoles]="['MASTER']"
+              [appAccessFallbackRoles]="['MASTER','ADMIN']"
               [appAccessConfigurable]="false">
               <mat-icon>delete</mat-icon>
             </button>
@@ -166,14 +176,14 @@
             </button>
             <button mat-menu-item (click)="toggleStatus(row)"
               appAccessControl="users.toggleStatus"
-              [appAccessFallbackRoles]="['MASTER']"
+              [appAccessFallbackRoles]="['MASTER','ADMIN']"
               [appAccessConfigurable]="false">
               <mat-icon>{{ row.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
               <span>{{ row.ativo ? 'Desativar' : 'Ativar' }}</span>
             </button>
             <button mat-menu-item (click)="remove(row)"
               appAccessControl="users.delete"
-              [appAccessFallbackRoles]="['MASTER']"
+              [appAccessFallbackRoles]="['MASTER','ADMIN']"
               [appAccessConfigurable]="false">
               <mat-icon>delete</mat-icon>
               <span>Excluir</span>
@@ -200,7 +210,7 @@
     </div>
     <button mat-flat-button color="primary" routerLink="/users/new"
       appAccessControl="users.create"
-      [appAccessFallbackRoles]="['MASTER']"
+      [appAccessFallbackRoles]="['MASTER','ADMIN']"
       [appAccessConfigurable]="false">
       <mat-icon>add</mat-icon>
       Criar usuário

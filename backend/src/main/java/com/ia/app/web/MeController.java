@@ -2,14 +2,15 @@ package com.ia.app.web;
 
 import com.ia.app.dto.UsuarioEmpresaPadraoRequest;
 import com.ia.app.dto.UsuarioEmpresaPadraoResponse;
+import com.ia.app.security.AuthorizationService;
 import com.ia.app.service.MovimentoConfigFeatureToggle;
 import com.ia.app.service.PermissaoUsuarioService;
 import com.ia.app.service.UsuarioEmpresaPreferenciaService;
 import com.ia.app.tenant.TenantContext;
 import com.ia.app.workflow.service.WorkflowFeatureToggle;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.http.HttpHeaders;
@@ -32,16 +33,19 @@ public class MeController {
   private final UsuarioEmpresaPreferenciaService usuarioEmpresaPreferenciaService;
   private final MovimentoConfigFeatureToggle movimentoConfigFeatureToggle;
   private final WorkflowFeatureToggle workflowFeatureToggle;
+  private final AuthorizationService authorizationService;
 
   public MeController(
       PermissaoUsuarioService permissaoUsuarioService,
       UsuarioEmpresaPreferenciaService usuarioEmpresaPreferenciaService,
       MovimentoConfigFeatureToggle movimentoConfigFeatureToggle,
-      WorkflowFeatureToggle workflowFeatureToggle) {
+      WorkflowFeatureToggle workflowFeatureToggle,
+      AuthorizationService authorizationService) {
     this.permissaoUsuarioService = permissaoUsuarioService;
     this.usuarioEmpresaPreferenciaService = usuarioEmpresaPreferenciaService;
     this.movimentoConfigFeatureToggle = movimentoConfigFeatureToggle;
     this.workflowFeatureToggle = workflowFeatureToggle;
+    this.authorizationService = authorizationService;
   }
 
   @GetMapping("/me")
@@ -78,8 +82,27 @@ public class MeController {
         } catch (NumberFormatException ignored) {
         }
       }
-      Set<String> permissoes = tenant == null ? Set.of() : permissaoUsuarioService.permissoes(tenant, jwt.getSubject());
-      List<String> papeis = tenant == null ? List.of() : permissaoUsuarioService.papeis(tenant, jwt.getSubject());
+      Long tenantBefore = TenantContext.getTenantId();
+      boolean tenantTemporarilySet = false;
+      if (tenantBefore == null && tenant != null) {
+        TenantContext.setTenantId(tenant);
+        tenantTemporarilySet = true;
+      }
+      Set<String> permissoes;
+      List<String> papeis;
+      List<Long> accessibleCompanies;
+      Long defaultCompanyId;
+      try {
+        permissoes = tenant == null ? Set.of() : permissaoUsuarioService.permissoes(tenant, jwt.getSubject());
+        papeis = tenant == null ? List.of() : permissaoUsuarioService.papeis(tenant, jwt.getSubject());
+        accessibleCompanies = tenant == null ? List.of()
+          : List.copyOf(authorizationService.getAccessibleCompanies(jwt.getSubject(), tenant));
+        defaultCompanyId = tenant == null ? null : usuarioEmpresaPreferenciaService.getEmpresaPadraoId(jwt.getSubject());
+      } finally {
+        if (tenantTemporarilySet) {
+          TenantContext.clear();
+        }
+      }
       if ("master".equalsIgnoreCase(username)) {
         java.util.LinkedHashSet<String> boosted = new java.util.LinkedHashSet<>(papeis);
         boosted.add("MASTER");
@@ -94,6 +117,9 @@ public class MeController {
       payload.put("tenantRoles", papeis);
       payload.put("permissions", permissoes);
       payload.put("tenantId", tenantFromClaim != null ? tenantFromClaim : tenantId);
+      payload.put("accessibleCompanies", accessibleCompanies);
+      payload.put("defaultCompanyId", defaultCompanyId);
+      payload.put("canGrantCompanyAccess", tenant != null && authorizationService.canGrantCompanyAccess(jwt.getSubject(), tenant));
       payload.put("features", Map.of(
         "movementConfigEnabled", movimentoConfigFeatureToggle.isEnabled(),
         "movementConfigStrictEnabled", movimentoConfigFeatureToggle.isStrictEnabled(),

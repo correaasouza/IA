@@ -3,12 +3,228 @@
   min-width: 0;
 }
 
+.entity-record-layout {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+}
+
 .entity-record-form-shell {
   min-width: 0;
 }
 
+.entity-record-main {
+  min-width: 0;
+}
+
+.entity-record-main > section[id^="sec-"] {
+  border-width: 2px !important;
+}
+
+.entity-mobile-cards {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.entity-mobile-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  background: color-mix(in srgb, var(--surface-muted) 58%, white);
+  box-shadow: var(--shadow-xs);
+  display: grid;
+  gap: 4px;
+}
+
+.entity-mobile-card-row {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.entity-mobile-card-actions {
+  margin-top: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.entity-mobile-empty {
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--surface);
+}
+
+.entity-subcounts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.registro-federal-field-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.entity-dados-form {
+  align-items: start;
+}
+
+:host ::ng-deep .entity-dados-inline-field .mat-mdc-text-field-wrapper {
+  min-height: 36px !important;
+  height: 36px !important;
+}
+
+:host ::ng-deep .entity-dados-inline-field .mat-mdc-form-field-infix {
+  min-height: 20px !important;
+  height: 20px !important;
+}
+
+.entity-dados-inline-field {
+  align-self: end;
+}
+
+.registro-tipo-inline {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  justify-content: flex-end;
+  min-height: 18px;
+}
+
+.registro-tipo-badge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface-muted) 72%, white);
+  color: var(--muted-strong);
+  min-height: 18px;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.registro-tipo-badge-active {
+  border-color: color-mix(in srgb, var(--primary) 48%, var(--border));
+  color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 14%, white);
+}
+
+.entity-record-quick-nav {
+  position: sticky;
+  top: 92px;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 6px;
+  align-self: start;
+  z-index: 5;
+  max-height: calc(100vh - 104px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 2px;
+  scrollbar-width: thin;
+}
+
+.entity-record-quick-nav-btn {
+  width: 45px;
+  height: 45px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--surface-muted) 72%, white);
+  color: var(--muted-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.entity-record-quick-nav-btn .mat-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.entity-record-quick-nav-btn:hover {
+  background: var(--surface);
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 42%, var(--border));
+}
+
+.entity-record-quick-nav-btn-active {
+  background: color-mix(in srgb, var(--primary) 14%, white);
+  color: var(--primary);
+  border-color: color-mix(in srgb, var(--primary) 46%, var(--border));
+}
+
+.entity-record-form-shell [id^="sec-"] {
+  scroll-margin-top: 148px;
+}
+
+@media (max-height: 860px) {
+  .entity-record-quick-nav {
+    top: 80px;
+    max-height: calc(100vh - 88px);
+    gap: 4px;
+  }
+
+  .entity-record-quick-nav-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+  }
+
+  .entity-record-quick-nav-btn .mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+}
+
+@media (max-height: 720px) {
+  .entity-record-quick-nav {
+    top: 70px;
+    max-height: calc(100vh - 76px);
+  }
+
+  .entity-record-quick-nav-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+  }
+
+  .entity-record-quick-nav-btn .mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
 .entity-record-form-header-actions {
   width: auto;
+}
+
+.entity-header-name {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted-strong);
+}
+
+.entity-header-name-label {
+  margin-right: 4px;
+}
+
+.entity-header-name-value {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 .entity-status-chip {
@@ -36,19 +252,320 @@
   transform-origin: left center;
 }
 
+.registro-federal-field .mat-mdc-form-field-flex {
+  align-items: center;
+}
+
+.registro-federal-field .mat-mdc-input-element {
+  padding-right: 0;
+}
+
+.entity-observacoes-form {
+  grid-template-columns: 1fr !important;
+}
+
+.entity-observacoes-form > * {
+  grid-column: 1 / -1;
+}
+
+.entity-observacao-field {
+  display: grid;
+  gap: 4px;
+}
+
+:host ::ng-deep .entity-observacoes-form .mat-mdc-form-field {
+  --mat-form-field-container-height: auto !important;
+  --mdc-outlined-text-field-container-height: auto !important;
+  --mdc-filled-text-field-container-height: auto !important;
+}
+
+:host ::ng-deep .entity-observacoes-form .mat-mdc-text-field-wrapper {
+  height: auto !important;
+  min-height: 36px !important;
+}
+
+:host ::ng-deep .entity-observacoes-form .mat-mdc-form-field-infix {
+  height: auto !important;
+  min-height: 20px !important;
+  padding-top: 1px !important;
+  padding-bottom: 1px !important;
+}
+
+:host ::ng-deep .entity-observacoes-form .mdc-floating-label--float-above,
+:host ::ng-deep .entity-observacoes-form .mat-mdc-floating-label.mdc-floating-label--float-above {
+  transform: translateY(calc(-64% + 3px)) scale(0.75) !important;
+  transform-origin: left center !important;
+}
+
+:host ::ng-deep .entity-observacoes-form textarea.mat-mdc-input-element {
+  min-height: 20px !important;
+  resize: none;
+  overflow: hidden;
+}
+
+.entity-observacao-field .mat-mdc-form-field {
+  width: 100%;
+}
+
+.entity-endereco-map-wrap {
+  position: relative;
+}
+
+.entity-map-trigger {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border: 1px solid #c8d3e1;
+  border-radius: 999px;
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+}
+
+.entity-map-trigger img {
+  width: 21px;
+  height: 21px;
+  display: block;
+}
+
+.entity-map-preview {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 8px);
+  z-index: 15;
+  width: min(360px, calc(100vw - 42px));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.entity-map-preview-head {
+  padding: 8px 10px 6px;
+  display: grid;
+  gap: 2px;
+}
+
+.entity-map-preview-title {
+  font-size: 12px;
+  line-height: 1.2;
+  font-weight: 700;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.entity-map-preview-subtitle {
+  font-size: 11px;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.entity-map-preview-expand {
+  border: 0;
+  background: transparent;
+  color: #1a73e8;
+  font-size: 11px;
+  line-height: 1.2;
+  padding: 0;
+  justify-self: start;
+  cursor: pointer;
+}
+
+.entity-map-preview-frame {
+  display: block;
+  width: 100%;
+  height: 220px;
+  border: 0;
+}
+
+.entity-map-preview-footer {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 8px 10px 10px;
+}
+
 @media (max-width: 767px) {
-  .entity-record-form-header-actions {
+  :host {
+    overflow: visible;
+  }
+
+  .entity-record-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .entity-record-main {
+    padding-bottom: 64px;
+    min-width: 0;
+    overflow: visible;
+  }
+
+  .entity-record-main > section,
+  .entity-record-main form,
+  .entity-record-main .mat-mdc-form-field {
+    min-width: 0;
+  }
+
+  .entity-record-main .mat-mdc-form-field {
     width: 100%;
   }
 
+  .entity-record-main .mat-mdc-button-base {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .entity-record-main .flex {
+    min-width: 0;
+    flex-wrap: wrap;
+  }
+
+  .entity-record-main .text-sm,
+  .entity-record-main .text-xs {
+    overflow-wrap: anywhere;
+  }
+
+  .entity-record-main .entity-record-page-header {
+    gap: 6px !important;
+    padding: 8px 10px 6px;
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 1200 !important;
+    background: var(--surface) !important;
+  }
+
+  .entity-record-page-header p {
+    margin-top: 2px !important;
+  }
+
+  .entity-header-status-toggle {
+    transform: scale(0.84);
+  }
+
+  .entity-record-main > section {
+    padding: 10px;
+  }
+
+  .entity-record-main .text-xs {
+    line-height: 1.35;
+  }
+
+  .entity-subcounts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 10px;
+    width: 100%;
+  }
+
+  .registro-tipo-inline {
+    gap: 2px;
+    justify-content: flex-start;
+  }
+
+  .registro-tipo-badge {
+    padding: 0 4px;
+    font-size: 9px;
+    min-height: 16px;
+  }
+
+  .registro-federal-field .mat-mdc-input-element {
+    padding-right: 0;
+  }
+
+  .entity-record-quick-nav {
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    top: auto;
+    z-index: 30;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    max-height: none;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 6px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--surface) 92%, white);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .entity-record-quick-nav-btn {
+    width: 34px;
+    height: 34px;
+    flex: 0 0 auto;
+    border-radius: 8px;
+  }
+
+  .entity-record-quick-nav-btn .mat-icon {
+    font-size: 19px;
+    width: 19px;
+    height: 19px;
+  }
+
+  .entity-record-form-header-actions {
+    display: grid !important;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    gap: 6px;
+    width: min(100%, 360px);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
   .entity-record-form-header-actions .mat-mdc-button-base {
-    flex: 1 1 calc(50% - 4px);
+    width: 100%;
     min-width: 0;
   }
-}
 
-@media (max-width: 460px) {
-  .entity-record-form-header-actions .mat-mdc-button-base {
-    flex-basis: 100%;
+  .entity-mobile-card-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .entity-section-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .entity-section-head > div:last-child {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .entity-section-head .mat-mdc-button,
+  .entity-section-head .mat-mdc-outlined-button,
+  .entity-section-head .mat-mdc-unelevated-button {
+    min-height: 30px;
+  }
+
+  .entity-section-head .mat-mdc-button-base {
+    flex: 1 1 auto;
+  }
+
+  .entity-endereco-map-wrap {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .entity-map-preview {
+    display: none;
+  }
+
+  .entity-map-preview-frame {
+    height: min(42vh, 240px);
   }
 }

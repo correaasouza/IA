@@ -3,6 +3,7 @@ package com.ia.app.service;
 import com.ia.app.domain.UsuarioEmpresaPreferencia;
 import com.ia.app.repository.EmpresaRepository;
 import com.ia.app.repository.UsuarioEmpresaPreferenciaRepository;
+import com.ia.app.security.AuthorizationService;
 import com.ia.app.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 
@@ -10,12 +11,15 @@ import org.springframework.stereotype.Service;
 public class UsuarioEmpresaPreferenciaService {
   private final UsuarioEmpresaPreferenciaRepository repository;
   private final EmpresaRepository empresaRepository;
+  private final AuthorizationService authorizationService;
 
   public UsuarioEmpresaPreferenciaService(
       UsuarioEmpresaPreferenciaRepository repository,
-      EmpresaRepository empresaRepository) {
+      EmpresaRepository empresaRepository,
+      AuthorizationService authorizationService) {
     this.repository = repository;
     this.empresaRepository = empresaRepository;
+    this.authorizationService = authorizationService;
   }
 
   public Long getEmpresaPadraoId(String usuarioId) {
@@ -40,6 +44,9 @@ public class UsuarioEmpresaPreferenciaService {
     }
     if (!empresaRepository.existsByIdAndTenantId(empresaId, tenantId)) {
       throw new IllegalArgumentException("empresa_not_found");
+    }
+    if (!authorizationService.canSetDefaultCompany(usuarioId, tenantId, empresaId)) {
+      throw new IllegalArgumentException("empresa_not_allowed_for_user");
     }
     UsuarioEmpresaPreferencia pref = repository.findByTenantIdAndUsuarioId(tenantId, usuarioId)
       .orElseGet(() -> {

@@ -13,6 +13,7 @@ import com.ia.app.dto.UsuarioPapelResponse;
 import com.ia.app.repository.PapelRepository;
 import com.ia.app.repository.UsuarioPapelRepository;
 import com.ia.app.repository.UsuarioRepository;
+import com.ia.app.security.AuthorizationService;
 import com.ia.app.tenant.TenantContext;
 import java.util.List;
 import java.util.Optional;
@@ -38,6 +39,9 @@ class UsuarioPapelServiceTest {
   @Mock
   private AuditService auditService;
 
+  @Mock
+  private AuthorizationService authorizationService;
+
   @InjectMocks
   private UsuarioPapelService service;
 
@@ -53,6 +57,7 @@ class UsuarioPapelServiceTest {
     Papel master = papel(7L, 10L, "MASTER");
     when(usuarioRepository.findByIdAndTenantId(22L, 10L)).thenReturn(Optional.of(usuario));
     when(papelRepository.findById(7L)).thenReturn(Optional.of(master));
+    when(authorizationService.isCurrentGlobalMaster()).thenReturn(false);
 
     assertThatThrownBy(() -> service.setByUsuario(22L, List.of(7L)))
       .isInstanceOf(IllegalArgumentException.class)
@@ -69,6 +74,7 @@ class UsuarioPapelServiceTest {
     Papel master = papel(7L, 10L, "MASTER");
     when(usuarioRepository.findByIdAndTenantId(22L, 10L)).thenReturn(Optional.of(usuario));
     when(papelRepository.findById(7L)).thenReturn(Optional.of(master));
+    when(authorizationService.isCurrentGlobalMaster()).thenReturn(false);
     when(repository.existsByTenantIdAndUsuarioIdAndPapelId(10L, "kc-master", 7L)).thenReturn(false);
     when(repository.findPapelIdsByUsuario(10L, "kc-master")).thenReturn(List.of(7L));
     when(papelRepository.findAllById(List.of(7L))).thenReturn(List.of(master));

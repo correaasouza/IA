@@ -1,0 +1,2 @@
+ALTER TABLE entidade_endereco
+  ADD COLUMN IF NOT EXISTS bairro VARCHAR(120);

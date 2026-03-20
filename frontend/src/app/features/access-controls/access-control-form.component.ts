@@ -54,7 +54,10 @@ export class AccessControlFormComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.fallbackRolesByKey = this.buildFallbackRolesByKey(this.menuService.items);
+    this.fallbackRolesByKey = {
+      ...this.buildFallbackRolesByKey(this.menuService.items),
+      ...this.buildStaticFallbackRolesByKey()
+    };
     this.loadRoleOptions();
     const keyParam = this.route.snapshot.paramMap.get('key');
     const isEdit = this.route.snapshot.url.some(s => s.path === 'edit');
@@ -199,6 +202,14 @@ export class AccessControlFormComponent implements OnInit {
       map[`menu.${item.id}`] = (item.roles || []).map(r => (r || '').toUpperCase());
     }
     return map;
+  }
+
+  private buildStaticFallbackRolesByKey(): Record<string, string[]> {
+    return {
+      'users.manageaccess': ['MASTER'],
+      'users.managecompanyaccess': ['MASTER', 'ADMIN'],
+      'users.setdefaultcompany': []
+    };
   }
 }
 

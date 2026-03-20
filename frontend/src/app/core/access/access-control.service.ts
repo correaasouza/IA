@@ -22,19 +22,18 @@ export class AccessControlService {
   }
 
   can(controlKey: string, fallbackRoles: string[] = []): boolean {
-    if (this.isMasterTenantContext()) return true;
+    if (this.hasMasterRole()) return true;
     const key = this.normalizeKey(controlKey);
     if (!key) return true;
-    const forced = this.forcedRoles(key);
     const configured = this.policies[key];
-    const effective = forced ?? (configured !== undefined ? configured : this.normalize(fallbackRoles));
+    const effective = configured !== undefined ? configured : this.normalize(fallbackRoles);
     if (!effective.length) return true;
     const current = this.currentRoles();
     return effective.some(r => current.includes(r));
   }
 
   canConfigure(): boolean {
-    if (this.isMasterTenantContext()) return true;
+    if (this.hasMasterRole()) return true;
     const roles = this.currentRoles();
     return roles.includes('MASTER') || roles.includes('ADMIN');
   }
@@ -53,10 +52,6 @@ export class AccessControlService {
 
   getRoles(controlKey: string, fallbackRoles: string[] = []): string[] {
     const key = this.normalizeKey(controlKey);
-    const forced = this.forcedRoles(key);
-    if (forced) {
-      return forced;
-    }
     const configured = this.policies[key];
     return configured !== undefined ? configured : this.normalize(fallbackRoles);
   }
@@ -136,6 +131,11 @@ export class AccessControlService {
     return this.currentRoles().includes('MASTER');
   }
 
+  private hasMasterRole(): boolean {
+    const usernameMaster = (this.auth.getUsername() || '').trim().toLowerCase() === 'master';
+    return this.currentRoles().includes('MASTER') || this.isMasterTenantContext() || usernameMaster;
+  }
+
   private normalize(values: string[]): string[] {
     return Array.from(new Set((values || [])
       .map(v => this.normalizeRole(v || ''))
@@ -154,14 +154,28 @@ export class AccessControlService {
     if (role.startsWith('ROLE_')) {
       role = role.substring(5);
     }
+    if (this.isTechnicalRole(role)) {
+      return '';
+    }
     return role;
   }
 
-  private forcedRoles(controlKey: string): string[] | null {
-    if (controlKey === 'menu.roles') {
-      return ['MASTER'];
+  private isTechnicalRole(role: string): boolean {
+    if (!role) {
+      return true;
     }
-    return null;
+    const normalized = role.trim().toUpperCase();
+    if (!normalized) {
+      return true;
+    }
+    if (normalized.startsWith('DEFAULT-ROLES-')) {
+      return true;
+    }
+    return normalized === 'OFFLINE_ACCESS'
+      || normalized === 'UMA_AUTHORIZATION'
+      || normalized === 'MANAGE-ACCOUNT'
+      || normalized === 'MANAGE-ACCOUNT-LINKS'
+      || normalized === 'VIEW-PROFILE';
   }
 
   private normalizeKey(value: string): string {

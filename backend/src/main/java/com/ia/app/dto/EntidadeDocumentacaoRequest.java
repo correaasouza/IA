@@ -23,6 +23,7 @@ public record EntidadeDocumentacaoRequest(
   LocalDate cnhDataEmissao,
   String suframa,
   String rntc,
+  String rntcCategoria,
   String pis,
   String tituloEleitor,
   String tituloEleitorZona,

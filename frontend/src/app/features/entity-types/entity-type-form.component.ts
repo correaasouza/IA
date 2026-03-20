@@ -8,9 +8,13 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { Observable } from 'rxjs';
+import { forkJoin } from 'rxjs';
+import { of } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
+import { AccessControlDirective } from '../../shared/access-control.directive';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { AgrupadoresEmpresaComponent } from '../configs/agrupadores-empresa.component';
 import { AgrupadorEmpresa } from '../configs/agrupador-empresa.service';
@@ -36,6 +40,7 @@ import { EntityTypeService, TipoEntidade } from './entity-type.service';
     MatInputModule,
     MatSlideToggleModule,
     InlineLoaderComponent,
+    AccessControlDirective,
     AgrupadoresEmpresaComponent
   ],
   templateUrl: './entity-type-form.component.html',
@@ -58,6 +63,18 @@ export class EntityTypeFormComponent implements OnInit {
   configTabFormConfig: EntidadeFormConfigByGroup | null = null;
   configTabFormLoading = false;
   configTabSaving = false;
+  private configDraftsByGroupId: Record<number, { obrigarUmTelefone: boolean; groups: EntidadeFormGroupConfig[] }> = {};
+  private configTabDirty = false;
+  private configAutosaveTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly configNavIconByGroupKey: Record<string, string> = {
+    DADOS_ENTIDADE: 'account_box',
+    ENDERECOS: 'home',
+    CONTATOS: 'contact_phone',
+    DOCUMENTACAO: 'description',
+    COMERCIAL_FISCAL: 'business_center',
+    RH: 'groups',
+    FAMILIARES_REFERENCIAS: 'family_restroom'
+  };
 
   form = this.fb.group({
     nome: ['', Validators.required],
@@ -135,11 +152,17 @@ export class EntityTypeFormComponent implements OnInit {
       this.saving = false;
       return;
     }
+    this.flushConfigAutosave();
     this.service.update(this.tipoEntidade.id, payload).pipe(finalize(() => (this.saving = false))).subscribe({
       next: updated => {
         this.tipoEntidade = updated;
-        this.notify.success('Tipo de entidade atualizado.');
-        this.router.navigateByUrl('/entity-types');
+        this.persistConfigTabOnMainSave(updated.id).subscribe({
+          next: () => {
+            this.notify.success('Tipo de entidade atualizado.');
+            this.router.navigateByUrl('/entity-types');
+          },
+          error: (err: any) => this.notify.error(err?.error?.detail || 'Tipo atualizado, mas nao foi possivel salvar a configuracao da ficha.')
+        });
       },
       error: err => this.notify.error(err?.error?.detail || 'Nao foi possivel atualizar o tipo de entidade.')
     });
@@ -179,10 +202,25 @@ export class EntityTypeFormComponent implements OnInit {
   }
 
   onGroupEditStarted(group: AgrupadorEmpresa): void {
+    this.flushConfigAutosave();
+    this.stashCurrentConfigDraft();
     this.configTabGroupId = group.id;
     this.configTabGroupNome = group.nome;
     this.configTabGroupEmpresas = [...(group.empresas || [])];
     this.applyConfigFromRows(group.id);
+    const draft = this.configDraftsByGroupId[group.id];
+    if (draft) {
+      this.configTabFormConfig = {
+        tipoEntidadeId: this.tipoEntidade?.id || 0,
+        agrupadorId: group.id,
+        agrupadorNome: group.nome,
+        obrigarUmTelefone: !!draft.obrigarUmTelefone,
+        groups: this.cloneGroups(draft.groups)
+      };
+      this.configTabObrigarUmTelefone = !!draft.obrigarUmTelefone;
+      this.configTabFormLoading = false;
+      return;
+    }
     this.loadFormConfigTab(group.id);
   }
 
@@ -221,6 +259,22 @@ export class EntityTypeFormComponent implements OnInit {
           this.loadConfigPorAgrupador();
         }
       });
+  }
+
+  private persistConfigTabOnMainSave(tipoEntidadeId: number): Observable<unknown> {
+    this.stashCurrentConfigDraft();
+    const draftEntries = Object.entries(this.configDraftsByGroupId);
+    if (!draftEntries.length) {
+      return of(null);
+    }
+    const saves = draftEntries.map(([groupIdText, draft]) => {
+      const groupId = Number(groupIdText);
+      return this.configByGroupService.updateFormConfig(tipoEntidadeId, groupId, {
+        obrigarUmTelefone: !!draft.obrigarUmTelefone,
+        groups: this.cloneGroups(draft.groups)
+      });
+    });
+    return forkJoin(saves);
   }
 
   configOriginName(): string {
@@ -266,6 +320,7 @@ export class EntityTypeFormComponent implements OnInit {
         next: data => {
           this.configTabFormConfig = data;
           this.configTabObrigarUmTelefone = !!data?.obrigarUmTelefone;
+          this.writeDraft(groupId, this.configTabObrigarUmTelefone, data?.groups || []);
         },
         error: err => {
           this.configTabFormConfig = null;
@@ -276,18 +331,138 @@ export class EntityTypeFormComponent implements OnInit {
 
   toggleGroupEnabled(group: EntidadeFormGroupConfig, value: boolean): void {
     group.enabled = !!value;
+    this.onConfigChanged();
   }
 
   toggleFieldVisible(field: EntidadeFormFieldConfig, value: boolean): void {
     field.visible = !!value;
+    this.onConfigChanged();
   }
 
   toggleFieldEditable(field: EntidadeFormFieldConfig, value: boolean): void {
     field.editable = !!value;
+    this.onConfigChanged();
   }
 
   toggleFieldRequired(field: EntidadeFormFieldConfig, value: boolean): void {
     field.required = !!value;
+    this.onConfigChanged();
+  }
+
+  configGroupSectionId(group: EntidadeFormGroupConfig, index: number): string {
+    const key = (group?.groupKey || `grupo-${index}`).toLowerCase().replace(/[^a-z0-9_-]+/g, '-');
+    return `cfg-group-${key}-${index}`;
+  }
+
+  configRulesSectionId(): string {
+    return 'cfg-group-rules';
+  }
+
+  configNavItems(): Array<{ id: string; label: string; icon: string }> {
+    const items: Array<{ id: string; label: string; icon: string }> = [
+      { id: this.configRulesSectionId(), label: 'Regras', icon: 'rule' }
+    ];
+    const groups = this.configTabFormConfig?.groups || [];
+    groups.forEach((group, index) => {
+      const key = (group.groupKey || '').trim().toUpperCase();
+      items.push({
+        id: this.configGroupSectionId(group, index),
+        label: (group.label || group.groupKey || `Grupo ${index + 1}`).trim(),
+        icon: this.configNavIconByGroupKey[key] || 'view_list'
+      });
+    });
+    return items;
+  }
+
+  scrollToConfigSection(sectionId: string): void {
+    const element = document.getElementById(sectionId);
+    if (!element) return;
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  isContatosGroup(group: EntidadeFormGroupConfig | null | undefined): boolean {
+    return ((group?.groupKey || '').trim().toUpperCase() === 'CONTATOS');
+  }
+
+  onConfigObrigarTelefoneChange(value: boolean): void {
+    this.configTabObrigarUmTelefone = !!value;
+    this.onConfigChanged();
+  }
+
+  private stashCurrentConfigDraft(): void {
+    if (!this.configTabGroupId || !this.configTabFormConfig) return;
+    this.writeDraft(this.configTabGroupId, this.configTabObrigarUmTelefone, this.configTabFormConfig.groups || []);
+  }
+
+  private onConfigChanged(): void {
+    this.configTabDirty = true;
+    this.stashCurrentConfigDraft();
+    this.scheduleConfigAutosave();
+  }
+
+  private scheduleConfigAutosave(): void {
+    if (this.configAutosaveTimer) {
+      clearTimeout(this.configAutosaveTimer);
+    }
+    this.configAutosaveTimer = setTimeout(() => {
+      this.persistCurrentConfigTab(true);
+    }, 650);
+  }
+
+  private flushConfigAutosave(): void {
+    if (this.configAutosaveTimer) {
+      clearTimeout(this.configAutosaveTimer);
+      this.configAutosaveTimer = null;
+    }
+    this.persistCurrentConfigTab(false);
+  }
+
+  private persistCurrentConfigTab(silent: boolean): void {
+    if (!this.configTabDirty) return;
+    if (!this.tipoEntidade?.id || !this.configTabGroupId || !this.configTabFormConfig) return;
+    const groupId = this.configTabGroupId;
+    const groups = this.cloneGroups(this.configTabFormConfig.groups || []);
+    this.configTabSaving = true;
+    this.configByGroupService.updateFormConfig(this.tipoEntidade.id, groupId, {
+      obrigarUmTelefone: this.configTabObrigarUmTelefone,
+      groups
+    })
+      .pipe(finalize(() => (this.configTabSaving = false)))
+      .subscribe({
+        next: updated => {
+          this.configTabDirty = false;
+          this.configTabFormConfig = updated;
+          this.configTabObrigarUmTelefone = !!updated.obrigarUmTelefone;
+          this.writeDraft(groupId, this.configTabObrigarUmTelefone, updated.groups || []);
+          const row = {
+            agrupadorId: updated.agrupadorId,
+            agrupadorNome: updated.agrupadorNome,
+            obrigarUmTelefone: !!updated.obrigarUmTelefone,
+            ativo: true
+          } as TipoEntidadeConfigPorAgrupador;
+          const index = this.configRows.findIndex(item => item.agrupadorId === updated.agrupadorId);
+          if (index >= 0) this.configRows[index] = row;
+          else this.configRows = [...this.configRows, row];
+          if (!silent) this.notify.success('Configuracao do agrupador salva.');
+        },
+        error: err => {
+          if (!silent) this.notify.error(err?.error?.detail || 'Nao foi possivel salvar a configuracao do agrupador.');
+        }
+      });
+  }
+
+  private writeDraft(groupId: number, obrigarUmTelefone: boolean, groups: EntidadeFormGroupConfig[]): void {
+    this.configDraftsByGroupId[groupId] = {
+      obrigarUmTelefone: !!obrigarUmTelefone,
+      groups: this.cloneGroups(groups)
+    };
+  }
+
+  private cloneGroups(groups: EntidadeFormGroupConfig[]): EntidadeFormGroupConfig[] {
+    return (groups || []).map(group => ({
+      ...group,
+      fields: (group.fields || []).map(field => ({ ...field }))
+    }));
   }
 
   private applyModeState(): void {

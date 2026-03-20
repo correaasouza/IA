@@ -6,9 +6,9 @@ import { MatButtonModule } from '@angular/material/button';
 import { forkJoin } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 
-import { RolesService, Papel } from '../roles/roles.service';
-import { UsuarioService } from './usuario.service';
+import { UsuarioService, UsuarioPapelDisponivel } from './usuario.service';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
+import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-usuario-papeis-dialog',
@@ -17,22 +17,24 @@ import { InlineLoaderComponent } from '../../shared/inline-loader.component';
   templateUrl: './usuario-papeis-dialog.component.html'
 })
 export class UsuarioPapeisDialogComponent implements OnInit {
-  papeis: Papel[] = [];
+  papeis: UsuarioPapelDisponivel[] = [];
   selected = new Set<number>();
   loading = false;
   saving = false;
+  operatorIsGlobalMaster = false;
 
   constructor(
-    private rolesService: RolesService,
     private usuarioService: UsuarioService,
+    private auth: AuthService,
     private dialogRef: MatDialogRef<UsuarioPapeisDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { userId: number; username: string }
   ) {}
 
   ngOnInit(): void {
+    this.operatorIsGlobalMaster = this.isOperatorGlobalMaster();
     this.loading = true;
     forkJoin({
-      papeis: this.rolesService.list(),
+      papeis: this.usuarioService.getPapeisDisponiveis(this.data.userId),
       user: this.usuarioService.getPapeis(this.data.userId)
     }).pipe(finalize(() => this.loading = false)).subscribe({
       next: ({ papeis, user }) => {
@@ -61,12 +63,16 @@ export class UsuarioPapeisDialogComponent implements OnInit {
     this.dialogRef.close(false);
   }
 
-  isMasterRoleDisabled(papel: Papel): boolean {
-    return this.isMasterRole(papel.nome) && !this.isMasterUsername();
+  isMasterRoleDisabled(papel: UsuarioPapelDisponivel): boolean {
+    return this.isMasterRole(papel.nome) && !this.operatorIsGlobalMaster;
+  }
+
+  showMasterRoleWarning(): boolean {
+    return !this.operatorIsGlobalMaster;
   }
 
   private enforceMasterRoleConstraint(): void {
-    if (this.isMasterUsername()) {
+    if (this.operatorIsGlobalMaster || this.isMasterUsername()) {
       return;
     }
     const forbiddenIds = new Set(
@@ -86,6 +92,16 @@ export class UsuarioPapeisDialogComponent implements OnInit {
 
   private isMasterUsername(): boolean {
     return (this.data?.username || '').trim().toLowerCase() === 'master';
+  }
+
+  private isOperatorGlobalMaster(): boolean {
+    const roles = (this.auth.getUserRoles() || [])
+      .map(role => (role || '').trim().toUpperCase())
+      .map(role => role.startsWith('ROLE_') ? role.substring(5) : role);
+    if (roles.includes('MASTER')) {
+      return true;
+    }
+    return (this.auth.getUsername() || '').trim().toLowerCase() === 'master';
   }
 }
 

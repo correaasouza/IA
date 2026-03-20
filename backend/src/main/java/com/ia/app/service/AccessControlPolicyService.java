@@ -5,8 +5,10 @@ import com.ia.app.dto.AccessControlPolicyResponse;
 import com.ia.app.repository.AccessControlPolicyRepository;
 import com.ia.app.tenant.TenantContext;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +22,11 @@ public class AccessControlPolicyService {
     this.repository = repository;
   }
 
+  @Transactional
   public List<AccessControlPolicyResponse> list() {
     Long tenantId = requireTenant();
     return repository.findAllByTenantIdOrderByControlKeyAsc(tenantId).stream()
+      .map(this::sanitizeAndSaveIfNeeded)
       .map(this::toResponse)
       .toList();
   }
@@ -88,7 +92,35 @@ public class AccessControlPolicyService {
     if (normalized.startsWith("ROLE_") && normalized.length() > 5) {
       normalized = normalized.substring(5);
     }
+    if (isTechnicalRole(normalized)) {
+      return "";
+    }
     return normalized;
+  }
+
+  private boolean isTechnicalRole(String role) {
+    if (role == null || role.isBlank()) {
+      return true;
+    }
+    String normalized = role.trim().toUpperCase(Locale.ROOT);
+    if (normalized.startsWith("DEFAULT-ROLES-")) {
+      return true;
+    }
+    return normalized.equals("OFFLINE_ACCESS")
+      || normalized.equals("UMA_AUTHORIZATION")
+      || normalized.equals("MANAGE-ACCOUNT")
+      || normalized.equals("MANAGE-ACCOUNT-LINKS")
+      || normalized.equals("VIEW-PROFILE");
+  }
+
+  private AccessControlPolicy sanitizeAndSaveIfNeeded(AccessControlPolicy entity) {
+    List<String> normalized = parseCsv(entity.getRolesCsv());
+    String normalizedCsv = String.join(",", normalized);
+    if (!normalizedCsv.equals(entity.getRolesCsv())) {
+      entity.setRolesCsv(normalizedCsv);
+      return repository.save(entity);
+    }
+    return entity;
   }
 
   private String normalizeKey(String key) {

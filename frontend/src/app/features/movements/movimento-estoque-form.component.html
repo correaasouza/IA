@@ -26,19 +26,6 @@
         </button>
 
         <button
-          mat-flat-button
-          color="primary"
-          type="button"
-          *ngIf="mode !== 'view'"
-          (click)="save()"
-          [disabled]="saving || form.invalid || !!errorMessage || (mode !== 'new' && !!movimento?.finalizado)"
-          [appAccessControl]="mode === 'edit' ? 'movimentos.estoque.update' : 'movimentos.estoque.create'"
-          [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
-          <mat-icon>save</mat-icon>
-          Salvar
-        </button>
-
-        <button
           mat-button
           color="warn"
           type="button"
@@ -49,6 +36,19 @@
           [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
           <mat-icon>delete</mat-icon>
           Excluir
+        </button>
+
+        <button
+          mat-flat-button
+          color="primary"
+          type="button"
+          *ngIf="mode !== 'view'"
+          (click)="save()"
+          [disabled]="saving || form.invalid || !!errorMessage || (mode !== 'new' && !!movimento?.finalizado)"
+          [appAccessControl]="mode === 'edit' ? 'movimentos.estoque.update' : 'movimentos.estoque.create'"
+          [appAccessFallbackRoles]="['MASTER', 'ADMIN']">
+          <mat-icon>save</mat-icon>
+          Salvar
         </button>
       </div>
     </div>

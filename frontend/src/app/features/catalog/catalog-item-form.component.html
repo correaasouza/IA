@@ -31,13 +31,13 @@
         <mat-icon>edit</mat-icon>
         Alterar
       </button>
-      <button mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()" [disabled]="saving || !context?.vinculado">
-        <mat-icon>save</mat-icon>
-        Salvar
-      </button>
       <button mat-button color="warn" *ngIf="mode !== 'new'" type="button" (click)="remove()" [disabled]="deleting">
         <mat-icon>delete</mat-icon>
         Excluir
+      </button>
+      <button mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()" [disabled]="saving || !context?.vinculado">
+        <mat-icon>save</mat-icon>
+        Salvar
       </button>
     </div>
   </header>

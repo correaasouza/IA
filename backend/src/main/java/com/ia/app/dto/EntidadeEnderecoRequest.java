@@ -12,6 +12,7 @@ public record EntidadeEnderecoRequest(
   String ufCodigoIbge,
   String municipio,
   String municipioCodigoIbge,
+  String bairro,
   String logradouro,
   String logradouroTipo,
   String numero,

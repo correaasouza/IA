@@ -6,7 +6,7 @@
       <p class="mt-1 text-xs text-[var(--muted)]">Lista de matrizes e filiais do locatário</p>
     </div>
     <div class="flex flex-wrap gap-2">
-      <button mat-flat-button color="primary" routerLink="/companies/new">
+      <button *ngIf="canManageCompanies" mat-flat-button color="primary" routerLink="/companies/new">
         <mat-icon>add_business</mat-icon>
         Nova empresa
       </button>
@@ -104,10 +104,10 @@
             <button mat-icon-button [matTooltip]="isDefaultEmpresa(row) ? 'Remover empresa padrão' : 'Definir como empresa padrão'" (click)="toggleDefaultEmpresa(row)">
               <mat-icon [ngClass]="isDefaultEmpresa(row) ? 'active-star' : ''">{{ isDefaultEmpresa(row) ? 'star' : 'star_outline' }}</mat-icon>
             </button>
-            <button mat-icon-button matTooltip="Editar" [routerLink]="['/companies', row.id, 'edit']">
+            <button *ngIf="canManageCompanies" mat-icon-button matTooltip="Editar" [routerLink]="['/companies', row.id, 'edit']">
               <mat-icon>edit</mat-icon>
             </button>
-            <button mat-icon-button matTooltip="{{ row.ativo ? 'Desativar' : 'Ativar' }}" (click)="toggleStatus(row)">
+            <button *ngIf="canManageCompanies" mat-icon-button matTooltip="{{ row.ativo ? 'Desativar' : 'Ativar' }}" (click)="toggleStatus(row)">
               <mat-icon>{{ row.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
             </button>
           </td>
@@ -135,10 +135,10 @@
           <button mat-icon-button [matTooltip]="isDefaultEmpresa(row) ? 'Remover empresa padrão' : 'Definir como empresa padrão'" (click)="toggleDefaultEmpresa(row)">
             <mat-icon [ngClass]="isDefaultEmpresa(row) ? 'active-star' : ''">{{ isDefaultEmpresa(row) ? 'star' : 'star_outline' }}</mat-icon>
           </button>
-          <button mat-icon-button [routerLink]="['/companies', row.id, 'edit']">
+          <button *ngIf="canManageCompanies" mat-icon-button [routerLink]="['/companies', row.id, 'edit']">
             <mat-icon>edit</mat-icon>
           </button>
-          <button mat-icon-button (click)="toggleStatus(row)">
+          <button *ngIf="canManageCompanies" mat-icon-button (click)="toggleStatus(row)">
             <mat-icon>{{ row.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
           </button>
         </div>

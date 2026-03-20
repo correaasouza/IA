@@ -5,7 +5,6 @@ import com.ia.app.domain.EntidadeContatoForma;
 import com.ia.app.domain.EntidadeDocumentacao;
 import com.ia.app.domain.EntidadeEndereco;
 import com.ia.app.domain.EntidadeFamiliar;
-import com.ia.app.domain.Pessoa;
 import com.ia.app.domain.RegistroEntidade;
 import com.ia.app.dto.EntidadeContatoFormaRequest;
 import com.ia.app.dto.EntidadeContatoFormaResponse;
@@ -22,7 +21,6 @@ import com.ia.app.repository.EntidadeContatoRepository;
 import com.ia.app.repository.EntidadeDocumentacaoRepository;
 import com.ia.app.repository.EntidadeEnderecoRepository;
 import com.ia.app.repository.EntidadeFamiliarRepository;
-import com.ia.app.repository.PessoaRepository;
 import com.ia.app.repository.RegistroEntidadeRepository;
 import com.ia.app.util.CpfCnpjValidator;
 import jakarta.persistence.EntityNotFoundException;
@@ -43,7 +41,7 @@ public class EntidadeSubresourceService {
   private static final Set<String> TIPOS_ENDERECO = Set.of(
     "RESIDENCIAL", "COMERCIAL", "ENTREGA", "COBRANCA", "OUTRO", "CORRESPONDENCIA");
   private static final Set<String> TIPOS_CONTATO = Set.of(
-    "EMAIL", "FONE_CELULAR", "FONE_RESIDENCIAL", "FONE_COMERCIAL", "FACEBOOK", "WHATSAPP");
+    "EMAIL", "TELEFONE", "FONE_CELULAR", "FONE_RESIDENCIAL", "FONE_COMERCIAL", "WHATSAPP", "FACEBOOK", "SITE", "LINKEDIN", "INSTAGRAM");
   private static final Set<String> TIPOS_PARENTESCO = Set.of(
     "PAI", "FILHO", "IRMAO", "IRMA", "TIO", "TIA", "PRIMO", "PRIMA", "VO", "VOMAE", "BISAVO", "BISAVOMAE", "OUTROS");
   private static final Pattern EMAIL_REGEX = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
@@ -51,7 +49,6 @@ public class EntidadeSubresourceService {
 
   private final RegistroEntidadeContextoService contextoService;
   private final RegistroEntidadeRepository registroRepository;
-  private final PessoaRepository pessoaRepository;
   private final EntidadeDocumentacaoRepository documentacaoRepository;
   private final EntidadeEnderecoRepository enderecoRepository;
   private final EntidadeContatoRepository contatoRepository;
@@ -61,7 +58,6 @@ public class EntidadeSubresourceService {
   public EntidadeSubresourceService(
       RegistroEntidadeContextoService contextoService,
       RegistroEntidadeRepository registroRepository,
-      PessoaRepository pessoaRepository,
       EntidadeDocumentacaoRepository documentacaoRepository,
       EntidadeEnderecoRepository enderecoRepository,
       EntidadeContatoRepository contatoRepository,
@@ -69,7 +65,6 @@ public class EntidadeSubresourceService {
       EntidadeFamiliarRepository familiarRepository) {
     this.contextoService = contextoService;
     this.registroRepository = registroRepository;
-    this.pessoaRepository = pessoaRepository;
     this.documentacaoRepository = documentacaoRepository;
     this.enderecoRepository = enderecoRepository;
     this.contatoRepository = contatoRepository;
@@ -81,10 +76,19 @@ public class EntidadeSubresourceService {
   public EntidadeDocumentacaoResponse getDocumentacao(Long tipoEntidadeId, Long entidadeId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
-    EntidadeDocumentacao doc = documentacaoRepository
-      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), scope.empresaId(), registro.getId())
-      .orElseThrow(() -> new EntityNotFoundException("entidade_documentacao_not_found"));
-    return toDocumentacaoResponse(doc);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
+    return documentacaoRepository
+      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
+      .map(this::toDocumentacaoResponse)
+      .orElseGet(() -> new EntidadeDocumentacaoResponse(
+        null, sharedRegistroId, "CPF", null, null, null, null,
+        null, null, null, null, null, null, null, false, false,
+        null, null, null, null, null, null, null, null, null, null,
+        null, null, null, null, null, null, null, null, null,
+        null, null, null, null
+      ));
   }
 
   @Transactional
@@ -94,13 +98,16 @@ public class EntidadeSubresourceService {
       EntidadeDocumentacaoRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeDocumentacao entity = documentacaoRepository
-      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseGet(EntidadeDocumentacao::new);
 
     entity.setTenantId(scope.tenantId());
-    entity.setEmpresaId(scope.empresaId());
-    entity.setRegistroEntidadeId(registro.getId());
+    entity.setEmpresaId(sharedEmpresaId);
+    entity.setRegistroEntidadeId(sharedRegistroId);
 
     String tipoRegistro = normalizeTipoRegistro(request.tipoRegistroFederal());
     String registroFederal = normalizeDocumento(tipoRegistro, request.registroFederal());
@@ -127,6 +134,7 @@ public class EntidadeSubresourceService {
     entity.setCnhDataEmissao(request.cnhDataEmissao());
     entity.setSuframa(trim(request.suframa(), 30));
     entity.setRntc(trim(request.rntc(), 30));
+    entity.setRntcCategoria(trim(request.rntcCategoria(), 30));
     entity.setPis(trim(request.pis(), 20));
     entity.setTituloEleitor(trim(request.tituloEleitor(), 20));
     entity.setTituloEleitorZona(trim(request.tituloEleitorZona(), 10));
@@ -149,8 +157,11 @@ public class EntidadeSubresourceService {
   public List<EntidadeEnderecoResponse> listEnderecos(Long tipoEntidadeId, Long entidadeId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     return enderecoRepository
-      .findAllByTenantIdAndEmpresaIdAndRegistroEntidadeIdOrderByIdAsc(scope.tenantId(), scope.empresaId(), registro.getId())
+      .findAllByTenantIdAndEmpresaIdAndRegistroEntidadeIdOrderByIdAsc(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .stream()
       .map(this::toEnderecoResponse)
       .toList();
@@ -160,10 +171,13 @@ public class EntidadeSubresourceService {
   public EntidadeEnderecoResponse createEndereco(Long tipoEntidadeId, Long entidadeId, EntidadeEnderecoRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeEndereco entity = new EntidadeEndereco();
     entity.setTenantId(scope.tenantId());
-    entity.setEmpresaId(scope.empresaId());
-    entity.setRegistroEntidadeId(registro.getId());
+    entity.setEmpresaId(sharedEmpresaId);
+    entity.setRegistroEntidadeId(sharedRegistroId);
     applyEndereco(entity, request);
     return toEnderecoResponse(enderecoRepository.save(entity));
   }
@@ -176,8 +190,11 @@ public class EntidadeSubresourceService {
       EntidadeEnderecoRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeEndereco entity = enderecoRepository
-      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(enderecoId, scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(enderecoId, scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_endereco_not_found"));
     applyEndereco(entity, request);
     return toEnderecoResponse(enderecoRepository.save(entity));
@@ -187,8 +204,11 @@ public class EntidadeSubresourceService {
   public void deleteEndereco(Long tipoEntidadeId, Long entidadeId, Long enderecoId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeEndereco entity = enderecoRepository
-      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(enderecoId, scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(enderecoId, scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_endereco_not_found"));
     enderecoRepository.delete(entity);
   }
@@ -197,8 +217,11 @@ public class EntidadeSubresourceService {
   public List<EntidadeContatoResponse> listContatos(Long tipoEntidadeId, Long entidadeId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     return contatoRepository
-      .findAllByTenantIdAndEmpresaIdAndRegistroEntidadeIdOrderByIdAsc(scope.tenantId(), scope.empresaId(), registro.getId())
+      .findAllByTenantIdAndEmpresaIdAndRegistroEntidadeIdOrderByIdAsc(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .stream()
       .map(this::toContatoResponse)
       .toList();
@@ -208,10 +231,13 @@ public class EntidadeSubresourceService {
   public EntidadeContatoResponse createContato(Long tipoEntidadeId, Long entidadeId, EntidadeContatoRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeContato entity = new EntidadeContato();
     entity.setTenantId(scope.tenantId());
-    entity.setEmpresaId(scope.empresaId());
-    entity.setRegistroEntidadeId(registro.getId());
+    entity.setEmpresaId(sharedEmpresaId);
+    entity.setRegistroEntidadeId(sharedRegistroId);
     applyContato(entity, request);
     return toContatoResponse(contatoRepository.save(entity));
   }
@@ -224,7 +250,10 @@ public class EntidadeSubresourceService {
       EntidadeContatoRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
-    EntidadeContato entity = getContato(scope, registro.getId(), contatoId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
+    EntidadeContato entity = getContato(scope, sharedEmpresaId, sharedRegistroId, contatoId);
     applyContato(entity, request);
     return toContatoResponse(contatoRepository.save(entity));
   }
@@ -233,7 +262,10 @@ public class EntidadeSubresourceService {
   public void deleteContato(Long tipoEntidadeId, Long entidadeId, Long contatoId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
-    EntidadeContato entity = getContato(scope, registro.getId(), contatoId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
+    EntidadeContato entity = getContato(scope, sharedEmpresaId, sharedRegistroId, contatoId);
     contatoRepository.delete(entity);
   }
 
@@ -241,10 +273,13 @@ public class EntidadeSubresourceService {
   public List<EntidadeContatoFormaResponse> listContatoFormas(Long tipoEntidadeId, Long entidadeId, Long contatoId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
-    getContato(scope, registro.getId(), contatoId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
+    getContato(scope, sharedEmpresaId, sharedRegistroId, contatoId);
     return contatoFormaRepository
       .findAllByTenantIdAndEmpresaIdAndRegistroEntidadeIdAndContatoIdOrderByIdAsc(
-        scope.tenantId(), scope.empresaId(), registro.getId(), contatoId)
+        scope.tenantId(), sharedEmpresaId, sharedRegistroId, contatoId)
       .stream()
       .map(this::toContatoFormaResponse)
       .toList();
@@ -258,11 +293,14 @@ public class EntidadeSubresourceService {
       EntidadeContatoFormaRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
-    getContato(scope, registro.getId(), contatoId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
+    getContato(scope, sharedEmpresaId, sharedRegistroId, contatoId);
     EntidadeContatoForma entity = new EntidadeContatoForma();
     entity.setTenantId(scope.tenantId());
-    entity.setEmpresaId(scope.empresaId());
-    entity.setRegistroEntidadeId(registro.getId());
+    entity.setEmpresaId(sharedEmpresaId);
+    entity.setRegistroEntidadeId(sharedRegistroId);
     entity.setContatoId(contatoId);
     applyContatoForma(entity, request);
     return toContatoFormaResponse(contatoFormaRepository.save(entity));
@@ -277,10 +315,13 @@ public class EntidadeSubresourceService {
       EntidadeContatoFormaRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
-    getContato(scope, registro.getId(), contatoId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
+    getContato(scope, sharedEmpresaId, sharedRegistroId, contatoId);
     EntidadeContatoForma entity = contatoFormaRepository
       .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeIdAndContatoId(
-        formaId, scope.tenantId(), scope.empresaId(), registro.getId(), contatoId)
+        formaId, scope.tenantId(), sharedEmpresaId, sharedRegistroId, contatoId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_contato_forma_not_found"));
     applyContatoForma(entity, request);
     return toContatoFormaResponse(contatoFormaRepository.save(entity));
@@ -294,10 +335,13 @@ public class EntidadeSubresourceService {
       Long formaId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
-    getContato(scope, registro.getId(), contatoId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
+    getContato(scope, sharedEmpresaId, sharedRegistroId, contatoId);
     EntidadeContatoForma entity = contatoFormaRepository
       .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeIdAndContatoId(
-        formaId, scope.tenantId(), scope.empresaId(), registro.getId(), contatoId)
+        formaId, scope.tenantId(), sharedEmpresaId, sharedRegistroId, contatoId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_contato_forma_not_found"));
     contatoFormaRepository.delete(entity);
   }
@@ -306,10 +350,13 @@ public class EntidadeSubresourceService {
   public List<EntidadeFamiliarResponse> listFamiliares(Long tipoEntidadeId, Long entidadeId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     return familiarRepository
-      .findAllByTenantIdAndEmpresaIdAndRegistroEntidadeIdOrderByIdAsc(scope.tenantId(), scope.empresaId(), registro.getId())
+      .findAllByTenantIdAndEmpresaIdAndRegistroEntidadeIdOrderByIdAsc(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .stream()
-      .map(item -> toFamiliarResponse(scope.tenantId(), item))
+      .map(this::toFamiliarResponse)
       .toList();
   }
 
@@ -317,12 +364,15 @@ public class EntidadeSubresourceService {
   public EntidadeFamiliarResponse createFamiliar(Long tipoEntidadeId, Long entidadeId, EntidadeFamiliarRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeFamiliar entity = new EntidadeFamiliar();
     entity.setTenantId(scope.tenantId());
-    entity.setEmpresaId(scope.empresaId());
-    entity.setRegistroEntidadeId(registro.getId());
-    applyFamiliar(scope, registro.getId(), entity, request);
-    return toFamiliarResponse(scope.tenantId(), familiarRepository.save(entity));
+    entity.setEmpresaId(sharedEmpresaId);
+    entity.setRegistroEntidadeId(sharedRegistroId);
+    applyFamiliar(entity, request);
+    return toFamiliarResponse(familiarRepository.save(entity));
   }
 
   @Transactional
@@ -333,19 +383,25 @@ public class EntidadeSubresourceService {
       EntidadeFamiliarRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeFamiliar entity = familiarRepository
-      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(familiarId, scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(familiarId, scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_familiar_not_found"));
-    applyFamiliar(scope, registro.getId(), entity, request);
-    return toFamiliarResponse(scope.tenantId(), familiarRepository.save(entity));
+    applyFamiliar(entity, request);
+    return toFamiliarResponse(familiarRepository.save(entity));
   }
 
   @Transactional
   public void deleteFamiliar(Long tipoEntidadeId, Long entidadeId, Long familiarId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeFamiliar entity = familiarRepository
-      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(familiarId, scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(familiarId, scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_familiar_not_found"));
     familiarRepository.delete(entity);
   }
@@ -360,10 +416,23 @@ public class EntidadeSubresourceService {
     return registro;
   }
 
-  private EntidadeContato getContato(RegistroEntidadeContextoService.RegistroEntidadeScope scope, Long registroId, Long contatoId) {
+  private EntidadeContato getContato(
+      RegistroEntidadeContextoService.RegistroEntidadeScope scope,
+      Long empresaId,
+      Long registroId,
+      Long contatoId) {
     return contatoRepository
-      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(contatoId, scope.tenantId(), scope.empresaId(), registroId)
+      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(contatoId, scope.tenantId(), empresaId, registroId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_contato_not_found"));
+  }
+
+  private RegistroEntidade sharedRegistro(RegistroEntidadeContextoService.RegistroEntidadeScope scope, RegistroEntidade registro) {
+    List<RegistroEntidade> rows = registroRepository.findAllByTenantIdAndPessoaIdOrderByIdAsc(
+      scope.tenantId(), registro.getPessoaId());
+    if (!rows.isEmpty() && rows.get(0) != null && rows.get(0).getId() != null) {
+      return rows.get(0);
+    }
+    return registro;
   }
 
   private EntidadeDocumentacaoResponse toDocumentacaoResponse(EntidadeDocumentacao d) {
@@ -374,7 +443,7 @@ public class EntidadeSubresourceService {
       d.getRegistroEstadual(), d.getRegistroEstadualDataEmissao(), d.getRegistroEstadualUf(),
       d.isRegistroEstadualContribuinte(), d.isRegistroEstadualConsumidorFinal(),
       d.getRegistroMunicipal(), d.getRegistroMunicipalDataEmissao(), d.getCnh(), d.getCnhCategoria(),
-      d.getCnhObservacao(), d.getCnhDataEmissao(), d.getSuframa(), d.getRntc(), d.getPis(),
+      d.getCnhObservacao(), d.getCnhDataEmissao(), d.getSuframa(), d.getRntc(), d.getRntcCategoria(), d.getPis(),
       d.getTituloEleitor(), d.getTituloEleitorZona(), d.getTituloEleitorSecao(),
       d.getCtps(), d.getCtpsSerie(), d.getCtpsDataEmissao(), d.getCtpsUfEmissao(),
       d.getMilitarNumero(), d.getMilitarSerie(), d.getMilitarCategoria(), d.getNumeroNif(),
@@ -385,6 +454,7 @@ public class EntidadeSubresourceService {
     return new EntidadeEnderecoResponse(
       e.getId(), e.getRegistroEntidadeId(), e.getNome(), e.getCep(), e.getCepEstrangeiro(), e.getPais(),
       e.getPaisCodigoIbge(), e.getUf(), e.getUfCodigoIbge(), e.getMunicipio(), e.getMunicipioCodigoIbge(),
+      e.getBairro(),
       e.getLogradouro(), e.getLogradouroTipo(), e.getNumero(), e.getComplemento(), e.getEnderecoTipo(),
       e.isPrincipal(), e.getLongitude(), e.getLatitude(), e.getEstadoProvinciaRegiaoEstrangeiro(), e.getVersion());
   }
@@ -398,13 +468,9 @@ public class EntidadeSubresourceService {
       f.getId(), f.getContatoId(), f.getTipoContato(), f.getValor(), f.getValorNormalizado(), f.isPreferencial(), f.getVersion());
   }
 
-  private EntidadeFamiliarResponse toFamiliarResponse(Long tenantId, EntidadeFamiliar f) {
-    String nomeParente = registroRepository.findById(f.getEntidadeParenteId())
-      .flatMap(reg -> pessoaRepository.findByIdAndTenantId(reg.getPessoaId(), tenantId))
-      .map(Pessoa::getNome)
-      .orElse(null);
+  private EntidadeFamiliarResponse toFamiliarResponse(EntidadeFamiliar f) {
     return new EntidadeFamiliarResponse(
-      f.getId(), f.getRegistroEntidadeId(), f.getEntidadeParenteId(), nomeParente, f.isDependente(), f.getParentesco(), f.getVersion());
+      f.getId(), f.getRegistroEntidadeId(), f.getNome(), f.isDependente(), f.getParentesco(), f.getVersion());
   }
 
   private void applyEndereco(EntidadeEndereco entity, EntidadeEnderecoRequest request) {
@@ -418,6 +484,7 @@ public class EntidadeSubresourceService {
     entity.setUfCodigoIbge(trim(request.ufCodigoIbge(), 10));
     entity.setMunicipio(trim(request.municipio(), 120));
     entity.setMunicipioCodigoIbge(trim(request.municipioCodigoIbge(), 10));
+    entity.setBairro(trim(request.bairro(), 120));
     entity.setLogradouro(trim(request.logradouro(), 200));
     entity.setLogradouroTipo(trim(request.logradouroTipo(), 40));
     entity.setNumero(trim(request.numero(), 20));
@@ -443,19 +510,11 @@ public class EntidadeSubresourceService {
     entity.setPreferencial(Boolean.TRUE.equals(request.preferencial()));
   }
 
-  private void applyFamiliar(
-      RegistroEntidadeContextoService.RegistroEntidadeScope scope,
-      Long registroEntidadeId,
-      EntidadeFamiliar entity,
-      EntidadeFamiliarRequest request) {
-    if (request.entidadeParenteId() == null || request.entidadeParenteId() <= 0) {
-      throw new IllegalArgumentException("entidade_familiar_parente_required");
-    }
-    if (request.entidadeParenteId().equals(registroEntidadeId)) {
-      throw new IllegalArgumentException("entidade_familiar_parente_self");
-    }
-    RegistroEntidade parente = getRegistro(scope, request.entidadeParenteId());
-    entity.setEntidadeParenteId(parente.getId());
+  private void applyFamiliar(EntidadeFamiliar entity, EntidadeFamiliarRequest request) {
+    String nome = trim(request.nome(), 160);
+    if (nome == null) throw new IllegalArgumentException("entidade_familiar_nome_required");
+    entity.setNome(nome);
+    entity.setEntidadeParenteId(null);
     entity.setDependente(Boolean.TRUE.equals(request.dependente()));
     entity.setParentesco(normalizeParentesco(request.parentesco()));
   }
@@ -514,7 +573,7 @@ public class EntidadeSubresourceService {
     if ("EMAIL".equals(tipo) && !EMAIL_REGEX.matcher(normalized).matches()) {
       throw new IllegalArgumentException("entidade_contato_forma_email_invalid");
     }
-    if (("FONE_CELULAR".equals(tipo) || "FONE_RESIDENCIAL".equals(tipo) || "FONE_COMERCIAL".equals(tipo) || "WHATSAPP".equals(tipo))
+    if (("TELEFONE".equals(tipo) || "FONE_CELULAR".equals(tipo) || "FONE_RESIDENCIAL".equals(tipo) || "FONE_COMERCIAL".equals(tipo) || "WHATSAPP".equals(tipo))
       && !PHONE_REGEX.matcher(normalized).matches()) {
       throw new IllegalArgumentException("entidade_contato_forma_telefone_invalid");
     }
@@ -523,7 +582,7 @@ public class EntidadeSubresourceService {
 
   private String normalizeContatoValorBusca(String tipo, String value) {
     if ("EMAIL".equals(tipo)) return value.toLowerCase();
-    if ("FONE_CELULAR".equals(tipo) || "FONE_RESIDENCIAL".equals(tipo) || "FONE_COMERCIAL".equals(tipo) || "WHATSAPP".equals(tipo)) {
+    if ("TELEFONE".equals(tipo) || "FONE_CELULAR".equals(tipo) || "FONE_RESIDENCIAL".equals(tipo) || "FONE_COMERCIAL".equals(tipo) || "WHATSAPP".equals(tipo)) {
       return value.replaceAll("\\D", "");
     }
     return value.toUpperCase();

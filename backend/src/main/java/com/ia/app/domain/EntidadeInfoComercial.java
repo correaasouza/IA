@@ -24,6 +24,7 @@ public class EntidadeInfoComercial extends AuditableEntity {
   @Column(name = "faturamento_dia_inicial") private LocalDate faturamentoDiaInicial;
   @Column(name = "faturamento_dia_final") private LocalDate faturamentoDiaFinal;
   @Column(name = "faturamento_dias_prazo") private Integer faturamentoDiasPrazo;
+  @Column(name = "prazo_entrega_dias") private Integer prazoEntregaDias;
   @Column(name = "boletos_enviar_email", nullable = false) private boolean boletosEnviarEmail;
   @Column(name = "faturamento_frequencia_cobranca_id") private Long faturamentoFrequenciaCobrancaId;
   @Column(name = "juro_taxa_padrao", precision = 5, scale = 2) private BigDecimal juroTaxaPadrao;
@@ -46,6 +47,8 @@ public class EntidadeInfoComercial extends AuditableEntity {
   public void setFaturamentoDiaFinal(LocalDate faturamentoDiaFinal) { this.faturamentoDiaFinal = faturamentoDiaFinal; }
   public Integer getFaturamentoDiasPrazo() { return faturamentoDiasPrazo; }
   public void setFaturamentoDiasPrazo(Integer faturamentoDiasPrazo) { this.faturamentoDiasPrazo = faturamentoDiasPrazo; }
+  public Integer getPrazoEntregaDias() { return prazoEntregaDias; }
+  public void setPrazoEntregaDias(Integer prazoEntregaDias) { this.prazoEntregaDias = prazoEntregaDias; }
   public boolean isBoletosEnviarEmail() { return boletosEnviarEmail; }
   public void setBoletosEnviarEmail(boolean boletosEnviarEmail) { this.boletosEnviarEmail = boletosEnviarEmail; }
   public Long getFaturamentoFrequenciaCobrancaId() { return faturamentoFrequenciaCobrancaId; }

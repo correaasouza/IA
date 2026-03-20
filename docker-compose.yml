@@ -48,6 +48,7 @@
       # NOTE: Access the UI via http://host.docker.internal:5000 so Keycloak tokens have a matching "iss".
       KEYCLOAK_ISSUER_URI: http://localhost:8081/realms/ia
       KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/ia/protocol/openid-connect/certs
+      APP_SECURITY_JWT_ACCEPTED_ISSUERS: http://localhost:8081/realms/ia,http://host.docker.internal:8081/realms/ia,http://127.0.0.1:8081/realms/ia
       KEYCLOAK_ADMIN_URL: http://keycloak:8080
       KEYCLOAK_REALM: ia
       KEYCLOAK_TARGET_REALM: ia

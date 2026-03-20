@@ -566,6 +566,14 @@ export class EntityRecordsListComponent implements OnInit {
     return nome ? `Cadastro ${nome}` : 'Cadastro de Entidades';
   }
 
+  selectedTipoIcon(): string {
+    const seed = (this.selectedTipo?.codigoSeed || '').trim().toUpperCase();
+    if (seed === 'CLIENTE') return 'person';
+    if (seed === 'FORNECEDOR') return 'local_shipping';
+    if (seed === 'EQUIPE') return 'groups';
+    return 'category';
+  }
+
   newEntityButtonLabel(): string {
     const nome = this.selectedTipoNome().trim();
     if (!nome) return 'Nova entidade';

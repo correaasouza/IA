@@ -99,6 +99,9 @@ public class EntidadeDocumentacao extends AuditableEntity {
   @Column(name = "rntc", length = 30)
   private String rntc;
 
+  @Column(name = "rntc_categoria", length = 30)
+  private String rntcCategoria;
+
   @Column(name = "pis", length = 20)
   private String pis;
 
@@ -193,6 +196,8 @@ public class EntidadeDocumentacao extends AuditableEntity {
   public void setSuframa(String suframa) { this.suframa = suframa; }
   public String getRntc() { return rntc; }
   public void setRntc(String rntc) { this.rntc = rntc; }
+  public String getRntcCategoria() { return rntcCategoria; }
+  public void setRntcCategoria(String rntcCategoria) { this.rntcCategoria = rntcCategoria; }
   public String getPis() { return pis; }
   public void setPis(String pis) { this.pis = pis; }
   public String getTituloEleitor() { return tituloEleitor; }

@@ -1,7 +1,9 @@
 ﻿<h2 mat-dialog-title>Papéis do usuário</h2>
 <mat-dialog-content class="w-full max-w-[92vw]">
   <div class="mb-2 text-xs text-[var(--muted)]">{{ data.username }}</div>
-  <div class="mb-2 rounded-lg border border-dashed px-2.5 py-2 text-xs app-warning-inline">
+  <div
+    *ngIf="showMasterRoleWarning()"
+    class="mb-2 rounded-lg border border-dashed px-2.5 py-2 text-xs app-warning-inline">
     Somente o usuário "master" pode possuir o papel MASTER.
   </div>
   <div class="grid gap-2">

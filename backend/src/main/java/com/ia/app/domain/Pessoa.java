@@ -7,6 +7,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.time.LocalDate;
 
 @Entity
 @Table(
@@ -51,6 +52,21 @@ public class Pessoa extends AuditableEntity {
 
   @Column(name = "tipo_pessoa", nullable = false, length = 20)
   private String tipoPessoa = "FISICA";
+
+  @Column(name = "genero", length = 30)
+  private String genero;
+
+  @Column(name = "nacionalidade", length = 120)
+  private String nacionalidade;
+
+  @Column(name = "naturalidade", length = 120)
+  private String naturalidade;
+
+  @Column(name = "estado_civil", length = 30)
+  private String estadoCivil;
+
+  @Column(name = "data_nascimento")
+  private LocalDate dataNascimento;
 
   @Column(name = "ativo", nullable = false)
   private boolean ativo = true;
@@ -116,6 +132,46 @@ public class Pessoa extends AuditableEntity {
 
   public void setTipoPessoa(String tipoPessoa) {
     this.tipoPessoa = tipoPessoa;
+  }
+
+  public String getGenero() {
+    return genero;
+  }
+
+  public void setGenero(String genero) {
+    this.genero = genero;
+  }
+
+  public String getNacionalidade() {
+    return nacionalidade;
+  }
+
+  public void setNacionalidade(String nacionalidade) {
+    this.nacionalidade = nacionalidade;
+  }
+
+  public String getNaturalidade() {
+    return naturalidade;
+  }
+
+  public void setNaturalidade(String naturalidade) {
+    this.naturalidade = naturalidade;
+  }
+
+  public String getEstadoCivil() {
+    return estadoCivil;
+  }
+
+  public void setEstadoCivil(String estadoCivil) {
+    this.estadoCivil = estadoCivil;
+  }
+
+  public LocalDate getDataNascimento() {
+    return dataNascimento;
+  }
+
+  public void setDataNascimento(LocalDate dataNascimento) {
+    this.dataNascimento = dataNascimento;
   }
 
   public String getTipoRegistro() {

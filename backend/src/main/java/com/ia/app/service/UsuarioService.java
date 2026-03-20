@@ -10,18 +10,17 @@ import com.ia.app.dto.UsuarioResponse;
 import com.ia.app.repository.AtalhoUsuarioRepository;
 import com.ia.app.repository.PapelRepository;
 import com.ia.app.repository.UsuarioEmpresaPreferenciaRepository;
+import com.ia.app.repository.UsuarioEmpresaAcessoRepository;
 import com.ia.app.repository.UsuarioPapelRepository;
 import com.ia.app.repository.UsuarioRepository;
 import com.ia.app.repository.UsuarioLocatarioAcessoRepository;
+import com.ia.app.security.AuthorizationService;
 import com.ia.app.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -36,7 +35,9 @@ public class UsuarioService {
   private final PapelRepository papelRepository;
   private final UsuarioLocatarioAcessoRepository usuarioLocatarioAcessoRepository;
   private final UsuarioEmpresaPreferenciaRepository usuarioEmpresaPreferenciaRepository;
+  private final UsuarioEmpresaAcessoRepository usuarioEmpresaAcessoRepository;
   private final AtalhoUsuarioRepository atalhoUsuarioRepository;
+  private final AuthorizationService authorizationService;
 
   public UsuarioService(UsuarioRepository repository,
       KeycloakAdminService keycloakAdminService,
@@ -44,19 +45,23 @@ public class UsuarioService {
       PapelRepository papelRepository,
       UsuarioLocatarioAcessoRepository usuarioLocatarioAcessoRepository,
       UsuarioEmpresaPreferenciaRepository usuarioEmpresaPreferenciaRepository,
-      AtalhoUsuarioRepository atalhoUsuarioRepository) {
+      UsuarioEmpresaAcessoRepository usuarioEmpresaAcessoRepository,
+      AtalhoUsuarioRepository atalhoUsuarioRepository,
+      AuthorizationService authorizationService) {
     this.repository = repository;
     this.keycloakAdminService = keycloakAdminService;
     this.usuarioPapelRepository = usuarioPapelRepository;
     this.papelRepository = papelRepository;
     this.usuarioLocatarioAcessoRepository = usuarioLocatarioAcessoRepository;
     this.usuarioEmpresaPreferenciaRepository = usuarioEmpresaPreferenciaRepository;
+    this.usuarioEmpresaAcessoRepository = usuarioEmpresaAcessoRepository;
     this.atalhoUsuarioRepository = atalhoUsuarioRepository;
+    this.authorizationService = authorizationService;
   }
 
   @Transactional
   public Page<Usuario> findAll(Pageable pageable) {
-    if (isGlobalMaster()) {
+    if (authorizationService.isCurrentGlobalMaster()) {
       Page<Usuario> page = repository.findAll(pageable);
       List<Usuario> activeUsers = purgeMissingInKeycloak(page.getContent());
       long removed = page.getContent().size() - activeUsers.size();
@@ -72,11 +77,19 @@ public class UsuarioService {
   }
 
   @Transactional
-  public Page<UsuarioResponse> findAllWithPapeis(Pageable pageable) {
-    boolean masterScope = isGlobalMaster();
-    Long tenantId = masterScope ? null : requireTenant();
+  public Page<UsuarioResponse> findAllWithPapeis(Long filteredTenantId, Pageable pageable) {
+    Long currentTenantId = requireTenant();
+    boolean globalMaster = authorizationService.isCurrentGlobalMaster();
+    boolean masterTenantContext = AuthorizationService.MASTER_TENANT_ID.equals(currentTenantId);
+    boolean masterScope = globalMaster && masterTenantContext;
+    Long tenantId = masterScope
+      ? (filteredTenantId != null ? filteredTenantId : null)
+      : currentTenantId;
+    if (!masterScope && !authorizationService.canManageUsersInCurrentTenant()) {
+      throw new IllegalStateException("role_required_admin_or_master");
+    }
     Page<Usuario> page = masterScope
-      ? repository.findAll(pageable)
+      ? (tenantId == null ? repository.findAll(pageable) : repository.findAllAccessibleByTenantId(tenantId, pageable))
       : repository.findAllAccessibleByTenantId(tenantId, pageable);
     List<Usuario> pageUsers = page.getContent();
     List<Usuario> usuarios = purgeMissingInKeycloak(pageUsers);
@@ -116,7 +129,7 @@ public class UsuarioService {
 
   @Transactional
   public Usuario create(UsuarioRequest request) {
-    ensureMasterCanManageUsers();
+    ensureCanManageUsers();
     Long tenantId = requireTenant();
     String username = normalizeUsername(request.username());
     String email = normalizeEmail(request.email());
@@ -156,7 +169,7 @@ public class UsuarioService {
   }
 
   public Usuario disable(Long id) {
-    ensureMasterCanManageUsers();
+    ensureCanManageUsers();
     Usuario usuario = findManagedUserById(id);
     keycloakAdminService.disableUser(usuario.getKeycloakId());
     usuario.setAtivo(false);
@@ -165,13 +178,16 @@ public class UsuarioService {
 
   public Usuario getById(Long id) {
     Usuario usuario;
-    if (isGlobalMaster()) {
+    if (authorizationService.isCurrentGlobalMaster()) {
       usuario = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("usuario_not_found"));
     } else {
       Long tenantId = requireTenant();
-      usuario = repository.findByIdAndTenantId(id, tenantId)
+      usuario = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("usuario_not_found"));
+      if (!authorizationService.canAccessTenant(usuario.getKeycloakId(), tenantId)) {
+        throw new EntityNotFoundException("usuario_not_found");
+      }
     }
     if (removeIfMissingInKeycloak(usuario)) {
       throw new EntityNotFoundException("usuario_not_found");
@@ -183,7 +199,7 @@ public class UsuarioService {
     Usuario usuario = findManagedUserById(id);
     boolean changingStatus = request.ativo() != null && request.ativo() != usuario.isAtivo();
     if (changingStatus) {
-      ensureMasterCanManageUsers();
+      ensureCanManageUsers();
     }
     java.util.Map<String, Object> fields = new java.util.HashMap<>();
     if (request.username() != null && !request.username().isBlank()) {
@@ -202,7 +218,7 @@ public class UsuarioService {
 
   @Transactional
   public void delete(Long id) {
-    ensureMasterCanManageUsers();
+    ensureCanManageUsers();
     Usuario usuario = findManagedUserById(id);
     ensureNotProtectedMasterUser(usuario);
     ensureNotCurrentAuthenticatedUser(usuario);
@@ -224,40 +240,25 @@ public class UsuarioService {
     return tenantId;
   }
 
-  private void ensureMasterCanManageUsers() {
-    if (isGlobalMaster()) {
+  private void ensureCanManageUsers() {
+    if (authorizationService.canManageUsersInCurrentTenant()) {
       return;
     }
-    throw new IllegalStateException("role_required_user_master");
-  }
-
-  private boolean isGlobalMaster() {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    if (auth == null || !auth.isAuthenticated()) {
-      return false;
-    }
-    boolean hasMasterRole = auth.getAuthorities().stream()
-      .anyMatch(a -> "ROLE_MASTER".equals(a.getAuthority()));
-    if (hasMasterRole) {
-      return true;
-    }
-    if (auth instanceof JwtAuthenticationToken jwtAuth) {
-      String preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");
-      return preferredUsername != null && preferredUsername.equalsIgnoreCase("master");
-    }
-    String name = auth.getName();
-    return name != null && name.equalsIgnoreCase("master");
+    throw new IllegalStateException("role_required_admin_or_master");
   }
 
   private Usuario findManagedUserById(Long id) {
     Usuario usuario;
-    if (isGlobalMaster()) {
+    if (authorizationService.isCurrentGlobalMaster()) {
       usuario = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("usuario_not_found"));
     } else {
       Long tenantId = requireTenant();
-      usuario = repository.findByIdAndTenantId(id, tenantId)
+      usuario = repository.findById(id)
         .orElseThrow(() -> new EntityNotFoundException("usuario_not_found"));
+      if (!authorizationService.canAccessTenant(usuario.getKeycloakId(), tenantId)) {
+        throw new EntityNotFoundException("usuario_not_found");
+      }
     }
     if (removeIfMissingInKeycloak(usuario)) {
       throw new EntityNotFoundException("usuario_not_found");
@@ -271,7 +272,7 @@ public class UsuarioService {
     if (!hasMasterRole) {
       return;
     }
-    if (isMasterUsername(username)) {
+    if (authorizationService.isCurrentGlobalMaster() || isMasterUsername(username)) {
       return;
     }
     throw new IllegalArgumentException("usuario_master_role_restrito");
@@ -305,14 +306,7 @@ public class UsuarioService {
   }
 
   private String resolveAuthenticatedUserId() {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    if (auth == null || !auth.isAuthenticated()) {
-      return null;
-    }
-    if (auth instanceof JwtAuthenticationToken jwtAuth) {
-      return jwtAuth.getToken().getSubject();
-    }
-    return auth.getName();
+    return authorizationService.currentUserId();
   }
 
   private List<Usuario> purgeMissingInKeycloak(List<Usuario> users) {
@@ -351,6 +345,7 @@ public class UsuarioService {
     }
     usuarioPapelRepository.deleteAllByUsuarioId(keycloakId);
     usuarioLocatarioAcessoRepository.deleteAllByUsuarioId(keycloakId);
+    usuarioEmpresaAcessoRepository.deleteAllByUsuarioId(keycloakId);
     usuarioEmpresaPreferenciaRepository.deleteAllByUsuarioId(keycloakId);
     atalhoUsuarioRepository.deleteAllByUserId(keycloakId);
   }
@@ -416,3 +411,4 @@ public class UsuarioService {
     return roleName == null ? "" : roleName.trim().toUpperCase();
   }
 }
+

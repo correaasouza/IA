@@ -14,10 +14,6 @@
         <mat-icon>edit</mat-icon>
         Alterar
       </button>
-      <button class="entity-type-form-header-btn" mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()" [disabled]="saving">
-        <mat-icon>save</mat-icon>
-        Salvar
-      </button>
       <button
         class="entity-type-form-header-btn"
         mat-button
@@ -28,6 +24,10 @@
         [disabled]="deleting">
         <mat-icon>delete</mat-icon>
         Excluir
+      </button>
+      <button class="entity-type-form-header-btn" mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()" [disabled]="saving">
+        <mat-icon>save</mat-icon>
+        Salvar
       </button>
     </div>
   </header>
@@ -85,24 +85,50 @@
           <div class="entity-type-config-ref">Grupo em edicao: <strong>{{ group?.nome || configTabGroupNome || '-' }}</strong></div>
 
           <div class="entity-type-config-card">
-            <div class="entity-type-config-title">Regras do agrupador</div>
-            <div class="flex items-center pt-2">
-              <mat-slide-toggle
-                [(ngModel)]="configTabObrigarUmTelefone"
-                [ngModelOptions]="{ standalone: true }"
-                [disabled]="mode === 'view' || configTabSaving">
-                Obrigar um telefone
-              </mat-slide-toggle>
-            </div>
+            <nav class="entity-type-config-quick-nav" aria-label="Navegacao rapida da configuracao">
+              <button
+                type="button"
+                class="entity-type-config-quick-nav-btn"
+                *ngFor="let item of configNavItems()"
+                [attr.title]="item.label"
+                [attr.aria-label]="item.label"
+                (click)="scrollToConfigSection(item.id)">
+                <mat-icon>{{ item.icon }}</mat-icon>
+              </button>
+            </nav>
 
+            <div class="entity-type-config-title" [attr.id]="configRulesSectionId()">Regras do agrupador</div>
             <div class="mt-3" *ngIf="configTabFormLoading">
               <app-inline-loader label="Carregando configuracao da ficha"></app-inline-loader>
             </div>
 
             <div class="mt-3 grid gap-3" *ngIf="!configTabFormLoading && configTabFormConfig?.groups?.length">
-              <section class="rounded-lg border border-[var(--border)] p-2.5" *ngFor="let group of configTabFormConfig!.groups">
+              <section
+                class="rounded-lg border border-[var(--border)] p-2.5"
+                *ngFor="let group of configTabFormConfig!.groups; let i = index"
+                [attr.id]="configGroupSectionId(group, i)">
                 <div class="flex items-center justify-between gap-2">
-                  <div class="text-sm font-semibold">{{ group.label || group.groupKey }}</div>
+                  <div class="flex items-center gap-2 text-sm font-semibold">
+                    <span>{{ group.label || group.groupKey }}</span>
+                    <span class="inline-flex items-center gap-1 text-xs font-normal text-[var(--muted)]">
+                      <span>Visivel</span>
+                      <span
+                        [appAccessControl]="'entities.form.group.' + group.groupKey + '.view'"
+                        appAccessDescription="Acesso para visualizar grupo da ficha"
+                        [appAccessFallbackRoles]="['MASTER', 'ADMIN']"
+                        [appAccessHide]="false">
+                      </span>
+                    </span>
+                    <span class="inline-flex items-center gap-1 text-xs font-normal text-[var(--muted)]">
+                      <span>Editavel</span>
+                      <span
+                        [appAccessControl]="'entities.form.group.' + group.groupKey + '.edit'"
+                        appAccessDescription="Acesso para editar grupo da ficha"
+                        [appAccessFallbackRoles]="['MASTER', 'ADMIN']"
+                        [appAccessHide]="false">
+                      </span>
+                    </span>
+                  </div>
                   <mat-slide-toggle
                     [checked]="group.enabled"
                     (change)="toggleGroupEnabled(group, $event.checked)"
@@ -110,13 +136,42 @@
                     Habilitado
                   </mat-slide-toggle>
                 </div>
+                <div class="mt-2 flex items-center" *ngIf="isContatosGroup(group)">
+                  <mat-slide-toggle
+                    [(ngModel)]="configTabObrigarUmTelefone"
+                    (ngModelChange)="onConfigObrigarTelefoneChange($event)"
+                    [ngModelOptions]="{ standalone: true }"
+                    [disabled]="mode === 'view' || configTabSaving || !group.enabled">
+                    Apenas um fone
+                  </mat-slide-toggle>
+                </div>
                 <div class="mt-2 overflow-x-auto" *ngIf="group.fields?.length">
                   <table class="w-full min-w-[740px] text-sm">
                     <thead>
                       <tr class="border-b border-[var(--border)] text-left">
                         <th class="py-2 pr-3">Campo</th>
-                        <th class="py-2 pr-3">Visivel</th>
-                        <th class="py-2 pr-3">Editavel</th>
+                        <th class="py-2 pr-3">
+                          <span class="inline-flex items-center gap-1">
+                            <span>Visivel</span>
+                            <span
+                              [appAccessControl]="'entities.form.group.' + group.groupKey + '.view'"
+                              appAccessDescription="Acesso para visualizar campos do grupo"
+                              [appAccessFallbackRoles]="['MASTER', 'ADMIN']"
+                              [appAccessHide]="false">
+                            </span>
+                          </span>
+                        </th>
+                        <th class="py-2 pr-3">
+                          <span class="inline-flex items-center gap-1">
+                            <span>Editavel</span>
+                            <span
+                              [appAccessControl]="'entities.form.group.' + group.groupKey + '.edit'"
+                              appAccessDescription="Acesso para editar campos do grupo"
+                              [appAccessFallbackRoles]="['MASTER', 'ADMIN']"
+                              [appAccessHide]="false">
+                            </span>
+                          </span>
+                        </th>
                         <th class="py-2 pr-3">Obrigatorio</th>
                       </tr>
                     </thead>
@@ -124,18 +179,34 @@
                       <tr class="border-b border-[var(--border)]" *ngFor="let field of group.fields">
                         <td class="py-2 pr-3">{{ field.label || field.fieldKey }}</td>
                         <td class="py-2 pr-3">
-                          <mat-slide-toggle
-                            [checked]="field.visible"
-                            (change)="toggleFieldVisible(field, $event.checked)"
-                            [disabled]="mode === 'view' || configTabSaving || !group.enabled">
-                          </mat-slide-toggle>
+                          <div class="inline-flex items-center gap-1">
+                            <mat-slide-toggle
+                              [checked]="field.visible"
+                              (change)="toggleFieldVisible(field, $event.checked)"
+                              [disabled]="mode === 'view' || configTabSaving || !group.enabled">
+                            </mat-slide-toggle>
+                            <span
+                              [appAccessControl]="'entities.form.field.' + field.fieldKey + '.view'"
+                              [appAccessDescription]="'Acesso para visualizar campo ' + (field.label || field.fieldKey)"
+                              [appAccessFallbackRoles]="['MASTER', 'ADMIN']"
+                              [appAccessHide]="false">
+                            </span>
+                          </div>
                         </td>
                         <td class="py-2 pr-3">
-                          <mat-slide-toggle
-                            [checked]="field.editable"
-                            (change)="toggleFieldEditable(field, $event.checked)"
-                            [disabled]="mode === 'view' || configTabSaving || !group.enabled">
-                          </mat-slide-toggle>
+                          <div class="inline-flex items-center gap-1">
+                            <mat-slide-toggle
+                              [checked]="field.editable"
+                              (change)="toggleFieldEditable(field, $event.checked)"
+                              [disabled]="mode === 'view' || configTabSaving || !group.enabled">
+                            </mat-slide-toggle>
+                            <span
+                              [appAccessControl]="'entities.form.field.' + field.fieldKey + '.edit'"
+                              [appAccessDescription]="'Acesso para editar campo ' + (field.label || field.fieldKey)"
+                              [appAccessFallbackRoles]="['MASTER', 'ADMIN']"
+                              [appAccessHide]="false">
+                            </span>
+                          </div>
                         </td>
                         <td class="py-2 pr-3">
                           <mat-slide-toggle
@@ -155,12 +226,6 @@
               Nenhuma configuracao de ficha encontrada para o agrupador.
             </div>
 
-            <div class="entity-type-config-actions">
-              <button mat-flat-button color="primary" type="button" (click)="saveConfigTab()" [disabled]="mode === 'view' || configTabSaving || !configTabGroupId">
-                <mat-icon>save</mat-icon>
-                Salvar configuracao
-              </button>
-            </div>
           </div>
 
           <div class="mt-2 flex justify-end" *ngIf="configTabSaving">

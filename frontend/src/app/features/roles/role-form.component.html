@@ -14,10 +14,6 @@
         <mat-icon>edit</mat-icon>
         Alterar
       </button>
-      <button mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()" [disabled]="saving">
-        <mat-icon>save</mat-icon>
-        Salvar
-      </button>
       <button mat-stroked-button *ngIf="papel && mode !== 'new'" type="button" (click)="toggleStatus()" [disabled]="toggling">
         <mat-icon>{{ papel?.ativo ? 'pause_circle' : 'play_circle' }}</mat-icon>
         {{ papel?.ativo ? 'Desativar' : 'Ativar' }}
@@ -25,6 +21,10 @@
       <button mat-button color="warn" *ngIf="papel && mode !== 'new'" type="button" (click)="remove()" [disabled]="deleting">
         <mat-icon>delete</mat-icon>
         Excluir
+      </button>
+      <button mat-flat-button color="primary" *ngIf="mode !== 'view'" type="button" (click)="save()" [disabled]="saving">
+        <mat-icon>save</mat-icon>
+        Salvar
       </button>
     </div>
   </header>

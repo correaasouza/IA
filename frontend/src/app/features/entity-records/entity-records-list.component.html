@@ -3,7 +3,10 @@
     <section class="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2 shadow-[var(--shadow-xs)]">
       <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div class="min-w-0">
-          <h1 class="m-0 text-base font-bold">{{ headerTitle() }}</h1>
+          <h1 class="m-0 inline-flex items-center gap-2 text-base font-bold">
+            <mat-icon class="text-[18px] text-[var(--muted-strong)]">{{ selectedTipoIcon() }}</mat-icon>
+            <span>{{ headerTitle() }}</span>
+          </h1>
           <p class="mt-0.5 text-[11px] text-[var(--muted)]" *ngIf="context?.vinculado && context?.empresaNome">
             Empresa: {{ context?.empresaNome }}
           </p>
@@ -166,7 +169,12 @@
 
         <ng-container matColumnDef="pessoa">
           <th mat-header-cell *matHeaderCellDef>Pessoa</th>
-          <td mat-cell *matCellDef="let row">{{ row.pessoa.nome }}</td>
+          <td mat-cell *matCellDef="let row">
+            <span class="inline-flex items-center gap-1.5">
+              <mat-icon class="text-[16px] text-[var(--muted-strong)]">{{ selectedTipoIcon() }}</mat-icon>
+              <span>{{ row.pessoa.nome }}</span>
+            </span>
+          </td>
         </ng-container>
 
         <ng-container matColumnDef="registro">
@@ -242,7 +250,10 @@
         <div class="grid grid-cols-2 gap-2">
           <div class="flex flex-col gap-0.5">
             <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Pessoa</span>
-            <span class="text-xs">{{ row.pessoa.nome }}</span>
+            <span class="inline-flex items-center gap-1.5 text-xs">
+              <mat-icon class="text-[16px] text-[var(--muted-strong)]">{{ selectedTipoIcon() }}</mat-icon>
+              <span>{{ row.pessoa.nome }}</span>
+            </span>
           </div>
           <div class="flex flex-col gap-0.5">
             <span class="text-[10.5px] uppercase tracking-[0.4px] text-[var(--muted-strong)]">Registro</span>

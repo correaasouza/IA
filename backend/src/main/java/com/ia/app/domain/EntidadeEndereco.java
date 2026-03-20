@@ -53,6 +53,9 @@ public class EntidadeEndereco extends AuditableEntity {
   @Column(name = "municipio_codigo_ibge", length = 10)
   private String municipioCodigoIbge;
 
+  @Column(name = "bairro", length = 120)
+  private String bairro;
+
   @Column(name = "logradouro", length = 200)
   private String logradouro;
 
@@ -109,6 +112,8 @@ public class EntidadeEndereco extends AuditableEntity {
   public void setMunicipio(String municipio) { this.municipio = municipio; }
   public String getMunicipioCodigoIbge() { return municipioCodigoIbge; }
   public void setMunicipioCodigoIbge(String municipioCodigoIbge) { this.municipioCodigoIbge = municipioCodigoIbge; }
+  public String getBairro() { return bairro; }
+  public void setBairro(String bairro) { this.bairro = bairro; }
   public String getLogradouro() { return logradouro; }
   public void setLogradouro(String logradouro) { this.logradouro = logradouro; }
   public String getLogradouroTipo() { return logradouroTipo; }

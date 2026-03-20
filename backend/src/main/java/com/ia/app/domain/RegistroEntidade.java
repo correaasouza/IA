@@ -59,8 +59,8 @@ public class RegistroEntidade extends AuditableEntity {
   @Column(name = "texto_termo_quitacao", length = 4096)
   private String textoTermoQuitacao;
 
-  @Column(name = "tratamento_id")
-  private Long tratamentoId;
+  @Column(name = "tratamento", length = 120)
+  private String tratamento;
 
   @Column(name = "ativo", nullable = false)
   private boolean ativo = true;
@@ -169,12 +169,12 @@ public class RegistroEntidade extends AuditableEntity {
     this.textoTermoQuitacao = textoTermoQuitacao;
   }
 
-  public Long getTratamentoId() {
-    return tratamentoId;
+  public String getTratamento() {
+    return tratamento;
   }
 
-  public void setTratamentoId(Long tratamentoId) {
-    this.tratamentoId = tratamentoId;
+  public void setTratamento(String tratamento) {
+    this.tratamento = tratamento;
   }
 
   public boolean isAtivo() {

@@ -30,6 +30,7 @@ import com.ia.app.service.EntidadeSubresourceService;
 import com.ia.app.service.EntidadeBusinessRhService;
 import com.ia.app.service.RegistroEntidadeContextoService;
 import com.ia.app.service.RegistroEntidadeService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import java.util.List;
 import org.springframework.data.domain.Page;
@@ -67,14 +68,14 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/contexto-empresa")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<RegistroEntidadeEmpresaContextoResponse> contextoEmpresa(
       @PathVariable Long tipoEntidadeId) {
     return ResponseEntity.ok(contextoService.contexto(tipoEntidadeId));
   }
 
   @GetMapping
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<Page<RegistroEntidadeResponse>> list(
       @PathVariable Long tipoEntidadeId,
       @RequestParam(required = false) Long codigo,
@@ -87,7 +88,7 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<RegistroEntidadeResponse> get(
       @PathVariable Long tipoEntidadeId,
       @PathVariable Long id) {
@@ -121,7 +122,7 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/{id}/documentacao")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<EntidadeDocumentacaoResponse> getDocumentacao(
       @PathVariable Long tipoEntidadeId,
       @PathVariable Long id) {
@@ -138,7 +139,7 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/{id}/enderecos")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<List<EntidadeEnderecoResponse>> listEnderecos(
       @PathVariable Long tipoEntidadeId,
       @PathVariable Long id) {
@@ -175,7 +176,7 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/{id}/contatos")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<List<EntidadeContatoResponse>> listContatos(
       @PathVariable Long tipoEntidadeId,
       @PathVariable Long id) {
@@ -212,7 +213,7 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/{id}/contatos/{contatoId}/formas")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<List<EntidadeContatoFormaResponse>> listContatoFormas(
       @PathVariable Long tipoEntidadeId,
       @PathVariable Long id,
@@ -253,7 +254,7 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/{id}/familiares")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<List<EntidadeFamiliarResponse>> listFamiliares(
       @PathVariable Long tipoEntidadeId,
       @PathVariable Long id) {
@@ -290,11 +291,21 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/{id}/comercial")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<EntidadeInfoComercialResponse> getInfoComercial(
       @PathVariable Long tipoEntidadeId,
       @PathVariable Long id) {
-    return ResponseEntity.ok(businessRhService.getInfoComercial(tipoEntidadeId, id));
+    try {
+      return ResponseEntity.ok(businessRhService.getInfoComercial(tipoEntidadeId, id));
+    } catch (EntityNotFoundException ex) {
+      String message = ex.getMessage() == null ? "" : ex.getMessage();
+      if (message.startsWith("entidade_info_comercial_not_found")) {
+        return ResponseEntity.ok(new EntidadeInfoComercialResponse(
+          null, id, null, null, null, null, false, null, null, null, false, null
+        ));
+      }
+      throw ex;
+    }
   }
 
   @PutMapping("/{id}/comercial")
@@ -307,7 +318,7 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/{id}/dados-fiscais")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<EntidadeDadosFiscaisResponse> getDadosFiscais(
       @PathVariable Long tipoEntidadeId,
       @PathVariable Long id) {
@@ -324,7 +335,7 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/{id}/rh/contrato")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<EntidadeContratoRhResponse> getContratoRh(
       @PathVariable Long tipoEntidadeId,
       @PathVariable Long id) {
@@ -341,7 +352,7 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/{id}/rh/info")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<EntidadeInfoRhResponse> getInfoRh(
       @PathVariable Long tipoEntidadeId,
       @PathVariable Long id) {
@@ -358,7 +369,7 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/{id}/rh/referencias")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<List<EntidadeReferenciaResponse>> listReferencias(
       @PathVariable Long tipoEntidadeId,
       @PathVariable Long id) {
@@ -395,7 +406,7 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/{id}/rh/qualificacoes")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<List<EntidadeQualificacaoItemResponse>> listQualificacoes(
       @PathVariable Long tipoEntidadeId,
       @PathVariable Long id) {
@@ -432,9 +443,10 @@ public class RegistroEntidadeController {
   }
 
   @GetMapping("/rh/opcoes")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<EntidadeRhOptionsResponse> loadRhOptions(
       @PathVariable Long tipoEntidadeId) {
     return ResponseEntity.ok(businessRhService.loadRhOptions(tipoEntidadeId));
   }
 }
+

@@ -6,7 +6,6 @@ import com.ia.app.domain.RegistroEntidade;
 import com.ia.app.dto.PessoaVinculoResponse;
 import com.ia.app.dto.RegistroEntidadeRequest;
 import com.ia.app.dto.RegistroEntidadeResponse;
-import com.ia.app.repository.EntidadeTratamentoRepository;
 import com.ia.app.repository.GrupoEntidadeRepository;
 import com.ia.app.repository.PessoaRepository;
 import com.ia.app.repository.PriceBookRepository;
@@ -31,7 +30,6 @@ public class RegistroEntidadeService {
   private final PessoaResolveService pessoaResolveService;
   private final PessoaRepository pessoaRepository;
   private final GrupoEntidadeRepository grupoRepository;
-  private final EntidadeTratamentoRepository tratamentoRepository;
   private final PriceBookRepository priceBookRepository;
   private final AuditService auditService;
 
@@ -42,7 +40,6 @@ public class RegistroEntidadeService {
       PessoaResolveService pessoaResolveService,
       PessoaRepository pessoaRepository,
       GrupoEntidadeRepository grupoRepository,
-      EntidadeTratamentoRepository tratamentoRepository,
       PriceBookRepository priceBookRepository,
       AuditService auditService) {
     this.repository = repository;
@@ -51,7 +48,6 @@ public class RegistroEntidadeService {
     this.pessoaResolveService = pessoaResolveService;
     this.pessoaRepository = pessoaRepository;
     this.grupoRepository = grupoRepository;
-    this.tratamentoRepository = tratamentoRepository;
     this.priceBookRepository = priceBookRepository;
     this.auditService = auditService;
   }
@@ -97,7 +93,6 @@ public class RegistroEntidadeService {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     Long grupoId = validateGrupo(scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId(), request.grupoEntidadeId());
     Long priceBookId = validatePriceBook(scope.tenantId(), request.priceBookId());
-    Long tratamentoId = validateTratamento(scope.tenantId(), request.tratamentoId());
     Pessoa pessoa = pessoaResolveService.resolveOrCreate(scope.tenantId(), request.pessoa());
 
     RegistroEntidade entity = new RegistroEntidade();
@@ -113,7 +108,7 @@ public class RegistroEntidadeService {
     entity.setParecer(normalizeText(request.parecer(), null));
     entity.setCodigoBarras(normalizeText(request.codigoBarras(), 60));
     entity.setTextoTermoQuitacao(normalizeText(request.textoTermoQuitacao(), 4096));
-    entity.setTratamentoId(tratamentoId);
+    entity.setTratamento(normalizeText(request.tratamento(), 120));
     entity.setAtivo(Boolean.TRUE.equals(request.ativo()));
 
     RegistroEntidade saved = saveWithIntegrityMap(entity);
@@ -136,8 +131,7 @@ public class RegistroEntidadeService {
 
     Long grupoId = validateGrupo(scope.tenantId(), scope.tipoEntidadeConfigAgrupadorId(), request.grupoEntidadeId());
     Long priceBookId = validatePriceBook(scope.tenantId(), request.priceBookId());
-    Long tratamentoId = validateTratamento(scope.tenantId(), request.tratamentoId());
-    Pessoa pessoa = pessoaResolveService.resolveOrCreate(scope.tenantId(), request.pessoa());
+    Pessoa pessoa = pessoaResolveService.updateLinkedPessoa(scope.tenantId(), entity.getPessoaId(), request.pessoa());
 
     entity.setGrupoEntidadeId(grupoId);
     entity.setPriceBookId(priceBookId);
@@ -146,7 +140,7 @@ public class RegistroEntidadeService {
     entity.setParecer(normalizeText(request.parecer(), null));
     entity.setCodigoBarras(normalizeText(request.codigoBarras(), 60));
     entity.setTextoTermoQuitacao(normalizeText(request.textoTermoQuitacao(), 4096));
-    entity.setTratamentoId(tratamentoId);
+    entity.setTratamento(normalizeText(request.tratamento(), 120));
     entity.setPessoaId(pessoa.getId());
     entity.setAtivo(Boolean.TRUE.equals(request.ativo()));
 
@@ -188,14 +182,6 @@ public class RegistroEntidadeService {
       throw new EntityNotFoundException("price_book_not_found");
     }
     return priceBookId;
-  }
-
-  private Long validateTratamento(Long tenantId, Long tratamentoId) {
-    if (tratamentoId == null) return null;
-    if (!tratamentoRepository.existsByTenantIdAndIdAndAtivoTrue(tenantId, tratamentoId)) {
-      throw new EntityNotFoundException("entidade_tratamento_not_found");
-    }
-    return tratamentoId;
   }
 
   private RegistroEntidade saveWithIntegrityMap(RegistroEntidade entity) {
@@ -240,7 +226,7 @@ public class RegistroEntidadeService {
       entity.getParecer(),
       entity.getCodigoBarras(),
       entity.getTextoTermoQuitacao(),
-      entity.getTratamentoId(),
+      entity.getTratamento(),
       entity.getVersion(),
       entity.isAtivo(),
       new PessoaVinculoResponse(
@@ -248,7 +234,13 @@ public class RegistroEntidadeService {
         pessoa.getNome(),
         pessoa.getApelido(),
         pessoa.getTipoRegistro(),
-        pessoa.getRegistroFederal()));
+        pessoa.getRegistroFederal(),
+        pessoa.getTipoPessoa(),
+        pessoa.getGenero(),
+        pessoa.getNacionalidade(),
+        pessoa.getNaturalidade(),
+        pessoa.getEstadoCivil(),
+        pessoa.getDataNascimento() == null ? null : pessoa.getDataNascimento().toString()));
   }
 
   @Transactional(readOnly = true)

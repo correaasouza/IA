@@ -1,7 +1,7 @@
 package com.ia.app.dto;
 
 public record EntidadeFamiliarRequest(
-  Long entidadeParenteId,
+  String nome,
   Boolean dependente,
   String parentesco,
   Long version

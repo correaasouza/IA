@@ -2,6 +2,9 @@
 import { HomeComponent } from './features/home/home.component';
 import { HomeDashboardComponent } from './features/home/home-dashboard.component';
 import { AuthGuard } from './core/guards/auth.guard';
+import { MasterOnlyGuard } from './core/guards/master-only.guard';
+import { AdminOrMasterGuard } from './core/guards/admin-or-master.guard';
+import { CompanyScopeGuard } from './core/guards/company-scope.guard';
 import { BlockedComponent } from './features/blocked/blocked.component';
 import { UsersListComponent } from './features/users/users-list.component';
 import { UserFormComponent } from './features/users/user-form.component';
@@ -38,32 +41,38 @@ import { TenantUnitsListComponent } from './features/units/tenant-units-list.com
 import { TenantUnitFormComponent } from './features/units/tenant-unit-form.component';
 import { TenantUnitConversionsListComponent } from './features/units/tenant-unit-conversions-list.component';
 import { TenantUnitConversionFormComponent } from './features/units/tenant-unit-conversion-form.component';
+import { RhQualificacoesListComponent } from './features/rh-qualificacoes/rh-qualificacoes-list.component';
+import { RhQualificacaoFormComponent } from './features/rh-qualificacoes/rh-qualificacao-form.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent, canActivate: [AuthGuard] },
   { path: 'home', component: HomeDashboardComponent, canActivate: [AuthGuard] },
-  { path: 'tenants', component: TenantsListComponent, canActivate: [AuthGuard] },
-  { path: 'tenants/new', component: TenantFormComponent, canActivate: [AuthGuard] },
-  { path: 'tenants/:id', component: TenantFormComponent, canActivate: [AuthGuard] },
-  { path: 'tenants/:id/edit', component: TenantFormComponent, canActivate: [AuthGuard] },
-  { path: 'users', component: UsersListComponent, canActivate: [AuthGuard] },
-  { path: 'users/new', component: UserFormComponent, canActivate: [AuthGuard] },
-  { path: 'users/:id', component: UserFormComponent, canActivate: [AuthGuard] },
-  { path: 'users/:id/edit', component: UserFormComponent, canActivate: [AuthGuard] },
-  { path: 'roles', component: RolesComponent, canActivate: [AuthGuard] },
-  { path: 'roles/new', component: RoleFormComponent, canActivate: [AuthGuard] },
-  { path: 'roles/:id', component: RoleFormComponent, canActivate: [AuthGuard] },
-  { path: 'roles/:id/edit', component: RoleFormComponent, canActivate: [AuthGuard] },
+  { path: 'tenants', component: TenantsListComponent, canActivate: [AuthGuard, MasterOnlyGuard] },
+  { path: 'tenants/new', component: TenantFormComponent, canActivate: [AuthGuard, MasterOnlyGuard] },
+  { path: 'tenants/:id', component: TenantFormComponent, canActivate: [AuthGuard, MasterOnlyGuard] },
+  { path: 'tenants/:id/edit', component: TenantFormComponent, canActivate: [AuthGuard, MasterOnlyGuard] },
+  { path: 'users', component: UsersListComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'users/new', component: UserFormComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'users/:id', component: UserFormComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'users/:id/edit', component: UserFormComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'roles', component: RolesComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'roles/new', component: RoleFormComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'roles/:id', component: RoleFormComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'roles/:id/edit', component: RoleFormComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
   { path: 'companies', component: CompaniesListComponent, canActivate: [AuthGuard] },
-  { path: 'companies/new', component: CompanyFormComponent, canActivate: [AuthGuard] },
-  { path: 'companies/:id', component: CompanyFormComponent, canActivate: [AuthGuard] },
-  { path: 'companies/:id/edit', component: CompanyFormComponent, canActivate: [AuthGuard] },
-  { path: 'access-controls', component: AccessControlsComponent, canActivate: [AuthGuard] },
-  { path: 'access-controls/new', component: AccessControlFormComponent, canActivate: [AuthGuard] },
-  { path: 'access-controls/:key', component: AccessControlFormComponent, canActivate: [AuthGuard] },
-  { path: 'access-controls/:key/edit', component: AccessControlFormComponent, canActivate: [AuthGuard] },
+  { path: 'companies/new', component: CompanyFormComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'companies/:id', component: CompanyFormComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'companies/:id/edit', component: CompanyFormComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'access-controls', component: AccessControlsComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'access-controls/new', component: AccessControlFormComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'access-controls/:key', component: AccessControlFormComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
+  { path: 'access-controls/:key/edit', component: AccessControlFormComponent, canActivate: [AuthGuard, AdminOrMasterGuard] },
   { path: 'configs', component: ConfigsComponent, canActivate: [AuthGuard] },
   { path: 'configs/movimentos', component: MovementConfigsPageComponent, canActivate: [AuthGuard] },
+  { path: 'configs/rh-qualificacoes', component: RhQualificacoesListComponent, canActivate: [AuthGuard] },
+  { path: 'configs/rh-qualificacoes/new', component: RhQualificacaoFormComponent, canActivate: [AuthGuard] },
+  { path: 'configs/rh-qualificacoes/:id', component: RhQualificacaoFormComponent, canActivate: [AuthGuard] },
+  { path: 'configs/rh-qualificacoes/:id/edit', component: RhQualificacaoFormComponent, canActivate: [AuthGuard] },
   { path: 'global-settings/official-units', component: OfficialUnitsListComponent, canActivate: [AuthGuard] },
   { path: 'global-settings/official-units/new', component: OfficialUnitFormComponent, canActivate: [AuthGuard] },
   { path: 'global-settings/official-units/:id', component: OfficialUnitFormComponent, canActivate: [AuthGuard] },
@@ -79,10 +88,10 @@ export const routes: Routes = [
   { path: 'configs/workflows', redirectTo: 'configs/movimentos', pathMatch: 'full' },
   { path: 'configs/workflows/:any', redirectTo: 'configs/movimentos' },
   { path: 'configs/workflows/:any/:any2', redirectTo: 'configs/movimentos' },
-  { path: 'movimentos/estoque', component: MovimentoEstoqueListComponent, canActivate: [AuthGuard] },
-  { path: 'movimentos/estoque/new', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard] },
-  { path: 'movimentos/estoque/:id', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard] },
-  { path: 'movimentos/estoque/:id/edit', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard] },
+  { path: 'movimentos/estoque', component: MovimentoEstoqueListComponent, canActivate: [AuthGuard, CompanyScopeGuard] },
+  { path: 'movimentos/estoque/new', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard, CompanyScopeGuard] },
+  { path: 'movimentos/estoque/:id', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard, CompanyScopeGuard] },
+  { path: 'movimentos/estoque/:id/edit', component: MovimentoEstoqueFormComponent, canActivate: [AuthGuard, CompanyScopeGuard] },
   { path: 'catalog/configuration', component: CatalogConfigurationPageComponent, canActivate: [AuthGuard] },
   { path: 'catalog/pricing/books', component: PriceBooksListComponent, canActivate: [AuthGuard] },
   { path: 'catalog/pricing/books/new', component: PriceBookFormComponent, canActivate: [AuthGuard] },
@@ -96,49 +105,49 @@ export const routes: Routes = [
   {
     path: 'catalog/products',
     component: CatalogItemsListComponent,
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, CompanyScopeGuard],
     data: { type: 'PRODUCTS', title: 'Produtos', singular: 'produto' }
   },
   {
     path: 'catalog/products/new',
     component: CatalogItemFormComponent,
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, CompanyScopeGuard],
     data: { type: 'PRODUCTS', title: 'Produtos', singular: 'produto' }
   },
   {
     path: 'catalog/products/groups',
     component: CatalogGroupsPageComponent,
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, CompanyScopeGuard],
     data: { type: 'PRODUCTS', title: 'Produtos' }
   },
   {
     path: 'catalog/products/:id/edit',
     component: CatalogItemFormComponent,
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, CompanyScopeGuard],
     data: { type: 'PRODUCTS', title: 'Produtos', singular: 'produto' }
   },
   {
     path: 'catalog/products/:id',
     component: CatalogItemFormComponent,
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, CompanyScopeGuard],
     data: { type: 'PRODUCTS', title: 'Produtos', singular: 'produto' }
   },
   {
     path: 'catalog/services',
     component: CatalogItemsListComponent,
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, CompanyScopeGuard],
     data: { type: 'SERVICES', title: 'Servicos', singular: 'servico' }
   },
   {
     path: 'catalog/services/new',
     component: CatalogItemFormComponent,
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, CompanyScopeGuard],
     data: { type: 'SERVICES', title: 'Servicos', singular: 'servico' }
   },
   {
     path: 'catalog/services/groups',
     component: CatalogGroupsPageComponent,
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, CompanyScopeGuard],
     data: { type: 'SERVICES', title: 'Servicos' }
   },
   {
@@ -157,11 +166,11 @@ export const routes: Routes = [
   { path: 'entity-types/new', component: EntityTypeFormComponent, canActivate: [AuthGuard] },
   { path: 'entity-types/:id', component: EntityTypeFormComponent, canActivate: [AuthGuard] },
   { path: 'entity-types/:id/edit', component: EntityTypeFormComponent, canActivate: [AuthGuard] },
-  { path: 'entities', component: EntityRecordsListComponent, canActivate: [AuthGuard] },
+  { path: 'entities', component: EntityRecordsListComponent, canActivate: [AuthGuard, CompanyScopeGuard] },
   { path: 'entities/groups', component: EntityGroupsPageComponent, canActivate: [AuthGuard] },
-  { path: 'entities/new', component: EntityRecordFormComponent, canActivate: [AuthGuard] },
-  { path: 'entities/:id', component: EntityRecordFormComponent, canActivate: [AuthGuard] },
-  { path: 'entities/:id/edit', component: EntityRecordFormComponent, canActivate: [AuthGuard] },
+  { path: 'entities/new', component: EntityRecordFormComponent, canActivate: [AuthGuard, CompanyScopeGuard] },
+  { path: 'entities/:id', component: EntityRecordFormComponent, canActivate: [AuthGuard, CompanyScopeGuard] },
+  { path: 'entities/:id/edit', component: EntityRecordFormComponent, canActivate: [AuthGuard, CompanyScopeGuard] },
   { path: 'help', component: HelpComponent, canActivate: [AuthGuard] },
   { path: 'blocked', component: BlockedComponent }
 ];

@@ -253,12 +253,12 @@ button:focus-visible,
 }
 
 .app-page-shell {
-  padding: 14px 20px;
+  padding: 0 20px 14px;
 }
 
 @media (min-width: 768px) {
   .app-page-shell {
-    padding: 14px 24px;
+    padding: 0 24px 14px;
   }
 }
 
@@ -592,6 +592,49 @@ button:focus-visible,
   }
 }
 
+@media (max-width: 767px) {
+  .app-page-shell {
+    padding: 0 10px 10px;
+  }
+
+  .page-header-sticky {
+    top: 0;
+    margin-top: 0;
+  }
+
+  .page-header-sticky > .flex.flex-wrap.gap-2,
+  .page-header-sticky [class*='header-actions'] {
+    display: flex !important;
+    justify-content: stretch;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .page-header-sticky > .flex.flex-wrap.gap-2 .mat-mdc-button-base,
+  .page-header-sticky [class*='header-actions'] .mat-mdc-button-base {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    width: 100%;
+    white-space: nowrap;
+    font-size: 12px !important;
+    gap: 5px !important;
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+    justify-content: center !important;
+    text-overflow: clip;
+  }
+
+  .page-header-sticky > .flex.flex-wrap.gap-2 .mat-mdc-button-base .mat-icon,
+  .page-header-sticky [class*='header-actions'] .mat-mdc-button-base .mat-icon {
+    font-size: 18px !important;
+    width: 18px !important;
+    height: 18px !important;
+  }
+}
+
 .mat-mdc-form-field-subscript-wrapper {
   padding: 0 4px;
 }
@@ -724,10 +767,10 @@ mat-icon {
   height: 19px;
   line-height: 19px;
   flex: 0 0 19px;
-  align-self: flex-end;
+  align-self: center;
   margin-top: 0 !important;
   margin-bottom: 0 !important;
-  transform: translateY(3px);
+  transform: translateY(1px);
 }
 
 .sidebar-menu-item .menu-item-label {
@@ -919,7 +962,7 @@ mat-icon {
 /* Desktop density for list pages: more rows visible and tighter headers. */
 @media (min-width: 901px) {
   .app-page-shell {
-    padding-top: 10px;
+    padding-top: 0;
     padding-bottom: 10px;
   }
 

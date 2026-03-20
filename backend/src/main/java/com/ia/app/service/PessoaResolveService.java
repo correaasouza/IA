@@ -4,6 +4,8 @@ import com.ia.app.domain.Pessoa;
 import com.ia.app.dto.PessoaVinculoRequest;
 import com.ia.app.repository.PessoaRepository;
 import com.ia.app.util.CpfCnpjValidator;
+import jakarta.persistence.EntityNotFoundException;
+import java.time.LocalDate;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -34,6 +36,12 @@ public class PessoaResolveService {
     String apelido = normalizeOptional(request.apelido());
     String tipoRegistro = normalizeTipoRegistro(request.tipoRegistro());
     String registroFederalNormalizado = normalizeRegistroFederal(tipoRegistro, request.registroFederal());
+    String tipoPessoa = normalizeTipoPessoa(request.tipoPessoa(), tipoRegistro);
+    String genero = normalizeOptionalWithMax(request.genero(), 30, "pessoa_genero_too_long");
+    String nacionalidade = normalizeOptionalWithMax(request.nacionalidade(), 120, "pessoa_nacionalidade_too_long");
+    String naturalidade = normalizeOptionalWithMax(request.naturalidade(), 120, "pessoa_naturalidade_too_long");
+    String estadoCivil = normalizeOptionalWithMax(request.estadoCivil(), 30, "pessoa_estado_civil_too_long");
+    LocalDate dataNascimento = parseDate(request.dataNascimento(), "pessoa_data_nascimento_invalid");
     String lockKey = tenantId + "|" + tipoRegistro + "|" + registroFederalNormalizado;
 
     Object lock = locks.computeIfAbsent(lockKey, k -> new Object());
@@ -51,7 +59,13 @@ public class PessoaResolveService {
             nome,
             apelido,
             tipoRegistro,
-            registroFederalNormalizado)));
+            registroFederalNormalizado,
+            tipoPessoa,
+            genero,
+            nacionalidade,
+            naturalidade,
+            estadoCivil,
+            dataNascimento)));
           if (created == null) {
             throw new IllegalStateException("pessoa_create_failed");
           }
@@ -67,12 +81,68 @@ public class PessoaResolveService {
     }
   }
 
+  @Transactional
+  public Pessoa updateLinkedPessoa(Long tenantId, Long pessoaId, PessoaVinculoRequest request) {
+    Pessoa existing = repository.findByIdAndTenantId(pessoaId, tenantId)
+      .orElseThrow(() -> new EntityNotFoundException("pessoa_not_found"));
+
+    String nome = normalizeNome(request.nome());
+    String apelido = normalizeOptional(request.apelido());
+    String tipoRegistro = normalizeTipoRegistro(request.tipoRegistro());
+    String registroFederalNormalizado = normalizeRegistroFederal(tipoRegistro, request.registroFederal());
+    String tipoPessoa = normalizeTipoPessoa(request.tipoPessoa(), tipoRegistro);
+    String genero = normalizeOptionalWithMax(request.genero(), 30, "pessoa_genero_too_long");
+    String nacionalidade = normalizeOptionalWithMax(request.nacionalidade(), 120, "pessoa_nacionalidade_too_long");
+    String naturalidade = normalizeOptionalWithMax(request.naturalidade(), 120, "pessoa_naturalidade_too_long");
+    String estadoCivil = normalizeOptionalWithMax(request.estadoCivil(), 30, "pessoa_estado_civil_too_long");
+    LocalDate dataNascimento = parseDate(request.dataNascimento(), "pessoa_data_nascimento_invalid");
+
+    existing.setNome(nome);
+    existing.setApelido(apelido);
+    existing.setTipoRegistro(tipoRegistro);
+    existing.setRegistroFederal(registroFederalNormalizado);
+    existing.setRegistroFederalNormalizado(registroFederalNormalizado);
+    existing.setTipoPessoa(tipoPessoa);
+    existing.setGenero(genero);
+    existing.setNacionalidade(nacionalidade);
+    existing.setNaturalidade(naturalidade);
+    existing.setEstadoCivil(estadoCivil);
+    existing.setDataNascimento(dataNascimento);
+
+    existing.setCpf(null);
+    existing.setCnpj(null);
+    existing.setIdEstrangeiro(null);
+    if ("CPF".equals(tipoRegistro)) {
+      existing.setCpf(registroFederalNormalizado);
+    } else if ("CNPJ".equals(tipoRegistro)) {
+      existing.setCnpj(registroFederalNormalizado);
+    } else {
+      existing.setIdEstrangeiro(registroFederalNormalizado);
+    }
+
+    try {
+      return repository.save(existing);
+    } catch (DataIntegrityViolationException ex) {
+      String message = ex.getMostSpecificCause() == null ? "" : ex.getMostSpecificCause().getMessage().toLowerCase();
+      if (message.contains("ux_pessoa_tenant_tipo_registro_federal_norm")) {
+        throw new IllegalArgumentException("pessoa_registro_federal_duplicado");
+      }
+      throw ex;
+    }
+  }
+
   private Pessoa buildPessoa(
       Long tenantId,
       String nome,
       String apelido,
       String tipoRegistro,
-      String registroFederalNormalizado) {
+      String registroFederalNormalizado,
+      String tipoPessoa,
+      String genero,
+      String nacionalidade,
+      String naturalidade,
+      String estadoCivil,
+      LocalDate dataNascimento) {
     Pessoa entity = new Pessoa();
     entity.setTenantId(tenantId);
     entity.setNome(nome);
@@ -80,7 +150,12 @@ public class PessoaResolveService {
     entity.setTipoRegistro(tipoRegistro);
     entity.setRegistroFederal(registroFederalNormalizado);
     entity.setRegistroFederalNormalizado(registroFederalNormalizado);
-    entity.setTipoPessoa(toTipoPessoa(tipoRegistro));
+    entity.setTipoPessoa(tipoPessoa);
+    entity.setGenero(genero);
+    entity.setNacionalidade(nacionalidade);
+    entity.setNaturalidade(naturalidade);
+    entity.setEstadoCivil(estadoCivil);
+    entity.setDataNascimento(dataNascimento);
     entity.setAtivo(true);
     entity.setVersao(1);
     if ("CPF".equals(tipoRegistro)) {
@@ -108,6 +183,15 @@ public class PessoaResolveService {
     if (value == null) return null;
     String normalized = value.trim();
     return normalized.isEmpty() ? null : normalized;
+  }
+
+  private String normalizeOptionalWithMax(String value, int maxLength, String errorKey) {
+    String normalized = normalizeOptional(value);
+    if (normalized == null) return null;
+    if (normalized.length() > maxLength) {
+      throw new IllegalArgumentException(errorKey);
+    }
+    return normalized;
   }
 
   private String normalizeTipoRegistro(String tipoRegistro) {
@@ -138,6 +222,28 @@ public class PessoaResolveService {
       throw new IllegalArgumentException("pessoa_registro_federal_too_long");
     }
     return upper;
+  }
+
+  private String normalizeTipoPessoa(String tipoPessoa, String tipoRegistro) {
+    String defaultTipo = toTipoPessoa(tipoRegistro);
+    if (tipoPessoa == null || tipoPessoa.isBlank()) {
+      return defaultTipo;
+    }
+    String normalized = tipoPessoa.trim().toUpperCase();
+    if (!normalized.equals("FISICA") && !normalized.equals("JURIDICA") && !normalized.equals("ESTRANGEIRA")) {
+      throw new IllegalArgumentException("tipo_pessoa_invalido");
+    }
+    return normalized;
+  }
+
+  private LocalDate parseDate(String value, String errorKey) {
+    String normalized = normalizeOptional(value);
+    if (normalized == null) return null;
+    try {
+      return LocalDate.parse(normalized);
+    } catch (RuntimeException ex) {
+      throw new IllegalArgumentException(errorKey);
+    }
   }
 
   private String toTipoPessoa(String tipoRegistro) {

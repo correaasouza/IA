@@ -75,10 +75,15 @@ public class EntidadeBusinessRhService {
   public EntidadeInfoComercialResponse getInfoComercial(Long tipoEntidadeId, Long entidadeId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
-    EntidadeInfoComercial entity = infoComercialRepository
-      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), scope.empresaId(), registro.getId())
-      .orElseThrow(() -> new EntityNotFoundException("entidade_info_comercial_not_found"));
-    return toInfoComercialResponse(entity);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
+    return infoComercialRepository
+      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
+      .map(this::toInfoComercialResponse)
+      .orElseGet(() -> new EntidadeInfoComercialResponse(
+        null, sharedRegistroId, null, null, null, null, false, null, null, null, false, null
+      ));
   }
 
   @Transactional
@@ -86,19 +91,23 @@ public class EntidadeBusinessRhService {
       Long tipoEntidadeId, Long entidadeId, EntidadeInfoComercialRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeInfoComercial entity = infoComercialRepository
-      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseGet(EntidadeInfoComercial::new);
     entity.setTenantId(scope.tenantId());
-    entity.setEmpresaId(scope.empresaId());
-    entity.setRegistroEntidadeId(registro.getId());
+    entity.setEmpresaId(sharedEmpresaId);
+    entity.setRegistroEntidadeId(sharedRegistroId);
     entity.setFaturamentoDiaInicial(request.faturamentoDiaInicial());
     entity.setFaturamentoDiaFinal(request.faturamentoDiaFinal());
     if (request.faturamentoDiaInicial() != null && request.faturamentoDiaFinal() != null
       && request.faturamentoDiaInicial().isAfter(request.faturamentoDiaFinal())) {
       throw new IllegalArgumentException("entidade_info_comercial_periodo_invalid");
     }
-    entity.setFaturamentoDiasPrazo(request.faturamentoDiasPrazo());
+    entity.setFaturamentoDiasPrazo(validateNonNegativeInt(request.faturamentoDiasPrazo(), "entidade_info_comercial_prazo_invalid"));
+    entity.setPrazoEntregaDias(validateNonNegativeInt(request.prazoEntregaDias(), "entidade_info_comercial_prazo_entrega_invalid"));
     entity.setBoletosEnviarEmail(Boolean.TRUE.equals(request.boletosEnviarEmail()));
     entity.setFaturamentoFrequenciaCobrancaId(validateOptionId(
       scope.tenantId(), request.faturamentoFrequenciaCobrancaId(), "tipo_frequencia_cobranca", "faturamento_frequencia_not_found"));
@@ -112,10 +121,15 @@ public class EntidadeBusinessRhService {
   public EntidadeDadosFiscaisResponse getDadosFiscais(Long tipoEntidadeId, Long entidadeId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
-    EntidadeDadosFiscais entity = dadosFiscaisRepository
-      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), scope.empresaId(), registro.getId())
-      .orElseThrow(() -> new EntityNotFoundException("entidade_dados_fiscais_not_found"));
-    return toDadosFiscaisResponse(entity);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
+    return dadosFiscaisRepository
+      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
+      .map(this::toDadosFiscaisResponse)
+      .orElseGet(() -> new EntidadeDadosFiscaisResponse(
+        null, sharedRegistroId, null, null, null, null
+      ));
   }
 
   @Transactional
@@ -123,12 +137,15 @@ public class EntidadeBusinessRhService {
       Long tipoEntidadeId, Long entidadeId, EntidadeDadosFiscaisRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeDadosFiscais entity = dadosFiscaisRepository
-      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseGet(EntidadeDadosFiscais::new);
     entity.setTenantId(scope.tenantId());
-    entity.setEmpresaId(scope.empresaId());
-    entity.setRegistroEntidadeId(registro.getId());
+    entity.setEmpresaId(sharedEmpresaId);
+    entity.setRegistroEntidadeId(sharedRegistroId);
     entity.setManifestarNotaAutomaticamente(validateTriState(request.manifestarNotaAutomaticamente(), "entidade_dados_fiscais_flag_invalid"));
     entity.setUsaNotaFiscalFatura(validateTriState(request.usaNotaFiscalFatura(), "entidade_dados_fiscais_flag_invalid"));
     entity.setIgnorarImportacaoNota(validateTriState(request.ignorarImportacaoNota(), "entidade_dados_fiscais_flag_invalid"));
@@ -139,10 +156,16 @@ public class EntidadeBusinessRhService {
   public EntidadeContratoRhResponse getContratoRh(Long tipoEntidadeId, Long entidadeId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
-    EntidadeContratoRh entity = contratoRhRepository
-      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), scope.empresaId(), registro.getId())
-      .orElseThrow(() -> new EntityNotFoundException("entidade_contrato_rh_not_found"));
-    return toContratoRhResponse(entity);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
+    return contratoRhRepository
+      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
+      .map(this::toContratoRhResponse)
+      .orElseGet(() -> new EntidadeContratoRhResponse(
+        null, sharedRegistroId, null, null, null, null, null, false,
+        null, null, null, null, null, null, null, null
+      ));
   }
 
   @Transactional
@@ -150,12 +173,15 @@ public class EntidadeBusinessRhService {
       Long tipoEntidadeId, Long entidadeId, EntidadeContratoRhRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeContratoRh entity = contratoRhRepository
-      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseGet(EntidadeContratoRh::new);
     entity.setTenantId(scope.tenantId());
-    entity.setEmpresaId(scope.empresaId());
-    entity.setRegistroEntidadeId(registro.getId());
+    entity.setEmpresaId(sharedEmpresaId);
+    entity.setRegistroEntidadeId(sharedRegistroId);
     entity.setNumero(trim(request.numero(), 40));
     entity.setAdmissaoData(request.admissaoData());
     entity.setRemuneracao(validateMoney(request.remuneracao(), "entidade_rh_valor_invalid"));
@@ -176,10 +202,15 @@ public class EntidadeBusinessRhService {
   public EntidadeInfoRhResponse getInfoRh(Long tipoEntidadeId, Long entidadeId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
-    EntidadeInfoRh entity = infoRhRepository
-      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), scope.empresaId(), registro.getId())
-      .orElseThrow(() -> new EntityNotFoundException("entidade_info_rh_not_found"));
-    return toInfoRhResponse(entity);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
+    return infoRhRepository
+      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
+      .map(this::toInfoRhResponse)
+      .orElseGet(() -> new EntidadeInfoRhResponse(
+        null, sharedRegistroId, null, null, null, false, false, false, null, null, null
+      ));
   }
 
   @Transactional
@@ -187,12 +218,15 @@ public class EntidadeBusinessRhService {
       Long tipoEntidadeId, Long entidadeId, EntidadeInfoRhRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeInfoRh entity = infoRhRepository
-      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByTenantIdAndEmpresaIdAndRegistroEntidadeId(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseGet(EntidadeInfoRh::new);
     entity.setTenantId(scope.tenantId());
-    entity.setEmpresaId(scope.empresaId());
-    entity.setRegistroEntidadeId(registro.getId());
+    entity.setEmpresaId(sharedEmpresaId);
+    entity.setRegistroEntidadeId(sharedRegistroId);
     entity.setAtividades(trim(request.atividades(), 1000));
     entity.setHabilidades(trim(request.habilidades(), 1000));
     entity.setExperiencias(trim(request.experiencias(), 1000));
@@ -211,8 +245,11 @@ public class EntidadeBusinessRhService {
   public List<EntidadeReferenciaResponse> listReferencias(Long tipoEntidadeId, Long entidadeId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     return referenciaRepository
-      .findAllByTenantIdAndEmpresaIdAndRegistroEntidadeIdOrderByIdAsc(scope.tenantId(), scope.empresaId(), registro.getId())
+      .findAllByTenantIdAndEmpresaIdAndRegistroEntidadeIdOrderByIdAsc(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .stream()
       .map(this::toReferenciaResponse)
       .toList();
@@ -222,10 +259,13 @@ public class EntidadeBusinessRhService {
   public EntidadeReferenciaResponse createReferencia(Long tipoEntidadeId, Long entidadeId, EntidadeReferenciaRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeReferencia entity = new EntidadeReferencia();
     entity.setTenantId(scope.tenantId());
-    entity.setEmpresaId(scope.empresaId());
-    entity.setRegistroEntidadeId(registro.getId());
+    entity.setEmpresaId(sharedEmpresaId);
+    entity.setRegistroEntidadeId(sharedRegistroId);
     applyReferencia(entity, request);
     return toReferenciaResponse(referenciaRepository.save(entity));
   }
@@ -234,8 +274,11 @@ public class EntidadeBusinessRhService {
   public EntidadeReferenciaResponse updateReferencia(Long tipoEntidadeId, Long entidadeId, Long referenciaId, EntidadeReferenciaRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeReferencia entity = referenciaRepository
-      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(referenciaId, scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(referenciaId, scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_referencia_not_found"));
     applyReferencia(entity, request);
     return toReferenciaResponse(referenciaRepository.save(entity));
@@ -245,8 +288,11 @@ public class EntidadeBusinessRhService {
   public void deleteReferencia(Long tipoEntidadeId, Long entidadeId, Long referenciaId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeReferencia entity = referenciaRepository
-      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(referenciaId, scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(referenciaId, scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_referencia_not_found"));
     referenciaRepository.delete(entity);
   }
@@ -255,8 +301,11 @@ public class EntidadeBusinessRhService {
   public List<EntidadeQualificacaoItemResponse> listQualificacoes(Long tipoEntidadeId, Long entidadeId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     return qualificacaoItemRepository
-      .findAllByTenantIdAndEmpresaIdAndRegistroEntidadeIdOrderByIdAsc(scope.tenantId(), scope.empresaId(), registro.getId())
+      .findAllByTenantIdAndEmpresaIdAndRegistroEntidadeIdOrderByIdAsc(scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .stream()
       .map(item -> toQualificacaoResponse(scope.tenantId(), item))
       .toList();
@@ -266,10 +315,13 @@ public class EntidadeBusinessRhService {
   public EntidadeQualificacaoItemResponse createQualificacao(Long tipoEntidadeId, Long entidadeId, EntidadeQualificacaoItemRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeQualificacaoItem entity = new EntidadeQualificacaoItem();
     entity.setTenantId(scope.tenantId());
-    entity.setEmpresaId(scope.empresaId());
-    entity.setRegistroEntidadeId(registro.getId());
+    entity.setEmpresaId(sharedEmpresaId);
+    entity.setRegistroEntidadeId(sharedRegistroId);
     applyQualificacao(scope.tenantId(), entity, request);
     return toQualificacaoResponse(scope.tenantId(), qualificacaoItemRepository.save(entity));
   }
@@ -279,8 +331,11 @@ public class EntidadeBusinessRhService {
       Long tipoEntidadeId, Long entidadeId, Long qualificacaoId, EntidadeQualificacaoItemRequest request) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeQualificacaoItem entity = qualificacaoItemRepository
-      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(qualificacaoId, scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(qualificacaoId, scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_qualificacao_not_found"));
     applyQualificacao(scope.tenantId(), entity, request);
     return toQualificacaoResponse(scope.tenantId(), qualificacaoItemRepository.save(entity));
@@ -290,8 +345,11 @@ public class EntidadeBusinessRhService {
   public void deleteQualificacao(Long tipoEntidadeId, Long entidadeId, Long qualificacaoId) {
     var scope = contextoService.resolveObrigatorio(tipoEntidadeId);
     RegistroEntidade registro = getRegistro(scope, entidadeId);
+    RegistroEntidade sharedRegistro = sharedRegistro(scope, registro);
+    Long sharedRegistroId = sharedRegistro.getId();
+    Long sharedEmpresaId = sharedRegistro.getEmpresaId();
     EntidadeQualificacaoItem entity = qualificacaoItemRepository
-      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(qualificacaoId, scope.tenantId(), scope.empresaId(), registro.getId())
+      .findByIdAndTenantIdAndEmpresaIdAndRegistroEntidadeId(qualificacaoId, scope.tenantId(), sharedEmpresaId, sharedRegistroId)
       .orElseThrow(() -> new EntityNotFoundException("entidade_qualificacao_not_found"));
     qualificacaoItemRepository.delete(entity);
   }
@@ -320,6 +378,15 @@ public class EntidadeBusinessRhService {
     return registro;
   }
 
+  private RegistroEntidade sharedRegistro(RegistroEntidadeContextoService.RegistroEntidadeScope scope, RegistroEntidade registro) {
+    List<RegistroEntidade> rows = registroRepository.findAllByTenantIdAndPessoaIdOrderByIdAsc(
+      scope.tenantId(), registro.getPessoaId());
+    if (!rows.isEmpty() && rows.get(0) != null && rows.get(0).getId() != null) {
+      return rows.get(0);
+    }
+    return registro;
+  }
+
   private void applyReferencia(EntidadeReferencia entity, EntidadeReferenciaRequest request) {
     String nome = trim(request.nome(), 120);
     if (nome == null) throw new IllegalArgumentException("entidade_referencia_nome_required");
@@ -344,7 +411,7 @@ public class EntidadeBusinessRhService {
   private EntidadeInfoComercialResponse toInfoComercialResponse(EntidadeInfoComercial e) {
     return new EntidadeInfoComercialResponse(
       e.getId(), e.getRegistroEntidadeId(), e.getFaturamentoDiaInicial(), e.getFaturamentoDiaFinal(),
-      e.getFaturamentoDiasPrazo(), e.isBoletosEnviarEmail(), e.getFaturamentoFrequenciaCobrancaId(),
+      e.getFaturamentoDiasPrazo(), e.getPrazoEntregaDias(), e.isBoletosEnviarEmail(), e.getFaturamentoFrequenciaCobrancaId(),
       e.getJuroTaxaPadrao(), e.getRamoAtividade(), e.isConsumidorFinal(), e.getVersion());
   }
 
@@ -422,6 +489,12 @@ public class EntidadeBusinessRhService {
   private Short validateTriState(Short value, String code) {
     if (value == null) return null;
     if (value < 0 || value > 2) throw new IllegalArgumentException(code);
+    return value;
+  }
+
+  private Integer validateNonNegativeInt(Integer value, String code) {
+    if (value == null) return null;
+    if (value < 0) throw new IllegalArgumentException(code);
     return value;
   }
 

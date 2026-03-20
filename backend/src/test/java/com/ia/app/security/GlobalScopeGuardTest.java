@@ -1,6 +1,8 @@
 package com.ia.app.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.ia.app.tenant.TenantContext;
 import java.time.Instant;
@@ -16,7 +18,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 
 class GlobalScopeGuardTest {
 
-  private final GlobalScopeGuard guard = new GlobalScopeGuard();
+  private final AuthorizationService authorizationService = mock(AuthorizationService.class);
+  private final GlobalScopeGuard guard = new GlobalScopeGuard(authorizationService);
 
   @AfterEach
   void cleanup() {
@@ -27,6 +30,7 @@ class GlobalScopeGuardTest {
   @Test
   void shouldAllowGlobalMaster() {
     SecurityContextHolder.getContext().setAuthentication(jwtAuth("master", true));
+    when(authorizationService.isGlobalMaster(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(true);
 
     assertThat(guard.isGlobalMaster()).isTrue();
   }
@@ -34,6 +38,7 @@ class GlobalScopeGuardTest {
   @Test
   void shouldBlockGlobalMasterWhenUsernameIsNotMaster() {
     SecurityContextHolder.getContext().setAuthentication(jwtAuth("admin", true));
+    when(authorizationService.isGlobalMaster(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(false);
 
     assertThat(guard.isGlobalMaster()).isFalse();
   }
@@ -42,6 +47,7 @@ class GlobalScopeGuardTest {
   void shouldAllowMasterInMasterTenant() {
     SecurityContextHolder.getContext().setAuthentication(jwtAuth("master", true));
     TenantContext.setTenantId(1L);
+    when(authorizationService.isGlobalMaster(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(true);
 
     assertThat(guard.isMasterInMasterTenant()).isTrue();
   }
@@ -50,6 +56,7 @@ class GlobalScopeGuardTest {
   void shouldBlockMasterInNonMasterTenant() {
     SecurityContextHolder.getContext().setAuthentication(jwtAuth("master", true));
     TenantContext.setTenantId(2L);
+    when(authorizationService.isGlobalMaster(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(true);
 
     assertThat(guard.isMasterInMasterTenant()).isFalse();
   }
@@ -63,6 +70,7 @@ class GlobalScopeGuardTest {
         List.of(new SimpleGrantedAuthority("ROLE_MASTER"))
       )
     );
+    when(authorizationService.isGlobalMaster(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(false);
 
     assertThat(guard.isGlobalMaster()).isFalse();
   }

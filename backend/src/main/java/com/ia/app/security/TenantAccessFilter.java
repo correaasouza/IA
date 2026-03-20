@@ -1,11 +1,11 @@
 package com.ia.app.security;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ia.app.domain.Locatario;
 import com.ia.app.repository.EmpresaRepository;
 import com.ia.app.repository.LocatarioRepository;
-import com.ia.app.repository.UsuarioLocatarioAcessoRepository;
-import com.ia.app.repository.UsuarioRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ia.app.tenant.EmpresaContext;
+import com.ia.app.tenant.TenantContext;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,13 +16,10 @@ import java.util.Set;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import com.ia.app.tenant.EmpresaContext;
-import com.ia.app.tenant.TenantContext;
 
 @Component
 public class TenantAccessFilter extends OncePerRequestFilter {
@@ -33,22 +30,19 @@ public class TenantAccessFilter extends OncePerRequestFilter {
     "/api/locatarios/allowed"
   );
 
-  private final LocatarioRepository repository;
+  private final LocatarioRepository locatarioRepository;
   private final EmpresaRepository empresaRepository;
-  private final UsuarioRepository usuarioRepository;
-  private final UsuarioLocatarioAcessoRepository usuarioLocatarioAcessoRepository;
+  private final AuthorizationService authorizationService;
   private final ObjectMapper objectMapper;
 
   public TenantAccessFilter(
-      LocatarioRepository repository,
+      LocatarioRepository locatarioRepository,
       EmpresaRepository empresaRepository,
-      UsuarioRepository usuarioRepository,
-      UsuarioLocatarioAcessoRepository usuarioLocatarioAcessoRepository,
+      AuthorizationService authorizationService,
       ObjectMapper objectMapper) {
-    this.repository = repository;
+    this.locatarioRepository = locatarioRepository;
     this.empresaRepository = empresaRepository;
-    this.usuarioRepository = usuarioRepository;
-    this.usuarioLocatarioAcessoRepository = usuarioLocatarioAcessoRepository;
+    this.authorizationService = authorizationService;
     this.objectMapper = objectMapper;
   }
 
@@ -67,18 +61,10 @@ public class TenantAccessFilter extends OncePerRequestFilter {
       return;
     }
 
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    boolean isMaster = isGlobalMaster(authentication);
-
     String tenantIdHeader = request.getHeader("X-Tenant-Id");
-    if ((tenantIdHeader == null || tenantIdHeader.isBlank()) && !isMaster) {
+    if (tenantIdHeader == null || tenantIdHeader.isBlank()) {
       writeProblem(response, 400, "tenant_required", "Tenant requerido",
         "Informe o header X-Tenant-Id.");
-      return;
-    }
-
-    if (tenantIdHeader == null || tenantIdHeader.isBlank()) {
-      filterChain.doFilter(request, response);
       return;
     }
 
@@ -86,53 +72,56 @@ public class TenantAccessFilter extends OncePerRequestFilter {
     try {
       tenantId = Long.parseLong(tenantIdHeader);
     } catch (NumberFormatException ex) {
-      writeProblem(response, 400, "tenant_invalid", "Tenant inválido",
-        "X-Tenant-Id deve ser um número.");
+      writeProblem(response, 400, "tenant_invalid", "Tenant invalido",
+        "X-Tenant-Id deve ser um numero.");
       return;
     }
 
-    Locatario locatario = repository.findById(tenantId).orElse(null);
+    Locatario locatario = locatarioRepository.findById(tenantId).orElse(null);
     if (locatario == null) {
-      writeProblem(response, 404, "tenant_not_found", "Locatário não encontrado",
-        "Locatário informado não existe.");
+      writeProblem(response, 404, "tenant_not_found", "Locatario nao encontrado",
+        "Locatario informado nao existe.");
       return;
     }
+
+    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+    boolean globalMaster = authorizationService.isGlobalMaster(authentication, tenantId);
+    String userId = resolveUserId(authentication);
 
     boolean bloqueado = LocalDate.now().isAfter(locatario.getDataLimiteAcesso()) || !locatario.isAtivo();
-    if (bloqueado && !isMaster) {
-      writeProblem(response, 423, "tenant_blocked", "Locatário bloqueado",
-        "Data limite expirada ou locatário inativo. Entre em contato com o suporte.",
+    if (bloqueado && !globalMaster) {
+      writeProblem(response, 423, "tenant_blocked", "Locatario bloqueado",
+        "Data limite expirada ou locatario inativo. Entre em contato com o suporte.",
         locatario.getId(), locatario.getDataLimiteAcesso().toString(), locatario.isAtivo());
       return;
     }
 
-    if (!isMaster && authentication != null) {
-      String keycloakId = authentication.getName();
-      if (authentication instanceof org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken jwtAuth) {
-        keycloakId = jwtAuth.getToken().getSubject();
-      }
-      boolean allowed = usuarioLocatarioAcessoRepository.existsByUsuarioIdAndLocatarioId(keycloakId, tenantId)
-        || usuarioRepository.findByKeycloakIdAndTenantId(keycloakId, tenantId).isPresent();
-      if (!allowed) {
-        writeProblem(response, 403, "tenant_forbidden", "Acesso negado",
-          "Usuário não pertence ao locatário informado.");
-        return;
-      }
+    if (!authorizationService.canAccessTenant(userId, tenantId)) {
+      writeProblem(response, 403, "tenant_forbidden", "Acesso negado",
+        "Usuario nao pertence ao locatario informado.");
+      return;
     }
 
-    String empresaIdHeader = request.getHeader("X-Empresa-Id");
+    String empresaIdHeader = shouldIgnoreEmpresaHeader(request)
+      ? null
+      : request.getHeader("X-Empresa-Id");
     Long empresaId = null;
     if (empresaIdHeader != null && !empresaIdHeader.isBlank()) {
       try {
         empresaId = Long.parseLong(empresaIdHeader);
       } catch (NumberFormatException ex) {
-        writeProblem(response, 400, "empresa_context_invalid", "Empresa inválida",
-          "X-Empresa-Id deve ser um número.");
+        writeProblem(response, 400, "empresa_context_invalid", "Empresa invalida",
+          "X-Empresa-Id deve ser um numero.");
         return;
       }
       if (empresaId <= 0 || !empresaRepository.existsByIdAndTenantId(empresaId, tenantId)) {
-        writeProblem(response, 404, "empresa_context_not_found", "Empresa não encontrada",
-          "Empresa informada não existe no locatário.");
+        writeProblem(response, 404, "empresa_context_not_found", "Empresa nao encontrada",
+          "Empresa informada nao existe no locatario.");
+        return;
+      }
+      if (!globalMaster && !authorizationService.getAccessibleCompanies(userId, tenantId).contains(empresaId)) {
+        writeProblem(response, 403, "empresa_context_forbidden", "Empresa sem acesso",
+          "Usuario sem acesso a empresa informada.");
         return;
       }
     }
@@ -158,28 +147,21 @@ public class TenantAccessFilter extends OncePerRequestFilter {
     return OPEN_PATHS.contains(path);
   }
 
-  private boolean hasRole(Authentication authentication, String role) {
-    for (GrantedAuthority authority : authentication.getAuthorities()) {
-      if (role.equals(authority.getAuthority())) {
-        return true;
-      }
-    }
-    return false;
+  private boolean shouldIgnoreEmpresaHeader(HttpServletRequest request) {
+    String method = request.getMethod();
+    String path = request.getRequestURI();
+    // Company list endpoints are used to choose context; stale X-Empresa-Id must not block them.
+    return HttpMethod.GET.matches(method) && path != null && path.startsWith("/api/empresas");
   }
 
-  private boolean isGlobalMaster(Authentication authentication) {
+  private String resolveUserId(Authentication authentication) {
     if (authentication == null || !authentication.isAuthenticated()) {
-      return false;
-    }
-    if (hasRole(authentication, "ROLE_MASTER")) {
-      return true;
+      return null;
     }
     if (authentication instanceof JwtAuthenticationToken jwtAuth) {
-      String preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");
-      return preferredUsername != null && preferredUsername.equalsIgnoreCase("master");
+      return jwtAuth.getToken().getSubject();
     }
-    String name = authentication.getName();
-    return name != null && name.equalsIgnoreCase("master");
+    return authentication.getName();
   }
 
   private void writeProblem(HttpServletResponse response, int status, String type,
@@ -208,5 +190,3 @@ public class TenantAccessFilter extends OncePerRequestFilter {
     response.getWriter().write(objectMapper.writeValueAsString(body));
   }
 }
-
-

@@ -43,7 +43,7 @@ public class TipoEntidadeController {
   }
 
   @GetMapping
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<Page<TipoEntidadeResponse>> list(
       @RequestParam(required = false) String nome,
       @RequestParam(required = false) Boolean ativo,
@@ -52,7 +52,7 @@ public class TipoEntidadeController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("@permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<TipoEntidadeResponse> get(@PathVariable Long id) {
     return ResponseEntity.ok(toResponse(service.get(id)));
   }

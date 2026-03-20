@@ -6,6 +6,7 @@ import com.ia.app.dto.EmpresaMatrizRequest;
 import com.ia.app.dto.EmpresaUpdateRequest;
 import com.ia.app.repository.EmpresaRepository;
 import com.ia.app.repository.EmpresaSpecifications;
+import com.ia.app.security.AuthorizationService;
 import com.ia.app.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
@@ -18,15 +19,23 @@ import org.springframework.stereotype.Service;
 public class EmpresaService {
 
   private final EmpresaRepository repository;
+  private final AuthorizationService authorizationService;
 
-  public EmpresaService(EmpresaRepository repository) {
+  public EmpresaService(EmpresaRepository repository, AuthorizationService authorizationService) {
     this.repository = repository;
+    this.authorizationService = authorizationService;
   }
 
   public Page<Empresa> findAll(String nome, String cnpj, String tipo, Long matrizId, Boolean ativo, Pageable pageable) {
     Long tenantId = requireTenant();
+    String userId = authorizationService.currentUserId();
+    var accessible = authorizationService.getAccessibleCompanies(userId, tenantId);
+    if (accessible.isEmpty()) {
+      return Page.empty(pageable);
+    }
     Specification<Empresa> spec = Specification
       .where(EmpresaSpecifications.tenantEquals(tenantId))
+      .and((root, query, cb) -> root.get("id").in(accessible))
       .and(EmpresaSpecifications.nomeLike(nome))
       .and(EmpresaSpecifications.cnpjLike(cnpj))
       .and(EmpresaSpecifications.tipoEquals(tipo))

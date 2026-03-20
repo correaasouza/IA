@@ -23,6 +23,12 @@ public interface RegistroEntidadeRepository extends JpaRepository<RegistroEntida
   Optional<RegistroEntidade> findByIdAndTenantIdAndTipoEntidadeConfigAgrupadorId(
     Long id, Long tenantId, Long tipoEntidadeConfigAgrupadorId);
 
+  List<RegistroEntidade> findAllByTenantIdAndEmpresaIdAndPessoaIdOrderByIdAsc(
+    Long tenantId, Long empresaId, Long pessoaId);
+
+  List<RegistroEntidade> findAllByTenantIdAndPessoaIdOrderByIdAsc(
+    Long tenantId, Long pessoaId);
+
   boolean existsByTenantIdAndTipoEntidadeConfigAgrupadorIdAndGrupoEntidadeIdInAndAtivoTrue(
     Long tenantId, Long tipoEntidadeConfigAgrupadorId, Collection<Long> grupoEntidadeIds);
 

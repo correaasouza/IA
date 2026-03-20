@@ -69,6 +69,12 @@ class PessoaResolveServiceConcurrencyTest {
       "Pessoa Concorrente",
       "",
       "CPF",
-      documento)).getId();
+      documento,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null)).getId();
   }
 }

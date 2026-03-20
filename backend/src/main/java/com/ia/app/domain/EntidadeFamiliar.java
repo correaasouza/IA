@@ -25,8 +25,11 @@ public class EntidadeFamiliar extends AuditableEntity {
   @Column(name = "registro_entidade_id", nullable = false)
   private Long registroEntidadeId;
 
-  @Column(name = "entidade_parente_id", nullable = false)
+  @Column(name = "entidade_parente_id")
   private Long entidadeParenteId;
+
+  @Column(name = "nome", nullable = false, length = 160)
+  private String nome;
 
   @Column(name = "dependente", nullable = false)
   private boolean dependente;
@@ -47,6 +50,8 @@ public class EntidadeFamiliar extends AuditableEntity {
   public void setRegistroEntidadeId(Long registroEntidadeId) { this.registroEntidadeId = registroEntidadeId; }
   public Long getEntidadeParenteId() { return entidadeParenteId; }
   public void setEntidadeParenteId(Long entidadeParenteId) { this.entidadeParenteId = entidadeParenteId; }
+  public String getNome() { return nome; }
+  public void setNome(String nome) { this.nome = nome; }
   public boolean isDependente() { return dependente; }
   public void setDependente(boolean dependente) { this.dependente = dependente; }
   public String getParentesco() { return parentesco; }

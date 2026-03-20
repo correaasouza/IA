@@ -333,21 +333,20 @@ export class AppComponent {
     if (!tenantId && item.id !== 'home') {
       return false;
     }
-    // Hard rule: "Locatários" is visible only for MASTER inside master tenant.
     if (item.id === 'tenants') {
       return this.isMasterTenantContext() && this.hasMasterRole();
+    }
+    if (item.id === 'roles') {
+      return this.hasAdminOrMasterRole();
+    }
+    if (this.hasMasterRole()) {
+      return true;
     }
     const controlKey = item.accessKey || `menu.${item.id}`;
     if (item.id === 'movement-configs' && !this.isFeatureEnabled('movementConfigEnabled', true)) {
       return false;
     }
-    const roleOk = !item.roles || item.roles.length === 0
-      || this.accessControl.can(controlKey, item.roles);
-    const permOk = !item.perms || item.perms.length === 0 || item.perms.some(p => this.permissions.includes(p));
-    if (item.roles && item.roles.length > 0 && item.perms && item.perms.length > 0) {
-      return roleOk || permOk;
-    }
-    return roleOk && permOk;
+    return this.accessControl.can(controlKey, item.roles || []);
   }
 
   allowedMenu(item: MenuItem): boolean {
@@ -372,6 +371,7 @@ export class AppComponent {
         if (tenantStorageId) {
           localStorage.setItem(this.tenantRolesStorageKey(tenantStorageId), JSON.stringify(this.tenantRoles));
           this.securityTenantId = tenantStorageId;
+          this.ensureTenantNameLoaded(tenantStorageId);
         }
         this.accessControl.refreshPolicies();
         this.setUserIdentity(data);
@@ -443,7 +443,7 @@ export class AppComponent {
   private filterMenuByMode(items: MenuItem[]): MenuItem[] {
     return (items || []).filter(item => {
       if (this.menuMode === 'operacao') {
-        return item.id === 'group-cadastros' || item.id === 'group-stock';
+        return item.id === 'group-access' || item.id === 'group-cadastros' || item.id === 'group-stock';
       }
       if (item.id === 'group-globals') {
         return this.isMasterTenantContext();
@@ -605,8 +605,12 @@ export class AppComponent {
   }
 
   private applyFirstSelection(): void {
-    // Do not auto-pick a non-default company on refresh/login.
-    this.clearEmpresaContextSelection();
+    const first = this.empresaContextOptions[0];
+    if (!first) {
+      this.clearEmpresaContextSelection();
+      return;
+    }
+    this.persistDefaultCompanyAndSelect(first.id);
   }
 
   onEmpresaContextChange(rawId: string | number | null): void {
@@ -637,6 +641,18 @@ export class AppComponent {
     this.loadMovementTypeMenuItems();
   }
 
+  private persistDefaultCompanyAndSelect(companyId: number): void {
+    if (!companyId) {
+      this.clearEmpresaContextSelection();
+      return;
+    }
+    this.http.put<{ empresaId: number | null }>(`${environment.apiBaseUrl}/api/me/empresa-padrao`, { empresaId: companyId })
+      .subscribe({
+        next: () => this.setEmpresaContext(companyId),
+        error: () => this.setEmpresaContext(companyId)
+      });
+  }
+
   private notifyEmpresaContextUpdated(source: 'selector' | 'external' = 'external'): void {
     if (typeof window === 'undefined') return;
     window.dispatchEvent(new CustomEvent('empresa-context-updated', { detail: { source } }));
@@ -656,6 +672,35 @@ export class AppComponent {
     return (localStorage.getItem('tenantId') || '').trim();
   }
 
+  tenantHeaderName(): string {
+    const name = (localStorage.getItem('tenantNome') || '').trim();
+    if (name) {
+      return name;
+    }
+    return this.hasTenant ? 'Locatario' : 'SGN';
+  }
+
+  private ensureTenantNameLoaded(tenantId: string): void {
+    if (!tenantId) {
+      localStorage.removeItem('tenantNome');
+      return;
+    }
+    const currentName = (localStorage.getItem('tenantNome') || '').trim();
+    if (currentName) {
+      return;
+    }
+    this.http.get<Array<{ id: number; nome: string }>>(`${environment.apiBaseUrl}/api/locatarios/allowed`)
+      .subscribe({
+        next: (items) => {
+          const match = (items || []).find(item => String(item?.id || '') === tenantId);
+          if (match?.nome) {
+            localStorage.setItem('tenantNome', match.nome);
+          }
+        },
+        error: () => {}
+      });
+  }
+
   private tenantRolesStorageKey(tenantId: string): string {
     return `tenantRoles:${tenantId}`;
   }
@@ -671,7 +716,21 @@ export class AppComponent {
     };
     const tokenRoles = (this.auth.getUserRoles() || []).map(normalize);
     const tenantRoles = (this.tenantRoles || []).map(normalize);
-    return Array.from(new Set([...tokenRoles, ...tenantRoles])).includes('MASTER');
+    const roleMaster = Array.from(new Set([...tokenRoles, ...tenantRoles])).includes('MASTER');
+    const usernameMaster = (this.auth.getUsername() || '').trim().toLowerCase() === 'master';
+    return roleMaster || usernameMaster;
+  }
+
+  private hasAdminOrMasterRole(): boolean {
+    const normalize = (role: string) => {
+      const value = (role || '').trim().toUpperCase();
+      return value.startsWith('ROLE_') ? value.substring(5) : value;
+    };
+    const tokenRoles = (this.auth.getUserRoles() || []).map(normalize);
+    const tenantRoles = (this.tenantRoles || []).map(normalize);
+    const merged = Array.from(new Set([...tokenRoles, ...tenantRoles]));
+    const usernameMaster = (this.auth.getUsername() || '').trim().toLowerCase() === 'master';
+    return usernameMaster || merged.includes('MASTER') || merged.includes('ADMIN');
   }
 
   private isStaleTenantRequest(requestTenantId: string): boolean {
@@ -912,7 +971,7 @@ export class AppComponent {
         route: '/entities',
         queryParams: { tipoEntidadeId: type.id, tipoSeed: 'CLIENTE' },
         accessKey: 'menu.entities-clientes',
-        icon: 'badge',
+        icon: 'person',
         roles: ['MASTER', 'ADMIN'],
         perms: ['ENTIDADE_EDIT']
       };
@@ -1010,6 +1069,7 @@ export class AppComponent {
     localStorage.setItem('featureFlags', JSON.stringify(next));
   }
 }
+
 
 
 

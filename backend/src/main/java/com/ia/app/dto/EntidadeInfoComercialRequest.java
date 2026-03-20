@@ -7,6 +7,7 @@ public record EntidadeInfoComercialRequest(
   LocalDate faturamentoDiaInicial,
   LocalDate faturamentoDiaFinal,
   Integer faturamentoDiasPrazo,
+  Integer prazoEntregaDias,
   Boolean boletosEnviarEmail,
   Long faturamentoFrequenciaCobrancaId,
   BigDecimal juroTaxaPadrao,

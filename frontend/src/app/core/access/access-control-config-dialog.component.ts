@@ -94,6 +94,27 @@ export class AccessControlConfigDialogComponent implements OnInit {
     if (role.startsWith('ROLE_')) {
       role = role.substring(5);
     }
+    if (this.isTechnicalRole(role)) {
+      return '';
+    }
     return role;
+  }
+
+  private isTechnicalRole(role: string): boolean {
+    if (!role) {
+      return true;
+    }
+    const normalized = role.trim().toUpperCase();
+    if (!normalized) {
+      return true;
+    }
+    if (normalized.startsWith('DEFAULT-ROLES-')) {
+      return true;
+    }
+    return normalized === 'OFFLINE_ACCESS'
+      || normalized === 'UMA_AUTHORIZATION'
+      || normalized === 'MANAGE-ACCOUNT'
+      || normalized === 'MANAGE-ACCOUNT-LINKS'
+      || normalized === 'VIEW-PROFILE';
   }
 }

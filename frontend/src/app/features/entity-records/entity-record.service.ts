@@ -20,6 +20,12 @@ export interface PessoaVinculoPayload {
   apelido?: string;
   tipoRegistro: 'CPF' | 'CNPJ' | 'ID_ESTRANGEIRO';
   registroFederal: string;
+  tipoPessoa?: 'FISICA' | 'JURIDICA' | 'ESTRANGEIRA' | string;
+  genero?: string;
+  nacionalidade?: string;
+  naturalidade?: string;
+  estadoCivil?: string;
+  dataNascimento?: string | null;
 }
 
 export interface RegistroEntidadePayload {
@@ -30,7 +36,7 @@ export interface RegistroEntidadePayload {
   parecer?: string | null;
   codigoBarras?: string | null;
   textoTermoQuitacao?: string | null;
-  tratamentoId?: number | null;
+  tratamento?: string | null;
   version?: number | null;
   ativo: boolean;
   pessoa: PessoaVinculoPayload;
@@ -49,7 +55,7 @@ export interface RegistroEntidade {
   parecer?: string | null;
   codigoBarras?: string | null;
   textoTermoQuitacao?: string | null;
-  tratamentoId?: number | null;
+  tratamento?: string | null;
   version?: number | null;
   ativo: boolean;
   pessoa: {
@@ -58,6 +64,12 @@ export interface RegistroEntidade {
     apelido?: string | null;
     tipoRegistro: 'CPF' | 'CNPJ' | 'ID_ESTRANGEIRO';
     registroFederal: string;
+    tipoPessoa?: 'FISICA' | 'JURIDICA' | 'ESTRANGEIRA' | string;
+    genero?: string | null;
+    nacionalidade?: string | null;
+    naturalidade?: string | null;
+    estadoCivil?: string | null;
+    dataNascimento?: string | null;
   };
 }
 
@@ -69,9 +81,20 @@ export interface RegistroEntidadeListResponse {
   };
 }
 
+export interface PessoaLookupResponse {
+  id: number;
+  nome: string;
+  apelido?: string | null;
+  tipoRegistro: 'CPF' | 'CNPJ' | 'ID_ESTRANGEIRO' | string;
+  tipoPessoa?: 'FISICA' | 'JURIDICA' | 'ESTRANGEIRA' | string;
+  registroFederal?: string | null;
+  registroFederalNormalizado?: string | null;
+  ativo?: boolean;
+}
+
 export interface EntidadeDocumentacaoPayload {
-  tipoRegistroFederal: 'CPF' | 'CNPJ' | 'ID_ESTRANGEIRO';
-  registroFederal: string;
+  tipoRegistroFederal?: 'CPF' | 'CNPJ' | 'ID_ESTRANGEIRO';
+  registroFederal?: string;
   registroFederalDataEmissao?: string | null;
   rg?: string | null;
   rgTipo?: string | null;
@@ -90,6 +113,7 @@ export interface EntidadeDocumentacaoPayload {
   cnhDataEmissao?: string | null;
   suframa?: string | null;
   rntc?: string | null;
+  rntcCategoria?: string | null;
   pis?: string | null;
   tituloEleitor?: string | null;
   tituloEleitorZona?: string | null;
@@ -123,6 +147,7 @@ export interface EntidadeEnderecoPayload {
   ufCodigoIbge?: string | null;
   municipio?: string | null;
   municipioCodigoIbge?: string | null;
+  bairro?: string | null;
   logradouro?: string | null;
   logradouroTipo?: string | null;
   numero?: string | null;
@@ -154,7 +179,17 @@ export interface EntidadeContato extends EntidadeContatoPayload {
 }
 
 export interface EntidadeContatoFormaPayload {
-  tipoContato: 'EMAIL' | 'FONE_CELULAR' | 'FONE_RESIDENCIAL' | 'FONE_COMERCIAL' | 'FACEBOOK' | 'WHATSAPP';
+  tipoContato:
+    | 'EMAIL'
+    | 'TELEFONE'
+    | 'FONE_CELULAR'
+    | 'FONE_RESIDENCIAL'
+    | 'FONE_COMERCIAL'
+    | 'WHATSAPP'
+    | 'FACEBOOK'
+    | 'SITE'
+    | 'LINKEDIN'
+    | 'INSTAGRAM';
   valor: string;
   preferencial?: boolean | null;
   version?: number | null;
@@ -168,7 +203,7 @@ export interface EntidadeContatoForma extends EntidadeContatoFormaPayload {
 }
 
 export interface EntidadeFamiliarPayload {
-  entidadeParenteId: number;
+  nome: string;
   dependente?: boolean | null;
   parentesco: 'PAI' | 'FILHO' | 'IRMAO' | 'IRMA' | 'TIO' | 'TIA' | 'PRIMO' | 'PRIMA' | 'VO' | 'VOMAE' | 'BISAVO' | 'BISAVOMAE' | 'OUTROS';
   version?: number | null;
@@ -177,7 +212,6 @@ export interface EntidadeFamiliarPayload {
 export interface EntidadeFamiliar extends EntidadeFamiliarPayload {
   id: number;
   registroEntidadeId: number;
-  entidadeParenteNome?: string | null;
   version?: number | null;
 }
 
@@ -185,6 +219,7 @@ export interface EntidadeInfoComercialPayload {
   faturamentoDiaInicial?: string | null;
   faturamentoDiaFinal?: string | null;
   faturamentoDiasPrazo?: number | null;
+  prazoEntregaDias?: number | null;
   boletosEnviarEmail?: boolean | null;
   faturamentoFrequenciaCobrancaId?: number | null;
   juroTaxaPadrao?: number | null;
@@ -325,9 +360,21 @@ export interface EntidadeFormConfigByGroup {
   groups: EntidadeFormGroupConfig[];
 }
 
+export interface CepLookupResponse {
+  cep: string;
+  logradouro?: string | null;
+  bairro?: string | null;
+  localidade?: string | null;
+  uf?: string | null;
+  ibge?: string | null;
+  ufCodigoIbge?: string | null;
+  source?: 'CACHE' | 'EXTERNAL' | string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class EntityRecordService {
   private baseUrl = `${environment.apiBaseUrl}/api/tipos-entidade`;
+  private pessoaBaseUrl = `${environment.apiBaseUrl}/api/pessoas`;
 
   constructor(private http: HttpClient) {}
 
@@ -370,6 +417,12 @@ export class EntityRecordService {
 
   delete(tipoEntidadeId: number, id: number): Observable<void> {
     return this.http.delete<void>(`${this.baseUrl}/${tipoEntidadeId}/entidades/${id}`);
+  }
+
+  findPessoaByDocumento(documento: string): Observable<PessoaLookupResponse | null> {
+    const query = new URLSearchParams();
+    query.set('documento', `${documento || ''}`);
+    return this.http.get<PessoaLookupResponse | null>(`${this.pessoaBaseUrl}/busca?${query.toString()}`);
   }
 
   getDocumentacao(tipoEntidadeId: number, entidadeId: number): Observable<EntidadeDocumentacao> {
@@ -623,5 +676,10 @@ export class EntityRecordService {
     return this.http.get<EntidadeFormConfigByGroup>(
       `${this.baseUrl}/${tipoEntidadeId}/config-agrupadores/${agrupadorId}/ficha`
     );
+  }
+
+  lookupCep(cep: string): Observable<CepLookupResponse> {
+    const digits = (cep || '').replace(/\D/g, '');
+    return this.http.get<CepLookupResponse>(`${environment.apiBaseUrl}/api/ceps/${digits}`);
   }
 }

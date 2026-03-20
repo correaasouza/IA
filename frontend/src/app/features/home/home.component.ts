@@ -40,6 +40,12 @@ export class HomeComponent implements OnInit {
     if (this.tenantId === null || this.tenantId === undefined) return;
     const tenantId = String(this.tenantId);
     localStorage.setItem('tenantId', tenantId);
+    const selectedTenant = this.allowedTenants.find(t => t.id === this.tenantId);
+    if (selectedTenant?.nome) {
+      localStorage.setItem('tenantNome', selectedTenant.nome);
+    } else {
+      localStorage.removeItem('tenantNome');
+    }
     localStorage.removeItem('empresaContextId');
     localStorage.removeItem('empresaContextTipo');
     localStorage.removeItem('empresaContextNome');

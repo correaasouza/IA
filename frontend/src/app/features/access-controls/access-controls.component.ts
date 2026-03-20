@@ -69,14 +69,15 @@ export class AccessControlsComponent implements OnInit {
   reload() {
     this.access.refreshPolicies();
     const baseFallbacks = this.buildFallbackRolesByKey(this.menuService.items);
+    const staticFallbacks = this.buildStaticFallbackRolesByKey();
     this.entityTypeService.list({ page: 0, size: 300, ativo: true }).subscribe({
       next: data => {
         const typeFallbacks = this.buildEntityTypeFallbacks(data?.content || []);
-        this.fallbackRolesByKey = { ...baseFallbacks, ...typeFallbacks };
+        this.fallbackRolesByKey = { ...baseFallbacks, ...staticFallbacks, ...typeFallbacks };
         this.composePolicies();
       },
       error: () => {
-        this.fallbackRolesByKey = baseFallbacks;
+        this.fallbackRolesByKey = { ...baseFallbacks, ...staticFallbacks };
         this.composePolicies();
       }
     });
@@ -182,6 +183,14 @@ export class AccessControlsComponent implements OnInit {
         map[`menu.entities.tipo.${t.id}`] = ['MASTER', 'ADMIN'];
       });
     return map;
+  }
+
+  private buildStaticFallbackRolesByKey(): Record<string, string[]> {
+    return {
+      'users.manageaccess': ['MASTER'],
+      'users.managecompanyaccess': ['MASTER', 'ADMIN'],
+      'users.setdefaultcompany': []
+    };
   }
 
   private composePolicies(): void {

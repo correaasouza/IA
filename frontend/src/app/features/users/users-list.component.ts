@@ -18,6 +18,8 @@ import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { NotificationService } from '../../core/notifications/notification.service';
 import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 import { AccessControlDirective } from '../../shared/access-control.directive';
+import { TenantService, LocatarioResponse } from '../tenants/tenant.service';
+import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
   selector: 'app-users-list',
@@ -48,6 +50,9 @@ export class UsersListComponent implements OnInit {
   pageSize = 50;
   loading = false;
   togglingUserId: number | null = null;
+  isGlobalMaster = false;
+  tenantOptions: LocatarioResponse[] = [];
+  selectedTenantId: number | null = null;
 
   searchOptions: FieldSearchOption[] = [
     { key: 'username', label: 'Username' },
@@ -61,6 +66,8 @@ export class UsersListComponent implements OnInit {
 
   constructor(
     private service: UsuarioService,
+    private tenantService: TenantService,
+    private auth: AuthService,
     private dialog: MatDialog,
     private router: Router,
     private notify: NotificationService
@@ -68,12 +75,16 @@ export class UsersListComponent implements OnInit {
 
   ngOnInit(): void {
     this.updateViewportMode();
+    this.isGlobalMaster = this.detectGlobalMaster();
+    if (this.isGlobalMaster) {
+      this.loadTenantOptions();
+    }
     this.load();
   }
 
   load() {
     this.loading = true;
-    this.service.list(this.pageIndex, this.pageSize).pipe(finalize(() => this.loading = false)).subscribe({
+    this.service.list(this.pageIndex, this.pageSize, this.selectedTenantId).pipe(finalize(() => this.loading = false)).subscribe({
       next: data => {
         this.usuarios = data.content || [];
         this.totalElements = data.totalElements || 0;
@@ -103,7 +114,22 @@ export class UsersListComponent implements OnInit {
   clearFilters() {
     this.searchTerm = '';
     this.searchFields = ['username', 'email'];
+    if (this.isGlobalMaster) {
+      this.selectedTenantId = null;
+    }
+    this.pageIndex = 0;
+    this.load();
     this.applySearch();
+  }
+
+  onTenantFilterChange(value: string) {
+    if (!this.isGlobalMaster) {
+      return;
+    }
+    const parsed = Number(value || 0);
+    this.selectedTenantId = parsed > 0 ? parsed : null;
+    this.pageIndex = 0;
+    this.load();
   }
 
   
@@ -136,6 +162,32 @@ export class UsersListComponent implements OnInit {
       const matchEmail = this.searchFields.includes('email') && has(u.email || '');
       const matchPapeis = this.searchFields.includes('papeis') && has((u.papeis || []).join(' '));
       return matchUsername || matchEmail || matchPapeis;
+    });
+  }
+
+  private detectGlobalMaster(): boolean {
+    const tenantId = (localStorage.getItem('tenantId') || '').trim();
+    if (tenantId !== '1') {
+      return false;
+    }
+    const username = (this.auth.getUsername() || '').trim().toLowerCase();
+    if (username === 'master') {
+      return true;
+    }
+    const normalizedRoles = (this.auth.getUserRoles() || [])
+      .map(role => (role || '').trim().toUpperCase())
+      .map(role => role.startsWith('ROLE_') ? role.substring(5) : role);
+    return normalizedRoles.includes('MASTER');
+  }
+
+  private loadTenantOptions(): void {
+    this.tenantService.list({ page: 0, size: 500, sort: 'nome,asc' }).subscribe({
+      next: data => {
+        this.tenantOptions = data?.content || [];
+      },
+      error: () => {
+        this.tenantOptions = [];
+      }
     });
   }
 

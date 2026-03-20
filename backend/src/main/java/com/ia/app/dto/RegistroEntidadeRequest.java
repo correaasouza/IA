@@ -11,7 +11,7 @@ public record RegistroEntidadeRequest(
   String parecer,
   String codigoBarras,
   String textoTermoQuitacao,
-  Long tratamentoId,
+  String tratamento,
   Long version,
   @NotNull Boolean ativo,
   @NotNull @Valid PessoaVinculoRequest pessoa

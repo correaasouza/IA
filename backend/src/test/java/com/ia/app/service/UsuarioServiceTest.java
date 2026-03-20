@@ -13,10 +13,12 @@ import com.ia.app.domain.Usuario;
 import com.ia.app.dto.UsuarioRequest;
 import com.ia.app.repository.AtalhoUsuarioRepository;
 import com.ia.app.repository.PapelRepository;
+import com.ia.app.repository.UsuarioEmpresaAcessoRepository;
 import com.ia.app.repository.UsuarioEmpresaPreferenciaRepository;
 import com.ia.app.repository.UsuarioLocatarioAcessoRepository;
 import com.ia.app.repository.UsuarioPapelRepository;
 import com.ia.app.repository.UsuarioRepository;
+import com.ia.app.security.AuthorizationService;
 import com.ia.app.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import java.time.Instant;
@@ -57,7 +59,13 @@ class UsuarioServiceTest {
   private UsuarioEmpresaPreferenciaRepository usuarioEmpresaPreferenciaRepository;
 
   @Mock
+  private UsuarioEmpresaAcessoRepository usuarioEmpresaAcessoRepository;
+
+  @Mock
   private AtalhoUsuarioRepository atalhoUsuarioRepository;
+
+  @Mock
+  private AuthorizationService authorizationService;
 
   @InjectMocks
   private UsuarioService service;
@@ -72,6 +80,8 @@ class UsuarioServiceTest {
   void shouldBlockMasterRoleForNonMasterUsernameOnCreate() {
     SecurityContextHolder.getContext().setAuthentication(masterAuth());
     TenantContext.setTenantId(1L);
+    when(authorizationService.canManageUsersInCurrentTenant()).thenReturn(true);
+    when(authorizationService.isCurrentGlobalMaster()).thenReturn(false);
     when(repository.existsByUsernameIgnoreCase("joao")).thenReturn(false);
     when(repository.existsByEmailIgnoreCase("joao@local")).thenReturn(false);
 
@@ -94,6 +104,8 @@ class UsuarioServiceTest {
   void shouldAllowMasterRoleForMasterUsernameOnCreate() {
     SecurityContextHolder.getContext().setAuthentication(masterAuth());
     TenantContext.setTenantId(1L);
+    when(authorizationService.canManageUsersInCurrentTenant()).thenReturn(true);
+    when(authorizationService.isCurrentGlobalMaster()).thenReturn(true);
     when(repository.existsByUsernameIgnoreCase("master")).thenReturn(false);
     when(repository.existsByEmailIgnoreCase("master@local")).thenReturn(false);
     when(keycloakAdminService.createUser("master", "master@local", "123456", true, List.of("MASTER")))
@@ -128,6 +140,7 @@ class UsuarioServiceTest {
   void shouldBlockWhenUsernameAlreadyExistsGlobally() {
     SecurityContextHolder.getContext().setAuthentication(masterAuth());
     TenantContext.setTenantId(2L);
+    when(authorizationService.canManageUsersInCurrentTenant()).thenReturn(true);
     when(repository.existsByUsernameIgnoreCase("user1")).thenReturn(true);
 
     UsuarioRequest request = new UsuarioRequest(
@@ -149,6 +162,7 @@ class UsuarioServiceTest {
   void shouldPersistRequestedRolesLocallyOnCreate() {
     SecurityContextHolder.getContext().setAuthentication(masterAuth());
     TenantContext.setTenantId(1L);
+    when(authorizationService.canManageUsersInCurrentTenant()).thenReturn(true);
     when(repository.existsByUsernameIgnoreCase("user3")).thenReturn(false);
     when(repository.existsByEmailIgnoreCase("user3@local")).thenReturn(false);
     when(keycloakAdminService.createUser("user3", "user3@local", "123456", true, List.of("ADMIN", "USER")))
@@ -186,6 +200,8 @@ class UsuarioServiceTest {
   @Test
   void shouldBlockDeleteForMasterUser() {
     SecurityContextHolder.getContext().setAuthentication(masterAuth());
+    when(authorizationService.canManageUsersInCurrentTenant()).thenReturn(true);
+    when(authorizationService.isCurrentGlobalMaster()).thenReturn(true);
     Usuario masterUser = new Usuario();
     masterUser.setUsername("master");
     masterUser.setKeycloakId("kc-master");
@@ -202,6 +218,9 @@ class UsuarioServiceTest {
   @Test
   void shouldBlockDeleteForCurrentAuthenticatedUser() {
     SecurityContextHolder.getContext().setAuthentication(masterAuth());
+    when(authorizationService.canManageUsersInCurrentTenant()).thenReturn(true);
+    when(authorizationService.isCurrentGlobalMaster()).thenReturn(true);
+    when(authorizationService.currentUserId()).thenReturn("master-id");
     Usuario currentUser = new Usuario();
     currentUser.setUsername("alex");
     currentUser.setKeycloakId("master-id");
@@ -218,6 +237,7 @@ class UsuarioServiceTest {
   @Test
   void shouldAutoDeleteLocalUserWhenMissingInKeycloak() {
     SecurityContextHolder.getContext().setAuthentication(masterAuth());
+    when(authorizationService.isCurrentGlobalMaster()).thenReturn(true);
     Usuario orphanUser = new Usuario();
     orphanUser.setUsername("user2");
     orphanUser.setKeycloakId("kc-orphan");
@@ -230,6 +250,7 @@ class UsuarioServiceTest {
 
     verify(usuarioPapelRepository).deleteAllByUsuarioId("kc-orphan");
     verify(usuarioLocatarioAcessoRepository).deleteAllByUsuarioId("kc-orphan");
+    verify(usuarioEmpresaAcessoRepository).deleteAllByUsuarioId("kc-orphan");
     verify(usuarioEmpresaPreferenciaRepository).deleteAllByUsuarioId("kc-orphan");
     verify(atalhoUsuarioRepository).deleteAllByUserId("kc-orphan");
     verify(repository).delete(orphanUser);

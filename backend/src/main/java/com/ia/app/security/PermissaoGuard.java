@@ -6,16 +6,19 @@ import java.util.Set;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 @Component("permissaoGuard")
 public class PermissaoGuard {
 
   private final PermissaoUsuarioService permissaoUsuarioService;
+  private final AuthorizationService authorizationService;
 
-  public PermissaoGuard(PermissaoUsuarioService permissaoUsuarioService) {
+  public PermissaoGuard(
+      PermissaoUsuarioService permissaoUsuarioService,
+      AuthorizationService authorizationService) {
     this.permissaoUsuarioService = permissaoUsuarioService;
+    this.authorizationService = authorizationService;
   }
 
   public boolean hasPermissao(String codigo) {
@@ -23,44 +26,36 @@ public class PermissaoGuard {
     if (auth == null || !auth.isAuthenticated()) {
       return false;
     }
-    if (isGlobalMaster(auth)) {
-      return true;
-    }
-    if (hasAuthority(auth, "ROLE_MASTER") || hasAuthority(auth, "ROLE_ADMIN")) {
-      return true;
-    }
-    if (hasAuthority(auth, "ROLE_" + codigo)) {
+    if (authorizationService.isCurrentGlobalMaster()) {
       return true;
     }
     Long tenantId = TenantContext.getTenantId();
-    if (tenantId == null) {
+    String userId = authorizationService.currentUserId();
+    if (tenantId == null || userId == null || userId.isBlank()) {
       return false;
     }
-    String userId = auth.getName();
-    if (auth instanceof JwtAuthenticationToken jwtAuth) {
-      userId = jwtAuth.getToken().getSubject();
-    }
-    Set<String> permissoes = permissaoUsuarioService.permissoes(tenantId, userId);
-    return permissoes.contains(codigo);
-  }
-
-  private boolean hasAuthority(Authentication auth, String role) {
-    for (GrantedAuthority authority : auth.getAuthorities()) {
-      if (role.equals(authority.getAuthority())) return true;
-    }
-    return false;
-  }
-
-  private boolean isGlobalMaster(Authentication auth) {
-    if (hasAuthority(auth, "ROLE_MASTER")) {
+    if (authorizationService.canAccessTenant(userId, tenantId)
+        && (hasRole(auth, "ROLE_ADMIN") || hasRole(auth, "ROLE_MASTER"))) {
       return true;
     }
-    if (auth instanceof JwtAuthenticationToken jwtAuth) {
-      String preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");
-      return preferredUsername != null && preferredUsername.equalsIgnoreCase("master");
+    Set<String> permissoes = permissaoUsuarioService.permissoes(tenantId, userId);
+    if (permissoes.contains(codigo)) {
+      return true;
     }
-    String name = auth.getName();
-    return name != null && name.equalsIgnoreCase("master");
+    return permissaoUsuarioService.papeis(tenantId, userId).stream()
+      .anyMatch(papel -> "ADMIN".equalsIgnoreCase(papel) || "MASTER".equalsIgnoreCase(papel));
+  }
+
+  private boolean hasRole(Authentication authentication, String role) {
+    if (authentication == null) {
+      return false;
+    }
+    for (GrantedAuthority authority : authentication.getAuthorities()) {
+      if (role.equals(authority.getAuthority())) {
+        return true;
+      }
+    }
+    return false;
   }
 }
 

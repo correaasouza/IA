@@ -5,13 +5,11 @@ import com.ia.app.dto.UsuarioLocatarioAcessoResponse;
 import com.ia.app.repository.LocatarioRepository;
 import com.ia.app.repository.UsuarioLocatarioAcessoRepository;
 import com.ia.app.repository.UsuarioRepository;
+import com.ia.app.security.AuthorizationService;
 import com.ia.app.tenant.TenantContext;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.LinkedHashSet;
 import java.util.List;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,14 +19,17 @@ public class UsuarioLocatarioAcessoService {
   private final UsuarioRepository usuarioRepository;
   private final UsuarioLocatarioAcessoRepository acessoRepository;
   private final LocatarioRepository locatarioRepository;
+  private final AuthorizationService authorizationService;
 
   public UsuarioLocatarioAcessoService(
       UsuarioRepository usuarioRepository,
       UsuarioLocatarioAcessoRepository acessoRepository,
-      LocatarioRepository locatarioRepository) {
+      LocatarioRepository locatarioRepository,
+      AuthorizationService authorizationService) {
     this.usuarioRepository = usuarioRepository;
     this.acessoRepository = acessoRepository;
     this.locatarioRepository = locatarioRepository;
+    this.authorizationService = authorizationService;
   }
 
   public UsuarioLocatarioAcessoResponse listByUsuario(Long usuarioLocalId) {
@@ -39,6 +40,7 @@ public class UsuarioLocatarioAcessoService {
 
   @Transactional
   public UsuarioLocatarioAcessoResponse setByUsuario(Long usuarioLocalId, List<Long> locatarioIds) {
+    authorizationService.assertCanManageTenants(authorizationService.currentUserId(), TenantContext.getTenantId());
     Usuario usuario = getUsuarioDoTenantAtual(usuarioLocalId);
     LinkedHashSet<Long> cleaned = new LinkedHashSet<>(locatarioIds == null ? List.of() : locatarioIds);
     for (Long locatarioId : cleaned) {
@@ -51,8 +53,23 @@ public class UsuarioLocatarioAcessoService {
     return new UsuarioLocatarioAcessoResponse(List.copyOf(cleaned));
   }
 
+  @Transactional
+  public UsuarioLocatarioAcessoResponse grantByUsuario(Long usuarioLocalId, Long locatarioId) {
+    if (locatarioId == null) {
+      throw new IllegalArgumentException("locatario_not_found");
+    }
+    Usuario usuario = getUsuarioDoTenantAtual(usuarioLocalId);
+    if (!locatarioRepository.existsById(locatarioId)) {
+      throw new EntityNotFoundException("locatario_not_found");
+    }
+    List<Long> current = acessoRepository.findLocatarioIdsByUsuarioId(usuario.getKeycloakId());
+    LinkedHashSet<Long> next = new LinkedHashSet<>(current);
+    next.add(locatarioId);
+    return setByUsuario(usuarioLocalId, List.copyOf(next));
+  }
+
   private Usuario getUsuarioDoTenantAtual(Long usuarioLocalId) {
-    if (isGlobalMaster()) {
+    if (authorizationService.isCurrentGlobalMaster()) {
       return usuarioRepository.findById(usuarioLocalId)
         .orElseThrow(() -> new EntityNotFoundException("usuario_not_found"));
     }
@@ -60,25 +77,11 @@ public class UsuarioLocatarioAcessoService {
     if (tenantId == null) {
       throw new IllegalStateException("tenant_required");
     }
-    return usuarioRepository.findByIdAndTenantId(usuarioLocalId, tenantId)
+    Usuario usuario = usuarioRepository.findById(usuarioLocalId)
       .orElseThrow(() -> new EntityNotFoundException("usuario_not_found"));
-  }
-
-  private boolean isGlobalMaster() {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    if (auth == null || !auth.isAuthenticated()) {
-      return false;
+    if (!authorizationService.canAccessTenant(usuario.getKeycloakId(), tenantId)) {
+      throw new EntityNotFoundException("usuario_not_found");
     }
-    boolean hasMasterRole = auth.getAuthorities().stream()
-      .anyMatch(a -> "ROLE_MASTER".equals(a.getAuthority()));
-    if (hasMasterRole) {
-      return true;
-    }
-    if (auth instanceof JwtAuthenticationToken jwtAuth) {
-      String preferredUsername = jwtAuth.getToken().getClaimAsString("preferred_username");
-      return preferredUsername != null && preferredUsername.equalsIgnoreCase("master");
-    }
-    String name = auth.getName();
-    return name != null && name.equalsIgnoreCase("master");
+    return usuario;
   }
 }

@@ -83,6 +83,8 @@ public class ApiExceptionHandler {
       pd.setDetail("Cargo RH nao encontrado.");
     } else if (message.startsWith("entidade_rh_ocupacao_not_found")) {
       pd.setDetail("Ocupacao/atividade RH nao encontrada.");
+    } else if (message.startsWith("cep_not_found")) {
+      pd.setDetail("CEP nao encontrado.");
     } else {
       pd.setDetail(ex.getMessage());
     }
@@ -106,6 +108,8 @@ public class ApiExceptionHandler {
       pd.setDetail("Modulo de Configuracoes de Movimentos desabilitado por feature flag.");
     } else if (message.startsWith("workflow_feature_disabled")) {
       pd.setDetail("Modulo de Workflow desabilitado por feature flag.");
+    } else if (message.startsWith("cep_lookup_unavailable")) {
+      pd.setDetail("Servico de CEP indisponivel no momento.");
     } else {
       pd.setDetail(ex.getMessage());
     }
@@ -139,6 +143,8 @@ public class ApiExceptionHandler {
       pd.setDetail("Username ja cadastrado para outro usuario.");
     } else if (message.startsWith("usuario_master_role_restrito")) {
       pd.setDetail("Somente o usuario \"master\" pode possuir o papel MASTER.");
+    } else if (message.startsWith("usuario_master_role_cannot_be_removed")) {
+      pd.setDetail("O usuario master global deve manter obrigatoriamente o papel MASTER.");
     } else if (message.startsWith("usuario_master_protegido")) {
       pd.setDetail("Nao e permitido excluir o usuario master.");
     } else if (message.startsWith("usuario_self_delete_forbidden")) {
@@ -201,16 +207,18 @@ public class ApiExceptionHandler {
       pd.setDetail("E-mail da forma de contato invalido.");
     } else if (message.startsWith("entidade_contato_forma_telefone_invalid")) {
       pd.setDetail("Telefone da forma de contato invalido.");
-    } else if (message.startsWith("entidade_familiar_parente_required")) {
-      pd.setDetail("Informe a entidade parente no vinculo familiar.");
-    } else if (message.startsWith("entidade_familiar_parente_self")) {
-      pd.setDetail("A entidade nao pode ser vinculada como familiar dela mesma.");
+    } else if (message.startsWith("entidade_familiar_nome_required")) {
+      pd.setDetail("Informe o nome do familiar.");
     } else if (message.startsWith("entidade_familiar_parentesco_required")) {
       pd.setDetail("Informe o parentesco.");
     } else if (message.startsWith("entidade_familiar_parentesco_invalid")) {
       pd.setDetail("Parentesco invalido.");
     } else if (message.startsWith("entidade_info_comercial_periodo_invalid")) {
       pd.setDetail("Periodo comercial invalido: data inicial maior que data final.");
+    } else if (message.startsWith("entidade_info_comercial_prazo_invalid")) {
+      pd.setDetail("Dias de prazo invalido. Use valor maior ou igual a zero.");
+    } else if (message.startsWith("entidade_info_comercial_prazo_entrega_invalid")) {
+      pd.setDetail("Prazo de entrega invalido. Use valor maior ou igual a zero.");
     } else if (message.startsWith("faturamento_frequencia_not_found")) {
       pd.setDetail("Frequencia de cobranca nao encontrada.");
     } else if (message.startsWith("entidade_info_comercial_juro_invalid")) {
@@ -493,6 +501,16 @@ public class ApiExceptionHandler {
       pd.setDetail("Informe o tipo de catalogo do tipo de item.");
     } else if (message.startsWith("movimento_item_tipo_nome_duplicado")) {
       pd.setDetail("Ja existe tipo de item com este nome no locatario.");
+    } else if (message.startsWith("rh_qualificacao_not_found")) {
+      pd.setDetail("Qualificacao RH nao encontrada.");
+    } else if (message.startsWith("rh_qualificacao_nome_required")) {
+      pd.setDetail("Informe o nome da qualificacao RH.");
+    } else if (message.startsWith("rh_qualificacao_nome_too_long")) {
+      pd.setDetail("Nome da qualificacao RH excede o limite permitido.");
+    } else if (message.startsWith("rh_qualificacao_nome_duplicado")) {
+      pd.setDetail("Ja existe qualificacao RH com este nome no locatario.");
+    } else if (message.startsWith("rh_qualificacao_tipo_invalid")) {
+      pd.setDetail("Tipo da qualificacao RH invalido.");
     } else if (message.startsWith("movimento_config_item_tipo_id_invalid")) {
       pd.setDetail("Tipo de item invalido na configuracao de movimento.");
     } else if (message.startsWith("movimento_config_nome_required")) {
@@ -773,6 +791,7 @@ public class ApiExceptionHandler {
       || message.startsWith("catalog_stock_type_last_active")
       || message.startsWith("catalog_stock_adjustment_codigo_duplicado")
       || message.startsWith("movimento_item_tipo_nome_duplicado")
+      || message.startsWith("rh_qualificacao_nome_duplicado")
       || message.startsWith("movimento_config_conflito_prioridade_contexto_empresa")
       || message.startsWith("movimento_config_conflito_resolucao")
       || message.startsWith("movimento_estoque_finalizado")

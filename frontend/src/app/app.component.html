@@ -5,13 +5,13 @@
         <mat-icon>menu</mat-icon>
       </button>
 
-      <div class="inline-flex min-w-0 items-center gap-2 md:gap-3" aria-label="Sistema de Gestão de Negócios">
+      <div class="inline-flex min-w-0 items-center gap-2 md:gap-3" [attr.aria-label]="tenantHeaderName()">
         <span class="hidden h-10 w-10 place-items-center rounded-xl border border-white/35 bg-white shadow sm:grid" aria-hidden="true">
           <mat-icon class="text-[#1e3a6d]">business</mat-icon>
         </span>
         <div class="grid min-w-0 leading-tight">
-          <span class="block truncate text-sm font-semibold text-[#f5fbfd] sm:hidden">SGN</span>
-          <span class="hidden truncate text-sm font-semibold text-[#f5fbfd] sm:block md:text-base">Sistema de Gestão de Negócios</span>
+          <span class="block truncate text-sm font-semibold text-[#f5fbfd] sm:hidden">{{ tenantHeaderName() }}</span>
+          <span class="hidden truncate text-sm font-semibold text-[#f5fbfd] sm:block md:text-base">{{ tenantHeaderName() }}</span>
           <span class="hidden text-xs text-white/80 md:block" *ngIf="hasTenant">Ambiente do locatário</span>
         </div>
       </div>
@@ -211,6 +211,7 @@
     </mat-sidenav-content>
   </mat-sidenav-container>
 </div>
+
 
 
 

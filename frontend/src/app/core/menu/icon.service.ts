@@ -15,7 +15,7 @@ export class IconService {
     users: 'group',
     roles: 'security',
     entities: 'assignment',
-    'entities-clientes': 'badge',
+    'entities-clientes': 'person',
     'entities-fornecedores': 'local_shipping',
     'entities-equipe': 'groups',
     'entities-outras': 'view_list',

@@ -13,14 +13,18 @@ public class PapelService {
 
   private final PapelRepository repository;
   private final AuditService auditService;
+  private final PapelSeedService papelSeedService;
 
-  public PapelService(PapelRepository repository, AuditService auditService) {
+  public PapelService(PapelRepository repository, AuditService auditService, PapelSeedService papelSeedService) {
     this.repository = repository;
     this.auditService = auditService;
+    this.papelSeedService = papelSeedService;
   }
 
   public List<Papel> list() {
-    return repository.findAllByTenantIdOrderByNome(requireTenant());
+    Long tenantId = requireTenant();
+    papelSeedService.seedDefaults(tenantId);
+    return repository.findAllByTenantIdOrderByNome(tenantId);
   }
 
   public Papel get(Long id) {

@@ -13,6 +13,7 @@ import { ConfirmDialogComponent } from '../../shared/confirm-dialog.component';
 import { FieldSearchComponent, FieldSearchOption, FieldSearchValue } from '../../shared/field-search/field-search.component';
 import { InlineLoaderComponent } from '../../shared/inline-loader.component';
 import { NotificationService } from '../../core/notifications/notification.service';
+import { AuthService } from '../../core/auth/auth.service';
 import { CompanyService, EmpresaResponse } from './company.service';
 import { CompanyContextService } from './company-context.service';
 
@@ -42,6 +43,7 @@ export class CompaniesListComponent implements OnInit {
   pageSize = 50;
   loading = false;
   defaultEmpresaId = 0;
+  canManageCompanies = false;
 
   searchOptions: FieldSearchOption[] = [
     { key: 'nome', label: 'Razão social' },
@@ -63,6 +65,7 @@ export class CompaniesListComponent implements OnInit {
     private fb: FormBuilder,
     private service: CompanyService,
     private companyContextService: CompanyContextService,
+    private auth: AuthService,
     private dialog: MatDialog,
     private notify: NotificationService
   ) {}
@@ -111,10 +114,47 @@ export class CompaniesListComponent implements OnInit {
 
   ngOnInit(): void {
     this.updateViewportMode();
+    this.refreshPermissions();
     this.load();
   }
 
+  private refreshPermissions(): void {
+    const roles = new Set<string>();
+    (this.auth.getUserRoles() || []).forEach(role => {
+      const normalized = this.normalizeRole(role);
+      if (normalized) roles.add(normalized);
+    });
+    const tenantId = this.tenantId();
+    if (tenantId) {
+      try {
+        const raw = localStorage.getItem(`tenantRoles:${tenantId}`);
+        const tenantRoles = raw ? (JSON.parse(raw) as string[]) : [];
+        (tenantRoles || []).forEach(role => {
+          const normalized = this.normalizeRole(role);
+          if (normalized) roles.add(normalized);
+        });
+      } catch {
+        // ignore invalid tenant roles cache
+      }
+    }
+    this.canManageCompanies = roles.has('MASTER') || roles.has('ADMIN');
+  }
+
+  private normalizeRole(value: string): string {
+    let role = (value || '').trim().toUpperCase();
+    if (!role) return '';
+    const sepIdx = role.lastIndexOf(':');
+    if (sepIdx >= 0 && sepIdx < role.length - 1) {
+      role = role.substring(sepIdx + 1);
+    }
+    if (role.startsWith('ROLE_')) {
+      role = role.substring(5);
+    }
+    return role;
+  }
+
   load() {
+    this.refreshPermissions();
     const params: Record<string, any> = {
       page: this.pageIndex,
       size: this.pageSize

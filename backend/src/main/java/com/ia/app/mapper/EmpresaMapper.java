@@ -13,6 +13,7 @@ public class EmpresaMapper {
   public static EmpresaResponse toResponse(Empresa entity, boolean padrao) {
     return new EmpresaResponse(
       entity.getId(),
+      entity.getTenantId(),
       entity.getTipo(),
       entity.getMatriz() == null ? null : entity.getMatriz().getId(),
       entity.getRazaoSocial(),

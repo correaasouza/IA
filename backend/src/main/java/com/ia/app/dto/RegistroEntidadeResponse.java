@@ -13,7 +13,7 @@ public record RegistroEntidadeResponse(
   String parecer,
   String codigoBarras,
   String textoTermoQuitacao,
-  Long tratamentoId,
+  String tratamento,
   Long version,
   boolean ativo,
   PessoaVinculoResponse pessoa

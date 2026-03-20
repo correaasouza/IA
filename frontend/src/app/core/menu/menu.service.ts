@@ -22,8 +22,16 @@ export class MenuService {
       children: [
         { id: 'tenants', label: 'Locatários', route: '/tenants', icon: 'domain', roles: ['MASTER'] },
         { id: 'users', label: 'Usuários', route: '/users', icon: 'group', roles: ['MASTER', 'ADMIN'], perms: ['USUARIO_MANAGE'] },
-        { id: 'roles', label: 'Papéis', route: '/roles', icon: 'security', roles: ['MASTER'] },
-        { id: 'access-controls', label: 'Acessos UI', route: '/access-controls', icon: 'tune', roles: ['MASTER', 'ADMIN'] }
+        { id: 'roles', label: 'Papéis', route: '/roles', icon: 'security', roles: ['MASTER', 'ADMIN'] },
+        {
+          id: 'companies-access',
+          label: 'Empresas',
+          route: '/companies',
+          accessKey: 'menu.companies',
+          icon: 'apartment',
+          roles: ['MASTER', 'ADMIN'],
+          perms: ['ENTIDADE_EDIT', 'RELATORIO_VIEW']
+        },
       ]
     },
     {
@@ -37,7 +45,7 @@ export class MenuService {
           route: '/entities',
           queryParams: { tipoSeed: 'CLIENTE' },
           accessKey: 'menu.entities-clientes',
-          icon: 'badge',
+          icon: 'person',
           roles: ['MASTER', 'ADMIN'],
           perms: ['ENTIDADE_EDIT']
         },
@@ -112,15 +120,6 @@ export class MenuService {
       icon: 'settings',
       children: [
         {
-          id: 'companies-access',
-          label: 'Acessos',
-          route: '/companies',
-          accessKey: 'menu.companies',
-          icon: 'apartment',
-          roles: ['MASTER', 'ADMIN'],
-          perms: ['ENTIDADE_EDIT', 'RELATORIO_VIEW']
-        },
-        {
           id: 'catalog-config',
           label: 'Catálogo',
           route: '/catalog/configuration',
@@ -135,6 +134,15 @@ export class MenuService {
           route: '/configs/movimentos',
           accessKey: 'menu.movement-configs',
           icon: 'sync_alt',
+          roles: ['MASTER', 'ADMIN'],
+          perms: ['CONFIG_EDITOR']
+        },
+        {
+          id: 'rh-qualificacoes',
+          label: 'RH Qualificacoes',
+          route: '/configs/rh-qualificacoes',
+          accessKey: 'menu.rh-qualificacoes',
+          icon: 'school',
           roles: ['MASTER', 'ADMIN'],
           perms: ['CONFIG_EDITOR']
         },

@@ -5,8 +5,10 @@ import com.ia.app.dto.EmpresaMatrizRequest;
 import com.ia.app.dto.EmpresaResponse;
 import com.ia.app.dto.EmpresaUpdateRequest;
 import com.ia.app.mapper.EmpresaMapper;
+import com.ia.app.security.AuthorizationService;
 import com.ia.app.service.EmpresaService;
 import com.ia.app.service.UsuarioEmpresaPreferenciaService;
+import com.ia.app.tenant.TenantContext;
 import jakarta.validation.Valid;
 import java.util.Map;
 import org.springframework.data.domain.Page;
@@ -32,16 +34,19 @@ import org.springframework.web.bind.annotation.RestController;
 public class EmpresaController {
   private final EmpresaService service;
   private final UsuarioEmpresaPreferenciaService usuarioEmpresaPreferenciaService;
+  private final AuthorizationService authorizationService;
 
   public EmpresaController(
       EmpresaService service,
-      UsuarioEmpresaPreferenciaService usuarioEmpresaPreferenciaService) {
+      UsuarioEmpresaPreferenciaService usuarioEmpresaPreferenciaService,
+      AuthorizationService authorizationService) {
     this.service = service;
     this.usuarioEmpresaPreferenciaService = usuarioEmpresaPreferenciaService;
+    this.authorizationService = authorizationService;
   }
 
   @GetMapping
-  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW') or @permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
+  @PreAuthorize("isAuthenticated()")
   public ResponseEntity<Page<EmpresaResponse>> list(
       Authentication authentication,
       @RequestParam(required = false) String nome,
@@ -60,14 +65,24 @@ public class EmpresaController {
   }
 
   @GetMapping("/{id}")
-  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW') or @permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
-  public ResponseEntity<EmpresaResponse> get(@PathVariable Long id) {
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<EmpresaResponse> get(@PathVariable Long id, Authentication authentication) {
+    Long tenantId = TenantContext.getTenantId();
+    String userId = resolveUsuarioId(authentication);
+    if (tenantId != null && !authorizationService.getAccessibleCompanies(userId, tenantId).contains(id)) {
+      throw new IllegalStateException("forbidden");
+    }
     return ResponseEntity.ok(EmpresaMapper.toResponse(service.getById(id)));
   }
 
   @GetMapping("/{id}/filiais")
-  @PreAuthorize("@permissaoGuard.hasPermissao('RELATORIO_VIEW') or @permissaoGuard.hasPermissao('ENTIDADE_EDIT')")
-  public ResponseEntity<java.util.List<EmpresaResponse>> listFiliais(@PathVariable Long id) {
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<java.util.List<EmpresaResponse>> listFiliais(@PathVariable Long id, Authentication authentication) {
+    Long tenantId = TenantContext.getTenantId();
+    String userId = resolveUsuarioId(authentication);
+    if (tenantId != null && !authorizationService.getAccessibleCompanies(userId, tenantId).contains(id)) {
+      throw new IllegalStateException("forbidden");
+    }
     return ResponseEntity.ok(service.listFiliais(id).stream().map(EmpresaMapper::toResponse).toList());
   }
 

@@ -20,8 +20,10 @@ import jakarta.persistence.EntityNotFoundException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,10 +55,9 @@ public class EntidadeFormConfigService {
   @Transactional(readOnly = true)
   public EntidadeFormConfigAgrupadorResponse get(Long tipoEntidadeId, Long agrupadorId) {
     Scope scope = resolveScope(tipoEntidadeId, agrupadorId);
-    List<EntidadeFormGroupConfigResponse> groups = loadGroups(scope.tenantId, scope.configPorAgrupadorId);
-    if (groups.isEmpty()) {
-      groups = defaultGroups();
-    }
+    List<EntidadeFormGroupConfigResponse> groups = mergeWithDefaults(
+      loadGroups(scope.tenantId, scope.configPorAgrupadorId)
+    );
     return new EntidadeFormConfigAgrupadorResponse(
       tipoEntidadeId,
       agrupadorId,
@@ -78,9 +79,8 @@ public class EntidadeFormConfigService {
 
     List<EntidadeFormGroupConfigRequest> requestedGroups = request == null || request.groups() == null || request.groups().isEmpty()
       ? defaultGroupRequests()
-      : request.groups();
+      : mergeRequestWithDefaults(request.groups());
 
-    Map<Long, EntidadeFormGroupConfig> persistedGroupsById = new HashMap<>();
     for (EntidadeFormGroupConfigRequest groupRequest : requestedGroups) {
       String groupKey = sanitizeKey(groupRequest.groupKey(), "entidade_form_group_key_required");
       EntidadeFormGroupConfig group = groupConfigRepository
@@ -97,7 +97,6 @@ public class EntidadeFormConfigService {
       group.setEnabled(groupRequest.enabled() == null || groupRequest.enabled());
       group.setCollapsedByDefault(Boolean.TRUE.equals(groupRequest.collapsedByDefault()));
       EntidadeFormGroupConfig savedGroup = groupConfigRepository.save(group);
-      persistedGroupsById.put(savedGroup.getId(), savedGroup);
 
       List<EntidadeFormFieldConfigRequest> requestedFields = groupRequest.fields() == null ? List.of() : groupRequest.fields();
       for (EntidadeFormFieldConfigRequest fieldRequest : requestedFields) {
@@ -127,7 +126,9 @@ public class EntidadeFormConfigService {
       String.valueOf(scope.configPorAgrupadorId),
       "tipoEntidadeId=" + tipoEntidadeId + ";agrupadorId=" + agrupadorId + ";obrigarUmTelefone=" + obrigarUmTelefone);
 
-    List<EntidadeFormGroupConfigResponse> groups = loadGroups(scope.tenantId, scope.configPorAgrupadorId);
+    List<EntidadeFormGroupConfigResponse> groups = mergeWithDefaults(
+      loadGroups(scope.tenantId, scope.configPorAgrupadorId)
+    );
     return new EntidadeFormConfigAgrupadorResponse(
       tipoEntidadeId,
       agrupadorId,
@@ -167,6 +168,126 @@ public class EntidadeFormConfigService {
         group.isCollapsedByDefault(),
         fieldsByGroupId.getOrDefault(group.getId(), List.of())))
       .toList();
+  }
+
+  private List<EntidadeFormGroupConfigResponse> mergeWithDefaults(List<EntidadeFormGroupConfigResponse> persistedGroups) {
+    List<EntidadeFormGroupConfigResponse> defaults = defaultGroups();
+    if (persistedGroups == null || persistedGroups.isEmpty()) {
+      return defaults;
+    }
+    Map<String, EntidadeFormGroupConfigResponse> persistedByKey = new LinkedHashMap<>();
+    for (EntidadeFormGroupConfigResponse group : persistedGroups) {
+      String key = (group.groupKey() == null ? "" : group.groupKey().trim());
+      if (!key.isEmpty()) {
+        persistedByKey.put(key, group);
+      }
+    }
+
+    List<EntidadeFormGroupConfigResponse> merged = new ArrayList<>();
+    for (EntidadeFormGroupConfigResponse defaultGroup : defaults) {
+      String key = defaultGroup.groupKey();
+      EntidadeFormGroupConfigResponse persisted = persistedByKey.remove(key);
+      if (persisted == null) {
+        merged.add(defaultGroup);
+        continue;
+      }
+      merged.add(new EntidadeFormGroupConfigResponse(
+        persisted.id(),
+        persisted.groupKey(),
+        persisted.label() == null ? defaultGroup.label() : persisted.label(),
+        persisted.ordem() == null ? defaultGroup.ordem() : persisted.ordem(),
+        persisted.enabled(),
+        persisted.collapsedByDefault(),
+        mergeFieldsWithDefaults(defaultGroup.fields(), persisted.fields())
+      ));
+    }
+
+    return merged.stream()
+      .sorted(Comparator.comparing(EntidadeFormGroupConfigResponse::ordem, Comparator.nullsLast(Integer::compareTo))
+        .thenComparing(EntidadeFormGroupConfigResponse::groupKey, Comparator.nullsLast(String::compareTo)))
+      .toList();
+  }
+
+  private List<EntidadeFormFieldConfigResponse> mergeFieldsWithDefaults(
+    List<EntidadeFormFieldConfigResponse> defaultFields,
+    List<EntidadeFormFieldConfigResponse> persistedFields) {
+    Map<String, EntidadeFormFieldConfigResponse> persistedByKey = new LinkedHashMap<>();
+    for (EntidadeFormFieldConfigResponse field : (persistedFields == null ? List.<EntidadeFormFieldConfigResponse>of() : persistedFields)) {
+      String key = (field.fieldKey() == null ? "" : field.fieldKey().trim());
+      if (!key.isEmpty()) persistedByKey.put(key, field);
+    }
+
+    List<EntidadeFormFieldConfigResponse> merged = new ArrayList<>();
+    for (EntidadeFormFieldConfigResponse defaultField : (defaultFields == null ? List.<EntidadeFormFieldConfigResponse>of() : defaultFields)) {
+      String key = defaultField.fieldKey();
+      EntidadeFormFieldConfigResponse persisted = persistedByKey.remove(key);
+      if (persisted == null) {
+        merged.add(defaultField);
+        continue;
+      }
+      merged.add(new EntidadeFormFieldConfigResponse(
+        persisted.id(),
+        persisted.fieldKey(),
+        persisted.label() == null ? defaultField.label() : persisted.label(),
+        persisted.ordem() == null ? defaultField.ordem() : persisted.ordem(),
+        persisted.visible(),
+        persisted.editable(),
+        persisted.required()
+      ));
+    }
+
+    return merged.stream()
+      .sorted(Comparator.comparing(EntidadeFormFieldConfigResponse::ordem, Comparator.nullsLast(Integer::compareTo))
+        .thenComparing(EntidadeFormFieldConfigResponse::fieldKey, Comparator.nullsLast(String::compareTo)))
+      .toList();
+  }
+
+  private List<EntidadeFormGroupConfigRequest> mergeRequestWithDefaults(List<EntidadeFormGroupConfigRequest> requestedGroups) {
+    List<EntidadeFormGroupConfigRequest> defaults = defaultGroupRequests();
+    if (requestedGroups == null || requestedGroups.isEmpty()) return defaults;
+
+    Map<String, EntidadeFormGroupConfigRequest> requestByKey = new LinkedHashMap<>();
+    for (EntidadeFormGroupConfigRequest request : requestedGroups) {
+      String key = sanitizeKey(request.groupKey(), "entidade_form_group_key_required");
+      requestByKey.put(key, request);
+    }
+
+    List<EntidadeFormGroupConfigRequest> merged = new ArrayList<>();
+    for (EntidadeFormGroupConfigRequest defaultGroup : defaults) {
+      EntidadeFormGroupConfigRequest requested = requestByKey.remove(defaultGroup.groupKey());
+      if (requested == null) {
+        merged.add(defaultGroup);
+        continue;
+      }
+      merged.add(new EntidadeFormGroupConfigRequest(
+        requested.groupKey(),
+        requested.label(),
+        requested.ordem(),
+        requested.enabled(),
+        requested.collapsedByDefault(),
+        mergeFieldRequestWithDefaults(defaultGroup.fields(), requested.fields())
+      ));
+    }
+    return merged;
+  }
+
+  private List<EntidadeFormFieldConfigRequest> mergeFieldRequestWithDefaults(
+    List<EntidadeFormFieldConfigRequest> defaultFields,
+    List<EntidadeFormFieldConfigRequest> requestedFields) {
+    if (requestedFields == null || requestedFields.isEmpty()) return defaultFields == null ? List.of() : defaultFields;
+
+    Map<String, EntidadeFormFieldConfigRequest> requestedByKey = new LinkedHashMap<>();
+    for (EntidadeFormFieldConfigRequest request : requestedFields) {
+      String key = sanitizeKey(request.fieldKey(), "entidade_form_field_key_required");
+      requestedByKey.put(key, request);
+    }
+
+    List<EntidadeFormFieldConfigRequest> merged = new ArrayList<>();
+    for (EntidadeFormFieldConfigRequest defaultField : (defaultFields == null ? List.<EntidadeFormFieldConfigRequest>of() : defaultFields)) {
+      EntidadeFormFieldConfigRequest requested = requestedByKey.remove(defaultField.fieldKey());
+      merged.add(Objects.requireNonNullElse(requested, defaultField));
+    }
+    return merged;
   }
 
   private Scope resolveScope(Long tipoEntidadeId, Long agrupadorId) {
@@ -257,44 +378,130 @@ public class EntidadeFormConfigService {
     return List.of(
       new EntidadeFormGroupConfigRequest("DADOS_ENTIDADE", "Dados da entidade", 0, true, false, List.of(
         new EntidadeFormFieldConfigRequest("registroFederal", "Registro federal", 0, true, true, true),
-        new EntidadeFormFieldConfigRequest("pessoaNome", "Nome da pessoa", 1, true, true, true),
-        new EntidadeFormFieldConfigRequest("pessoaApelido", "Apelido", 2, true, true, false)
+        new EntidadeFormFieldConfigRequest("tipoPessoa", "Tipo pessoa", 1, true, true, true),
+        new EntidadeFormFieldConfigRequest("pessoaNome", "Nome da pessoa", 2, true, true, true),
+        new EntidadeFormFieldConfigRequest("pessoaApelido", "Apelido", 3, true, true, false),
+        new EntidadeFormFieldConfigRequest("genero", "Genero", 4, true, true, false),
+        new EntidadeFormFieldConfigRequest("nacionalidade", "Nacionalidade", 5, true, true, false),
+        new EntidadeFormFieldConfigRequest("naturalidade", "Naturalidade", 6, true, true, false),
+        new EntidadeFormFieldConfigRequest("estadoCivil", "Estado civil", 7, true, true, false),
+        new EntidadeFormFieldConfigRequest("dataNascimento", "Data de nascimento", 8, true, true, false),
+        new EntidadeFormFieldConfigRequest("codigoBarras", "Codigo de barras", 9, true, true, false),
+        new EntidadeFormFieldConfigRequest("tratamento", "Tratamento", 10, true, true, false),
+        new EntidadeFormFieldConfigRequest("alerta", "Alerta", 11, true, true, false),
+        new EntidadeFormFieldConfigRequest("observacao", "Observacao", 12, true, true, false),
+        new EntidadeFormFieldConfigRequest("parecer", "Parecer", 13, true, true, false),
+        new EntidadeFormFieldConfigRequest("textoTermoQuitacao", "Texto termo de quitacao", 14, true, true, false)
       )),
       new EntidadeFormGroupConfigRequest("CONTATOS", "Contatos", 1, true, false, List.of(
-        new EntidadeFormFieldConfigRequest("contatos.nome", "Nome do contato", 0, true, true, false),
-        new EntidadeFormFieldConfigRequest("contatos.cargo", "Cargo", 1, true, true, false),
-        new EntidadeFormFieldConfigRequest("contatos.formas.EMAIL", "E-mail", 2, true, true, false),
-        new EntidadeFormFieldConfigRequest("contatos.formas.FONE_CELULAR", "Fone celular", 3, true, true, false),
-        new EntidadeFormFieldConfigRequest("contatos.formas.FONE_COMERCIAL", "Fone comercial", 4, true, true, false),
-        new EntidadeFormFieldConfigRequest("contatos.formas.WHATSAPP", "WhatsApp", 5, true, true, false)
+        new EntidadeFormFieldConfigRequest("contatos.tipoContato", "Tipo de contato", 0, true, true, false),
+        new EntidadeFormFieldConfigRequest("contatos.valor", "Valor do contato", 1, true, true, false),
+        new EntidadeFormFieldConfigRequest("contatos.preferencial", "Contato preferencial", 2, true, true, false),
+        new EntidadeFormFieldConfigRequest("contatos.formas.EMAIL", "E-mail", 3, true, true, false),
+        new EntidadeFormFieldConfigRequest("contatos.formas.TELEFONE", "Telefone", 4, true, true, false),
+        new EntidadeFormFieldConfigRequest("contatos.formas.FONE_CELULAR", "Fone celular", 5, true, true, false),
+        new EntidadeFormFieldConfigRequest("contatos.formas.FONE_RESIDENCIAL", "Fone residencial", 6, true, true, false),
+        new EntidadeFormFieldConfigRequest("contatos.formas.FONE_COMERCIAL", "Fone comercial", 7, true, true, false),
+        new EntidadeFormFieldConfigRequest("contatos.formas.WHATSAPP", "WhatsApp", 8, true, true, false),
+        new EntidadeFormFieldConfigRequest("contatos.formas.FACEBOOK", "Facebook", 9, true, true, false),
+        new EntidadeFormFieldConfigRequest("contatos.formas.SITE", "Site", 10, true, true, false),
+        new EntidadeFormFieldConfigRequest("contatos.formas.LINKEDIN", "LinkedIn", 11, true, true, false),
+        new EntidadeFormFieldConfigRequest("contatos.formas.INSTAGRAM", "Instagram", 12, true, true, false)
       )),
       new EntidadeFormGroupConfigRequest("ENDERECOS", "Enderecos", 2, true, false, List.of(
-        new EntidadeFormFieldConfigRequest("enderecos.cep", "CEP", 0, true, true, false),
-        new EntidadeFormFieldConfigRequest("enderecos.uf", "UF", 1, true, true, false),
-        new EntidadeFormFieldConfigRequest("enderecos.municipio", "Municipio", 2, true, true, false),
-        new EntidadeFormFieldConfigRequest("enderecos.logradouro", "Logradouro", 3, true, true, false)
+        new EntidadeFormFieldConfigRequest("enderecos.enderecoTipo", "Tipo de endereco", 0, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.cep", "CEP", 1, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.pais", "Pais", 2, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.paisCodigoIbge", "IBGE pais", 3, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.uf", "UF", 4, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.ufCodigoIbge", "IBGE UF", 5, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.municipio", "Municipio", 6, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.municipioCodigoIbge", "IBGE cidade", 7, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.bairro", "Bairro", 8, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.logradouro", "Logradouro", 9, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.numero", "Numero", 10, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.complemento", "Complemento", 11, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.estadoProvinciaRegiaoEstrangeiro", "Estado/provincia estrangeira", 12, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.latitude", "Latitude", 13, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.longitude", "Longitude", 14, true, true, false),
+        new EntidadeFormFieldConfigRequest("enderecos.principal", "Endereco principal", 15, true, true, false)
       )),
       new EntidadeFormGroupConfigRequest("DOCUMENTACAO", "Documentacao", 3, true, true, List.of(
-        new EntidadeFormFieldConfigRequest("documentacao.rg", "RG", 0, true, true, false),
-        new EntidadeFormFieldConfigRequest("documentacao.cnh", "CNH", 1, true, true, false),
-        new EntidadeFormFieldConfigRequest("documentacao.numeroNif", "Numero NIF", 2, true, true, false)
+        new EntidadeFormFieldConfigRequest("documentacao.numeroNif", "Numero NIF", 0, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.motivoNaoNif", "Motivo de nao ter NIF", 1, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.rg", "RG numero", 2, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.rgTipo", "RG orgao emissor", 3, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.rgUfEmissao", "RG UF emissao", 4, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.rgDataEmissao", "RG data expedicao", 5, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.rntcCategoria", "RNTRC categoria", 6, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.rntc", "RNTRC numero", 7, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.ctps", "CTPS numero", 8, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.ctpsSerie", "CTPS serie", 9, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.ctpsDataEmissao", "CTPS data emissao", 10, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.ctpsUfEmissao", "CTPS UF emissao", 11, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.pis", "NIS (PIS/PASEP)", 12, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.tituloEleitor", "Titulo eleitor numero", 13, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.tituloEleitorZona", "Titulo eleitor zona", 14, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.tituloEleitorSecao", "Titulo eleitor secao", 15, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.cnh", "CNH numero", 16, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.cnhCategoria", "CNH categoria", 17, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.cnhDataEmissao", "CNH data emissao", 18, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.cnhObservacao", "CNH observacao", 19, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.militarNumero", "Reservista numero", 20, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.militarSerie", "Reservista serie", 21, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.militarCategoria", "Reservista categoria", 22, true, true, false)
       )),
       new EntidadeFormGroupConfigRequest("COMERCIAL_FISCAL", "Comercial e fiscal", 4, true, true, List.of(
-        new EntidadeFormFieldConfigRequest("comercial.faturamentoDiasPrazo", "Dias de prazo", 0, true, true, false),
-        new EntidadeFormFieldConfigRequest("comercial.juroTaxaPadrao", "Juro padrao", 1, true, true, false),
-        new EntidadeFormFieldConfigRequest("fiscal.manifestarNotaAutomaticamente", "Manifestar nota automaticamente", 2, true, true, false)
+        new EntidadeFormFieldConfigRequest("priceBookId", "Tabela de preco", 0, true, true, false),
+        new EntidadeFormFieldConfigRequest("documentacao.registroEstadualContribuinte", "Contribuinte", 1, true, true, false),
+        new EntidadeFormFieldConfigRequest("comercial.ramoAtividade", "Ramo de atividade", 2, true, true, false),
+        new EntidadeFormFieldConfigRequest("comercial.faturamentoFrequenciaCobrancaId", "Frequencia cobranca", 3, true, true, false),
+        new EntidadeFormFieldConfigRequest("comercial.faturamentoDiasPrazo", "Dias de prazo", 4, true, true, false),
+        new EntidadeFormFieldConfigRequest("comercial.juroTaxaPadrao", "Juro taxa padrao", 5, true, true, false),
+        new EntidadeFormFieldConfigRequest("comercial.faturamentoDiaInicial", "Faturamento data inicial", 6, true, true, false),
+        new EntidadeFormFieldConfigRequest("comercial.faturamentoDiaFinal", "Faturamento data final", 7, true, true, false),
+        new EntidadeFormFieldConfigRequest("comercial.prazoEntregaDias", "Prazo de entrega em dias", 8, true, true, false),
+        new EntidadeFormFieldConfigRequest("comercial.consumidorFinal", "Consumidor final", 9, true, true, false),
+        new EntidadeFormFieldConfigRequest("comercial.boletosEnviarEmail", "Enviar boletos por e-mail", 10, true, true, false),
+        new EntidadeFormFieldConfigRequest("fiscal.manifestarNotaAutomaticamente", "Manifestar nota automaticamente", 11, true, true, false),
+        new EntidadeFormFieldConfigRequest("fiscal.usaNotaFiscalFatura", "Usa nota fiscal fatura", 12, true, true, false),
+        new EntidadeFormFieldConfigRequest("fiscal.ignorarImportacaoNota", "Ignorar importacao nota", 13, true, true, false)
       )),
       new EntidadeFormGroupConfigRequest("RH", "Recursos humanos", 5, true, true, List.of(
         new EntidadeFormFieldConfigRequest("rh.contrato.numero", "Numero contrato", 0, true, true, false),
         new EntidadeFormFieldConfigRequest("rh.contrato.admissaoData", "Data admissao", 1, true, true, false),
-        new EntidadeFormFieldConfigRequest("rh.info.atividades", "Atividades", 2, true, true, false)
+        new EntidadeFormFieldConfigRequest("rh.contrato.remuneracao", "Remuneracao", 2, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.contrato.remuneracaoComplementar", "Remuneracao complementar", 3, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.contrato.bonificacao", "Bonificacao", 4, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.contrato.percentualInsalubridade", "% Insalubridade", 5, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.contrato.percentualPericulosidade", "% Periculosidade", 6, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.contrato.tipoFuncionarioId", "Tipo funcionario", 7, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.contrato.situacaoFuncionarioId", "Situacao funcionario", 8, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.contrato.setorId", "Setor", 9, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.contrato.cargoId", "Cargo", 10, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.contrato.ocupacaoAtividadeId", "Ocupacao atividade", 11, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.contrato.sindicalizado", "Sindicalizado", 12, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.info.atividades", "Atividades", 13, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.info.habilidades", "Habilidades", 14, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.info.experiencias", "Experiencias", 15, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.info.metaMediaHorasVendidasDia", "Meta media horas vendidas/dia", 16, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.info.metaProdutosVendidos", "Meta produtos vendidos", 17, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.info.aceitaViajar", "Aceita viajar", 18, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.info.possuiCarro", "Possui carro", 19, true, true, false),
+        new EntidadeFormFieldConfigRequest("rh.info.possuiMoto", "Possui moto", 20, true, true, false)
       )),
       new EntidadeFormGroupConfigRequest("FAMILIARES_REFERENCIAS", "Familiares e referencias", 6, true, true, List.of(
-        new EntidadeFormFieldConfigRequest("familiares.parentesco", "Parentesco", 0, true, true, false),
-        new EntidadeFormFieldConfigRequest("referencias.nome", "Nome da referencia", 1, true, true, false),
-        new EntidadeFormFieldConfigRequest("qualificacoes.rhQualificacaoId", "Qualificacao", 2, true, true, false)
+        new EntidadeFormFieldConfigRequest("familiares.nome", "Nome do familiar", 0, true, true, false),
+        new EntidadeFormFieldConfigRequest("familiares.parentesco", "Parentesco", 1, true, true, false),
+        new EntidadeFormFieldConfigRequest("familiares.dependente", "Dependente", 2, true, true, false),
+        new EntidadeFormFieldConfigRequest("referencias.nome", "Nome da referencia", 3, true, true, false),
+        new EntidadeFormFieldConfigRequest("referencias.atividades", "Atividades da referencia", 4, true, true, false),
+        new EntidadeFormFieldConfigRequest("referencias.dataInicio", "Data inicio referencia", 5, true, true, false),
+        new EntidadeFormFieldConfigRequest("referencias.dataFim", "Data fim referencia", 6, true, true, false),
+        new EntidadeFormFieldConfigRequest("qualificacoes.rhQualificacaoId", "Qualificacao", 7, true, true, false),
+        new EntidadeFormFieldConfigRequest("qualificacoes.tipo", "Tipo qualificacao", 8, true, true, false),
+        new EntidadeFormFieldConfigRequest("qualificacoes.completo", "Qualificacao completa", 9, true, true, false)
       ))
     );
   }
 }
-

@@ -4,6 +4,7 @@ import com.ia.app.dto.PessoaRequest;
 import com.ia.app.dto.PessoaResponse;
 import com.ia.app.mapper.PessoaMapper;
 import com.ia.app.service.PessoaService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -43,7 +44,11 @@ public class PessoaController {
   @GetMapping("/busca")
   @PreAuthorize("hasAnyRole('MASTER','ADMIN','USER')")
   public ResponseEntity<PessoaResponse> findByDocumento(@RequestParam String documento) {
-    return ResponseEntity.ok(PessoaMapper.toResponse(service.findByDocumento(documento)));
+    try {
+      return ResponseEntity.ok(PessoaMapper.toResponse(service.findByDocumento(documento)));
+    } catch (EntityNotFoundException ex) {
+      return ResponseEntity.noContent().build();
+    }
   }
 
   @PostMapping
