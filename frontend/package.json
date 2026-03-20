@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "start": "ng serve",
+    "start": "ng serve --port 4201",
     "build": "ng build",
     "test": "ng test --watch=false --browsers=ChromeHeadless",
     "test:watch": "ng test",
