@@ -54,7 +54,9 @@ public class AuthorizationService {
     if (authentication == null || !authentication.isAuthenticated()) {
       return false;
     }
-    return hasRole(authentication, "ROLE_MASTER") && isMasterUsername(authentication);
+    // Global master is identified by canonical username "master".
+    // Keep role check as a secondary compatibility path.
+    return isMasterUsername(authentication) || hasRole(authentication, "ROLE_MASTER");
   }
 
   public boolean isTenantMaster(String userId, Long tenantId) {
